@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/IncidentIQ.Api/IncidentIQ.Api.csproj" />
+    <Project Path="src/IncidentIQ.Worker/IncidentIQ.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/IncidentIQ.Api.Tests/IncidentIQ.Api.Tests.csproj" />
+    <Project Path="tests/IncidentIQ.Worker.Tests/IncidentIQ.Worker.Tests.csproj" />
+  </Folder>
+</Solution>
