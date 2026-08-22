@@ -1,17 +1,20 @@
-name: incidentIQ_compose
+name: incidentiq_compose
 
 services:
   incidentiq.api:
-    container_name: incidentIQ_API
+    container_name: IncidentIQ_API
     image: ${DOCKER_REGISTRY-}incidentiqapi
     build:
       context: .
       dockerfile: src/IncidentIQ.Api/Dockerfile
+    ports:
+      - "5013:8080"
+      - "7156:8081"
     depends_on:
       - cosmos
 
   cosmos:
-    container_name: incidentIQ_cosmos
+    container_name: IncidentIQ_Cosmos
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
     command:
       - "--protocol"
