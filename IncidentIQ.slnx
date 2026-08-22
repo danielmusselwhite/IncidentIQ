@@ -1,5 +1,8 @@
 <Solution>
   <Folder Name="/src/">
+    <Project Path="IncidentIQ.Application/IncidentIQ.Application.csproj" Id="59df9d80-17dd-4753-8177-2f563a5584d9" />
+    <Project Path="IncidentIQ.Domain/IncidentIQ.Domain.csproj" Id="4f6875a0-3f30-4ee3-a9a2-6ca18a28cce9" />
+    <Project Path="IncidentIQ.Infrastructure/IncidentIQ.Infrastructure.csproj" Id="6e04c2f3-3b29-4bdf-86b1-b376dd0100d9" />
     <Project Path="src/IncidentIQ.Api/IncidentIQ.Api.csproj" />
     <Project Path="src/IncidentIQ.Worker/IncidentIQ.Worker.csproj" />
   </Folder>
@@ -7,4 +10,7 @@
     <Project Path="tests/IncidentIQ.Api.Tests/IncidentIQ.Api.Tests.csproj" />
     <Project Path="tests/IncidentIQ.Worker.Tests/IncidentIQ.Worker.Tests.csproj" />
   </Folder>
+  <Project Path="docker-compose.dcproj">
+    <Build />
+  </Project>
 </Solution>
