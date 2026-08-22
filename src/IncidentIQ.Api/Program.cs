@@ -1,3 +1,6 @@
+using IncidentIQ.Infrastructure;
+using IncidentIQ.Infrastructure.Persistence.Cosmos;
+
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -7,6 +10,9 @@ builder.Services.AddHealthChecks();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Add custom services and dependencies from the Infrastructure project
+builder.Services.AddInfrastructureDependencies(builder.Configuration);
 
 // CORS
 builder.Services.AddCors(options =>
@@ -43,6 +49,15 @@ if (app.Environment.IsDevelopment())
 else
 {
     app.UseCors("ProductionCors");
+}
+
+// Initialize Cosmos DB if run in dev (no need to inmnitialize in prod as it already exists)
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+
+    var initializer = scope.ServiceProvider.GetRequiredService<CosmosInitializer>();
+    await initializer.InitializeAsync();
 }
 
 app.UseHttpsRedirection();

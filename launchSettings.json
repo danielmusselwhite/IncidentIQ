@@ -8,7 +8,7 @@
       },
       "composeLaunchAction": "LaunchBrowser",
       "composeLaunchServiceName": "incidentiq.api",
-      "composeLaunchUrl": "https://localhost:7156/api/health"
+      "composeLaunchUrl": "{Scheme}://localhost:{ServicePort}/api/health"
     }
   }
 }

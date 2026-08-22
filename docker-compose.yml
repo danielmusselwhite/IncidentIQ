@@ -1,21 +1,48 @@
-name: incidentiq_compose
-
 services:
   incidentiq.api:
-    container_name: IncidentIQ_API
     image: ${DOCKER_REGISTRY-}incidentiqapi
     build:
       context: .
       dockerfile: src/IncidentIQ.Api/Dockerfile
-    ports:
-      - "5013:8080"
-      - "7156:8081"
     depends_on:
-      - cosmos
+      cosmos:
+        condition: service_healthy
+    volumes:
+      - cosmos-certs:/cosmos-certs:ro
+
+  cosmos-cert-gen:
+    image: alpine:latest
+    user: "0:0"
+    volumes:
+      - cosmos-certs:/cosmos-certs
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - >
+        apk add --no-cache openssl ca-certificates &&
+        if [ ! -f /cosmos-certs/cosmos.pfx ]; then
+          echo "Generating Cosmos development certificate..." &&
+          openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes
+          -keyout /cosmos-certs/cosmos.key
+          -out /cosmos-certs/cosmos.crt
+          -subj "/CN=cosmos"
+          -addext "subjectAltName=DNS:cosmos,DNS:localhost,IP:127.0.0.1" &&
+          openssl pkcs12 -export
+          -out /cosmos-certs/cosmos.pfx
+          -inkey /cosmos-certs/cosmos.key
+          -in /cosmos-certs/cosmos.crt
+          -passout pass:incidentiq-dev;
+        else
+          echo "Existing Cosmos certificate found; reusing it.";
+        fi &&
+        cat /etc/ssl/certs/ca-certificates.crt /cosmos-certs/cosmos.crt
+        > /cosmos-certs/ca-bundle.crt &&
+        chmod 644 /cosmos-certs/*
 
   cosmos:
-    container_name: IncidentIQ_Cosmos
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
+    depends_on:
+      cosmos-cert-gen:
+        condition: service_completed_successfully
     command:
       - "--protocol"
       - "https"
@@ -23,12 +50,23 @@ services:
       - "http"
       - "--gateway-endpoint"
       - "cosmos"
+      - "--cert-path"
+      - "/cosmos-certs/cosmos.pfx"
+    environment:
+      - CERT_SECRET=incidentiq-dev
     ports:
       - "8081:8081"
       - "8080:8080"
       - "1234:1234"
     volumes:
       - cosmos-data:/data
+      - cosmos-certs:/cosmos-certs:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
 
 volumes:
   cosmos-data:
+  cosmos-certs:

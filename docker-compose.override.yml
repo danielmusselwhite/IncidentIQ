@@ -4,6 +4,11 @@ services:
       - ASPNETCORE_ENVIRONMENT=Development
       - ASPNETCORE_HTTP_PORTS=8080
       - ASPNETCORE_HTTPS_PORTS=8081
+      - Cosmos__Endpoint=https://cosmos:8081
+      - Cosmos__Key=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
+      - Cosmos__DatabaseName=IncidentIQ
+      - Cosmos__IncidentsContainerName=Incidents
+      - SSL_CERT_FILE=/cosmos-certs/ca-bundle.crt
     ports:
       - "8080"
       - "8081"

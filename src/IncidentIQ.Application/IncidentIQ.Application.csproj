@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\IncidentIQ.Domain\IncidentIQ.Domain.csproj" />
+  </ItemGroup>
+
 </Project>

@@ -25,6 +25,17 @@ public sealed class Incident
 
     public DateTimeOffset UpdatedAt { get; private set; }
 
+    /// <summary>
+    /// Initializes a new instance of the <see cref="Incident"/> class with the specified details.
+    /// </summary>
+    /// <param name="id">The unique identifier of the incident.</param>
+    /// <param name="title">The title of the incident.</param>
+    /// <param name="description">The description of the incident.</param>
+    /// <param name="service">The service affected by the incident.</param>
+    /// <param name="environment">The environment in which the incident occurred.</param>
+    /// <param name="severity">The severity of the incident.</param>
+    /// <param name="symptoms">The symptoms of the incident.</param>
+    /// <param name="createdAt">The date and time when the incident was created.</param>
     private Incident(
         string id,
         string title,
@@ -77,5 +88,40 @@ public sealed class Incident
             severity,
             symptoms,
             now);
+    }
+
+    /// <summary>
+    /// Restores an incident from the specified details, typically used for reconstructing incidents from a data source.
+    /// </summary>
+    /// <param name="id">The unique identifier of the incident.</param>
+    /// <param name="title">The title of the incident.</param>
+    /// <param name="description">The description of the incident.</param>
+    /// <param name="service">The service affected by the incident.</param>
+    /// <param name="environment">The environment in which the incident occurred.</param>
+    /// <param name="severity">The severity of the incident.</param>
+    /// <param name="symptoms">The symptoms of the incident.</param>
+    /// <param name="status">The status of the incident.</param>
+    /// <param name="createdAt">The date and time when the incident was created.</param>
+    /// <param name="updatedAt">The date and time when the incident was last updated.</param>
+    /// <returns>The restored incident.</returns>
+    public static Incident Restore(
+    string id,
+    string title,
+    string description,
+    string service,
+    string environment,
+    IncidentSeverity severity,
+    string? symptoms,
+    IncidentStatus status,
+    DateTimeOffset createdAt,
+    DateTimeOffset updatedAt)
+    {
+        var incident = new Incident(id, title, description, service, environment, severity, symptoms, createdAt)
+        {
+            Status = status,
+            UpdatedAt = updatedAt
+        };
+
+        return incident;
     }
 }
