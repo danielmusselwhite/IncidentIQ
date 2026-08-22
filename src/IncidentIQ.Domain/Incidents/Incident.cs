@@ -1,24 +1,81 @@
 ﻿namespace IncidentIQ.Domain.Incidents;
 
+/// <summary>
+/// Represents an incident in the system.
+/// </summary>
 public sealed class Incident
 {
-    public required string Id { get; init; }
+    public string Id { get; }
 
-    public required string Title { get; init; }
+    public string Title { get; }
 
-    public required string Description { get; init; }
+    public string Description { get; }
 
-    public required string Service { get; init; }
+    public string Service { get; }
 
-    public required string Environment { get; init; }
+    public string Environment { get; }
 
-    //public required IncidentSeverity Severity { get; init; } // todo -
+    public IncidentSeverity Severity { get; }
 
-    public string? Symptoms { get; init; }
+    public string? Symptoms { get; }
 
-    //public IncidentStatus Status { get; private set; } // todo -
+    public IncidentStatus Status { get; private set; }
 
-    public DateTimeOffset CreatedAt { get; init; }
+    public DateTimeOffset CreatedAt { get; }
 
     public DateTimeOffset UpdatedAt { get; private set; }
+
+    private Incident(
+        string id,
+        string title,
+        string description,
+        string service,
+        string environment,
+        IncidentSeverity severity,
+        string? symptoms,
+        DateTimeOffset createdAt)
+    {
+        Id = id;
+        Title = title;
+        Description = description;
+        Service = service;
+        Environment = environment;
+        Severity = severity;
+        Symptoms = symptoms;
+
+        Status = IncidentStatus.Queued;
+        CreatedAt = createdAt;
+        UpdatedAt = createdAt;
+    }
+
+    /// <summary>
+    /// Creates a new incident with the specified details.
+    /// </summary>
+    /// <param name="title">The title of the incident.</param>
+    /// <param name="description">The description of the incident.</param>
+    /// <param name="service">The service affected by the incident.</param>
+    /// <param name="environment">The environment in which the incident occurred.</param>
+    /// <param name="severity">The severity of the incident.</param>
+    /// <param name="symptoms">The symptoms of the incident.</param>
+    /// <returns>The newly created incident.</returns>
+    public static Incident Create(
+        string title,
+        string description,
+        string service,
+        string environment,
+        IncidentSeverity severity,
+        string? symptoms)
+    {
+        var now = DateTimeOffset.UtcNow;
+
+        return new Incident(
+            Guid.NewGuid().ToString(),
+            title,
+            description,
+            service,
+            environment,
+            severity,
+            symptoms,
+            now);
+    }
 }
