@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import AppLayout from "./layout/AppLayout";
 import IncidentDetailPage from "./pages/IncidentDetail/IncidentDetailPage";
 import SubmitIncidentPage from "./pages/SubmitIncident/SubmitIncidentPage";
+import IncidentsPage from "./pages/Incidents/IncidentsPage";
 
 export default function App() {
     return (
@@ -22,6 +23,8 @@ export default function App() {
                     path="/incidents/:id"
                     element={<IncidentDetailPage />}
                 />
+
+                <Route path="/incidents" element={<IncidentsPage />} />
             </Route>
         </Routes>
     );

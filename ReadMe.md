@@ -238,11 +238,11 @@ Configuration
 
 ## Stage 4 — Core Incident Frontend
 
-* [ ] Build Submit Incident page.
-* [ ] Build Incident List / Dashboard.
-* [ ] Build Incident Detail page.
-* [ ] Connect React to the Incident API.
-* [ ] Add loading, validation and error states.
+* [x] Build Submit Incident page.
+* [x] Build Incident List / Dashboard.
+* [x] Build Incident Detail page.
+* [x] Connect React to the Incident API.
+* [x] Add loading, validation and error states.
 
 ## Stage 5 — First Azure Environment
 
