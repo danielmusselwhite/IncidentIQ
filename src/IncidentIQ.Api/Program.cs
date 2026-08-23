@@ -1,18 +1,29 @@
+using IncidentIQ.Api.ExceptionHandling;
+using IncidentIQ.Application;
 using IncidentIQ.Infrastructure;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
+using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(options =>
+        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
+// swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+// exception handling middleware
+builder.Services.AddProblemDetails();
+builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+
 // Add custom services and dependencies from the Infrastructure project
 builder.Services.AddInfrastructureDependencies(builder.Configuration);
+builder.Services.AddApplicationDependencies();
 
 // CORS
 builder.Services.AddCors(options =>
@@ -36,6 +47,8 @@ builder.Services.AddCors(options =>
 
 var app = builder.Build();
 
+app.UseExceptionHandler();
+
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
@@ -51,7 +64,8 @@ else
     app.UseCors("ProductionCors");
 }
 
-// Initialize Cosmos DB if run in dev (no need to inmnitialize in prod as it already exists)
+// Initialize Cosmos DB if running in development.
+// Production infrastructure is provisioned through Bicep.
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();

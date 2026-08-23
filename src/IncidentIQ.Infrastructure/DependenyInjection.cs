@@ -4,6 +4,8 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace IncidentIQ.Infrastructure;
 
@@ -25,13 +27,20 @@ public static class DependencyInjection
                 .GetRequiredService<IOptions<CosmosOptions>>()
                 .Value;
 
-            return new CosmosClient(
-                options.Endpoint,
-                options.Key,
-                new CosmosClientOptions
-                {
-                    ConnectionMode = ConnectionMode.Gateway
-                });
+            var serializerOptions = new JsonSerializerOptions
+            {
+                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+            };
+
+            serializerOptions.Converters.Add(new JsonStringEnumConverter());
+
+            var clientOptions = new CosmosClientOptions
+            {
+                ConnectionMode = ConnectionMode.Gateway,
+                UseSystemTextJsonSerializerWithOptions = serializerOptions
+            };
+
+            return new CosmosClient(options.Endpoint, options.Key, clientOptions);
         });
 
         services.AddSingleton<CosmosInitializer>();
