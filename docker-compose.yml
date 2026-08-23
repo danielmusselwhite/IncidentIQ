@@ -11,32 +11,39 @@ services:
       - cosmos-certs:/cosmos-certs:ro
 
   cosmos-cert-gen:
-    image: alpine:latest
-    user: "0:0"
-    volumes:
-      - cosmos-certs:/cosmos-certs
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - >
-        apk add --no-cache openssl ca-certificates &&
-        if [ ! -f /cosmos-certs/cosmos.pfx ]; then
-          echo "Generating Cosmos development certificate..." &&
-          openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes
-          -keyout /cosmos-certs/cosmos.key
-          -out /cosmos-certs/cosmos.crt
-          -subj "/CN=cosmos"
-          -addext "subjectAltName=DNS:cosmos,DNS:localhost,IP:127.0.0.1" &&
-          openssl pkcs12 -export
-          -out /cosmos-certs/cosmos.pfx
-          -inkey /cosmos-certs/cosmos.key
-          -in /cosmos-certs/cosmos.crt
-          -passout pass:incidentiq-dev;
-        else
-          echo "Existing Cosmos certificate found; reusing it.";
-        fi &&
-        cat /etc/ssl/certs/ca-certificates.crt /cosmos-certs/cosmos.crt
-        > /cosmos-certs/ca-bundle.crt &&
-        chmod 644 /cosmos-certs/*
+  image: alpine:3.24.1
+  user: "0:0"
+  volumes:
+    - cosmos-certs:/cosmos-certs
+  entrypoint: ["/bin/sh", "-c"]
+  command:
+    - |
+      set -e
+
+      apk add --no-cache openssl ca-certificates
+
+      if [ ! -f /cosmos-certs/cosmos.pfx ]; then
+        echo "Generating Cosmos development certificate..."
+
+        openssl req -x509 -newkey rsa:2048 -sha256 -days 3650 -nodes \
+          -keyout /cosmos-certs/cosmos.key \
+          -out /cosmos-certs/cosmos.crt \
+          -subj "/CN=cosmos" \
+          -addext "subjectAltName=DNS:cosmos,DNS:localhost,IP:127.0.0.1"
+
+        openssl pkcs12 -export \
+          -out /cosmos-certs/cosmos.pfx \
+          -inkey /cosmos-certs/cosmos.key \
+          -in /cosmos-certs/cosmos.crt \
+          -passout pass:incidentiq-dev
+      else
+        echo "Existing Cosmos certificate found; reusing it."
+      fi
+
+      cat /etc/ssl/certs/ca-certificates.crt /cosmos-certs/cosmos.crt \
+        > /cosmos-certs/ca-bundle.crt
+
+      chmod 644 /cosmos-certs/*
 
   cosmos:
     image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:vnext-latest
