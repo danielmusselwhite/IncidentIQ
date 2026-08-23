@@ -227,13 +227,13 @@ Configuration
 
 ## Stage 3 — Incident API
 
-* [ ] Create Incident API contracts and response models.
-* [ ] Create `CreateIncidentRequest` and `CreateIncidentHandler`.
-* [ ] Add FluentValidation.
-* [ ] Add centralized exception handling and Problem Details.
-* [ ] Add `POST /api/incidents`.
-* [ ] Add `GET /api/incidents`.
-* [ ] Add `GET /api/incidents/{id}`.
+* [x] Create Incident API contracts and response models.
+* [x] Create `CreateIncidentRequest` and `CreateIncidentHandler`.
+* [x] Add FluentValidation.
+* [x] Add centralized exception handling and Problem Details.
+* [x] Add `POST /api/incidents`.
+* [x] Add `GET /api/incidents`.
+* [x] Add `GET /api/incidents/{id}`.
 * [ ] Add incident API/application tests.
 
 ## Stage 4 — Core Incident Frontend
@@ -393,6 +393,7 @@ Provision Event Grid and Functions before integrating them.
 
 ## Stage 18 — CI/CD & Portfolio Polish
 
+* [ ] **Paginate the get all incidents endpoint.**
 * [ ] Expand unit and integration test coverage.
 * [ ] Add CI pipeline.
 * [ ] Add container build/publish pipeline.

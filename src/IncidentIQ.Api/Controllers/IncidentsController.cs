@@ -1,12 +1,16 @@
 ﻿using IncidentIQ.Api.Contracts.Incidents;
 using IncidentIQ.Application.Incidents.Create;
+using IncidentIQ.Application.Incidents.GetAll;
+using IncidentIQ.Application.Incidents.GetById;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IncidentIQ.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class IncidentsController(CreateIncidentHandler createIncidentHandler) : ControllerBase
+public sealed class IncidentsController(CreateIncidentHandler createIncidentHandler, 
+    GetAllIncidentsHandler getAllIncidentsHandler, 
+    GetIncidentByIdHandler getIncidentByIdHandler) : ControllerBase
 {
 
     /// <summary>
@@ -46,8 +50,35 @@ public sealed class IncidentsController(CreateIncidentHandler createIncidentHand
     /// <param name="id">The unique identifier of the incident.</param>
     /// <returns>The incident with the specified unique identifier.</returns>
     [HttpGet("{id}")]
-    public IActionResult GetById(string id)
+    [ProducesResponseType<IncidentResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IncidentResponse>> GetById(
+    string id,
+    CancellationToken cancellationToken)
     {
-        throw new NotImplementedException(); // todo - implement me
+        var incident = await getIncidentByIdHandler.HandleAsync(id, cancellationToken);
+
+        return Ok(IncidentResponse.FromDomain(incident));
+    }
+
+
+    /// <summary>
+    /// Retrieves an incident by its unique identifier.
+    /// </summary>
+    /// <param name="id">The unique identifier of the incident.</param>
+    /// <returns>The incident with the specified unique identifier.</returns>
+    [HttpGet]
+    [ProducesResponseType<IReadOnlyCollection<IncidentResponse>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<IReadOnlyCollection<IncidentResponse>>> GetAll(
+    CancellationToken cancellationToken)
+    {
+        var incidents = await getAllIncidentsHandler.HandleAsync(cancellationToken);
+
+        // convert all domain incidents to response DTOs
+        var response = incidents
+            .Select(IncidentResponse.FromDomain)
+            .ToArray();
+
+        return Ok(response);
     }
 }

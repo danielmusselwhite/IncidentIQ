@@ -1,4 +1,5 @@
 ﻿using FluentValidation;
+using IncidentIQ.Application.Common.Exceptions;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
@@ -33,6 +34,23 @@ public sealed class GlobalExceptionHandler(
             await httpContext.Response.WriteAsJsonAsync(
                 problemDetails,
                 cancellationToken);
+
+            return true;
+        }
+        else if (exception is IncidentNotFoundException notFoundException)
+        {
+            var problemDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Incident not found",
+                Detail = notFoundException.Message
+            };
+
+            problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+
+            httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+
+            await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
 
             return true;
         }
