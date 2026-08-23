@@ -1,36 +1,28 @@
-import { useEffect, useState } from "react";
-import "./App.css";
+import { Navigate, Route, Routes } from "react-router-dom";
 
-function App() {
-    const [apiStatus, setApiStatus] = useState("Checking...");
+import AppLayout from "./layout/AppLayout";
+import IncidentDetailPage from "./pages/IncidentDetail/IncidentDetailPage";
+import SubmitIncidentPage from "./pages/SubmitIncident/SubmitIncidentPage";
 
-    useEffect(() => {
-        const checkApi = async () => {
-            try {
-                const response = await fetch(
-                    `${import.meta.env.VITE_API_BASE_URL}/api/health`,
-                );
-
-                if (!response.ok) {
-                    throw new Error();
-                }
-
-                const status = await response.text();
-                setApiStatus(status);
-            } catch {
-                setApiStatus("Unavailable");
-            }
-        };
-
-        checkApi();
-    }, []);
-
+export default function App() {
     return (
-        <main>
-            <h1>IncidentIQ</h1>
-            <p>API Status: {apiStatus}</p>
-        </main>
+        <Routes>
+            <Route element={<AppLayout />}>
+                <Route
+                    path="/"
+                    element={<Navigate to="/incidents/new" replace />}
+                />
+
+                <Route
+                    path="/incidents/new"
+                    element={<SubmitIncidentPage />}
+                />
+
+                <Route
+                    path="/incidents/:id"
+                    element={<IncidentDetailPage />}
+                />
+            </Route>
+        </Routes>
     );
 }
-
-export default App;

@@ -1,0 +1,302 @@
+.incident-detail {
+    width: min(1000px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 52px 0 80px;
+}
+
+.incident-detail__toolbar {
+    margin-bottom: 20px;
+}
+
+.incident-detail__toolbar a {
+    color: var(--text-secondary);
+
+    font-size: 0.82rem;
+    font-weight: 600;
+
+    text-decoration: none;
+}
+
+.incident-detail__toolbar a:hover {
+    color: var(--primary);
+}
+
+/* Main record header */
+
+.incident-detail__header {
+    position: relative;
+
+    margin-bottom: 18px;
+    padding: 28px;
+
+    overflow: hidden;
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    background:
+        linear-gradient(
+            115deg,
+            rgba(79, 70, 229, 0.055),
+            rgba(124, 58, 237, 0.025),
+            white 70%
+        ),
+        white;
+
+    box-shadow: var(--shadow);
+}
+
+.incident-detail__header::before {
+    position: absolute;
+    top: 0;
+    left: 0;
+
+    width: 100%;
+    height: 3px;
+
+    background: linear-gradient(
+        90deg,
+        var(--primary),
+        var(--purple)
+    );
+
+    content: "";
+}
+
+.incident-detail__badges {
+    display: flex;
+
+    gap: 8px;
+
+    margin-bottom: 13px;
+}
+
+.incident-detail__header h1 {
+    margin: 0;
+
+    color: var(--text);
+
+    font-size: 2rem;
+    font-weight: 700;
+
+    letter-spacing: -0.035em;
+}
+
+.incident-detail__id {
+    margin: 9px 0 0;
+
+    color: var(--text-muted);
+
+    font-family:
+        Consolas,
+        "Liberation Mono",
+        monospace;
+
+    font-size: 0.74rem;
+}
+
+/* Content */
+
+.incident-detail__card {
+    margin-bottom: 16px;
+    padding: 25px 28px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    background: white;
+
+    box-shadow: var(--shadow);
+}
+
+.incident-detail__card h2 {
+    margin: 0 0 16px;
+
+    color: var(--text);
+
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.incident-detail__card p {
+    margin: 0;
+
+    color: var(--text-secondary);
+
+    font-size: 0.91rem;
+    line-height: 1.65;
+
+    text-align: left;
+}
+
+/* Metadata */
+
+.incident-detail__metadata {
+    display: grid;
+
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+
+    gap: 24px;
+
+    margin: 0;
+}
+
+.incident-detail__metadata div {
+    min-width: 0;
+}
+
+.incident-detail__metadata dt {
+    margin-bottom: 5px;
+
+    color: var(--text-muted);
+
+    font-size: 0.7rem;
+    font-weight: 700;
+
+    letter-spacing: 0.05em;
+
+    text-transform: uppercase;
+}
+
+.incident-detail__metadata dd {
+    margin: 0;
+
+    overflow: hidden;
+
+    color: var(--text);
+
+    font-size: 0.88rem;
+    font-weight: 600;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* AI section */
+
+.incident-detail__analysis {
+    position: relative;
+
+    border-color: #dcdcff;
+
+    background:
+        linear-gradient(
+            115deg,
+            rgba(79, 70, 229, 0.04),
+            rgba(124, 58, 237, 0.025)
+        ),
+        white;
+}
+
+.incident-detail__analysis::before {
+    position: absolute;
+
+    top: 20px;
+    bottom: 20px;
+    left: 0;
+
+    width: 3px;
+
+    border-radius: 0 4px 4px 0;
+
+    background: linear-gradient(
+        var(--primary),
+        var(--purple)
+    );
+
+    content: "";
+}
+
+/* Loading */
+
+.incident-detail__state {
+    display: flex;
+
+    min-height: 300px;
+
+    align-items: center;
+    justify-content: center;
+
+    color: var(--text-secondary);
+
+    font-size: 0.9rem;
+}
+
+/* Error */
+
+.incident-detail__error {
+    max-width: 520px;
+
+    margin: 80px auto;
+    padding: 30px;
+
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+
+    background: white;
+
+    box-shadow: var(--shadow);
+
+    text-align: center;
+}
+
+.incident-detail__error h1 {
+    margin-bottom: 8px;
+
+    color: var(--text);
+
+    font-size: 1.35rem;
+}
+
+.incident-detail__error p {
+    margin-bottom: 18px;
+
+    color: var(--text-secondary);
+
+    font-size: 0.9rem;
+}
+
+.incident-detail__error a {
+    font-size: 0.85rem;
+    font-weight: 600;
+
+    text-decoration: none;
+}
+
+@media (max-width: 850px) {
+    .incident-detail__metadata {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 700px) {
+    .incident-detail {
+        width: calc(100% - 28px);
+        padding: 32px 0 60px;
+    }
+
+    .incident-detail__header {
+        padding: 23px 20px;
+    }
+
+    .incident-detail__header h1 {
+        font-size: 1.65rem;
+    }
+
+    .incident-detail__card {
+        padding: 22px 20px;
+    }
+}
+
+@media (max-width: 480px) {
+    .incident-detail__metadata {
+        grid-template-columns: 1fr;
+        gap: 18px;
+    }
+}
+
+.incident-detail {
+    width: min(1000px, calc(100% - 48px));
+    margin: 0 auto;
+    padding: 34px 0 72px;
+}
