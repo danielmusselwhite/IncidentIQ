@@ -5,26 +5,61 @@ import IncidentDetailPage from "./pages/IncidentDetail/IncidentDetailPage";
 import SubmitIncidentPage from "./pages/SubmitIncident/SubmitIncidentPage";
 import IncidentsPage from "./pages/Incidents/IncidentsPage";
 
+/**
+ * Defines the application's top-level routes.
+ *
+ * Each URL path is mapped to the React page component that should be shown.
+ * All routes are wrapped in AppLayout so shared UI such as navigation can
+ * remain consistent across the application.
+ */
 export default function App() {
     return (
+        // Routes looks at the current URL and renders the matching Route.
         <Routes>
+            {/*
+             * This parent route has no path of its own.
+             * Instead, it wraps all child routes with AppLayout.
+             *
+             * AppLayout should contain an <Outlet /> where the currently
+             * selected child page will be rendered.
+             */}
             <Route element={<AppLayout />}>
+                {/*
+                 * Redirect the root URL to the incident submission page.
+                 *
+                 * replace prevents "/" from being added as a separate entry
+                 * in the browser history, so pressing Back does not immediately
+                 * return the user to the redirect.
+                 */}
                 <Route
                     path="/"
                     element={<Navigate to="/incidents/new" replace />}
                 />
 
+                {/* Displays the form for submitting a new incident. */}
                 <Route
                     path="/incidents/new"
                     element={<SubmitIncidentPage />}
                 />
 
+                {/*
+                 * ":id" is a dynamic route parameter.
+                 *
+                 * For example:
+                 * /incidents/123
+                 *
+                 * IncidentDetailPage can read "123" using useParams().
+                 */}
                 <Route
                     path="/incidents/:id"
                     element={<IncidentDetailPage />}
                 />
 
-                <Route path="/incidents" element={<IncidentsPage />} />
+                {/* Displays the incident dashboard/list. */}
+                <Route
+                    path="/incidents"
+                    element={<IncidentsPage />}
+                />
             </Route>
         </Routes>
     );
