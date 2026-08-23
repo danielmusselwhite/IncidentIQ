@@ -8,6 +8,7 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/IncidentIQ.Api.Tests/IncidentIQ.Api.Tests.csproj" />
+    <Project Path="tests/IncidentIQ.Application.Tests/IncidentIQ.Application.Tests.csproj" />
     <Project Path="tests/IncidentIQ.Worker.Tests/IncidentIQ.Worker.Tests.csproj" />
   </Folder>
   <Project Path="docker-compose.dcproj">

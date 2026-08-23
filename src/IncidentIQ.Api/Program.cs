@@ -82,3 +82,9 @@ app.MapControllers();
 app.MapHealthChecks("/api/health");
 
 app.Run();
+
+// Add a partial Program class to allow for integration testing 
+// Required to allow WebbApplicationFactory<Program> to boot the application in integration tests in memory
+public partial class Program
+{
+}

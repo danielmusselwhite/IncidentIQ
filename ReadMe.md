@@ -234,7 +234,7 @@ Configuration
 * [x] Add `POST /api/incidents`.
 * [x] Add `GET /api/incidents`.
 * [x] Add `GET /api/incidents/{id}`.
-* [ ] Add incident API/application tests.
+* [x] Add incident API/application tests.
 
 ## Stage 4 — Core Incident Frontend
 
