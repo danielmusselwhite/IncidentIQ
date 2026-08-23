@@ -52,7 +52,16 @@ ASP.NET Core API — Azure Container Apps
 
 Supporting services will include **ACR, Managed Identity, Key Vault, App Configuration, Application Insights, Log Analytics, OpenTelemetry and KEDA autoscaling**.
 
-For local development, Docker Compose currently runs the API alongside the **Cosmos DB Emulator**.
+### Local development
+
+Docker Compose currently runs the API alongside the **Cosmos DB Emulator**.
+
+The local environment includes:
+
+* Persistent Cosmos data and certificate volumes.
+* HTTPS communication with the Cosmos Emulator.
+* Fixed local API ports for predictable frontend configuration.
+* Cosmos database/container initialization during development.
 
 ---
 
@@ -91,15 +100,25 @@ Frontend displays result
 
 ASP.NET Core Web API providing the HTTP interface used by the React frontend.
 
-Responsibilities include:
+Currently implemented:
 
-* Incident and runbook endpoints.
-* Reading and writing application data.
+```text
+POST /api/incidents
+GET  /api/incidents
+GET  /api/incidents/{id}
+GET  /api/health
+```
+
+Incident creation uses **FluentValidation**, with **Exception Handling Middleware** returning ASP.NET Core Problem Details responses.
+
+Controllers delegate application behaviour to handlers rather than accessing Cosmos DB directly.
+
+Future responsibilities include:
+
+* Runbook endpoints.
 * Submitting asynchronous analysis work to Service Bus.
 * Authentication and authorization.
 * Exposing analysis results and operational actions.
-
-The API uses the **Application** layer for use cases and the **Infrastructure** layer for external services such as Cosmos DB.
 
 ---
 
@@ -124,17 +143,23 @@ Eventually it will:
 
 React frontend used by engineers and administrators.
 
-Planned screens include:
+Currently implemented:
 
-* Incident dashboard.
-* Submit Incident.
-* Incident details and AI analysis.
+* Shared application layout and navigation.
+* Incident dashboard and search.
+* Submit Incident page.
+* Incident Detail page.
+* Loading, validation, empty and error states.
+* Typed API client for communication with `IncidentIQ.Api`.
+
+Future screens include:
+
 * Similar incidents and supporting evidence.
 * Runbook management.
 * Analysis feedback.
 * Operations / administration.
 
-The frontend communicates only with `IncidentIQ.Api`.
+The frontend communicates only with the API and does not directly access Azure services.
 
 ---
 
@@ -142,7 +167,7 @@ The frontend communicates only with `IncidentIQ.Api`.
 
 Contains the core business model and rules without dependencies on Azure, Cosmos DB or ASP.NET Core.
 
-Currently includes concepts such as:
+Currently includes:
 
 ```text
 Incident
@@ -158,17 +183,22 @@ Future domain behaviour will include controlled state transitions such as proces
 
 Contains application use cases and abstractions.
 
-Examples include:
+Currently implemented:
 
 ```text
 CreateIncident
-GetIncident
-ListIncidents
+GetIncidentById
+GetAllIncidents
+```
+
+Future use cases will include:
+
+```text
 AnalyseIncident
 IndexRunbook
 ```
 
-It defines interfaces such as:
+It defines abstractions such as:
 
 ```text
 IIncidentRepository
@@ -182,7 +212,7 @@ without knowing that Cosmos DB provides the implementation.
 
 Contains implementations for external services.
 
-Currently includes the Cosmos DB persistence infrastructure:
+Cosmos persistence currently uses the native **Azure Cosmos DB SDK** and includes:
 
 ```text
 CosmosOptions
@@ -191,7 +221,7 @@ CosmosIncidentRepository
 IncidentDocument
 ```
 
-Later it will also contain integrations for:
+Later Infrastructure will also contain integrations for:
 
 ```text
 Service Bus
@@ -202,6 +232,18 @@ Configuration
 ```
 
 ---
+
+## Testing and CI
+
+The solution currently includes:
+
+* Application unit tests for Incident handlers and validation.
+* API integration tests using ASP.NET Core `WebApplicationFactory`.
+* An in-memory Incident repository for isolated API testing.
+* GitHub Actions CI running restore, build and tests on pull requests and pushes to `main`.
+
+---
+
 # Development Progress
 
 ## Stage 1 — Project Foundation
@@ -242,6 +284,7 @@ Configuration
 * [x] Build Incident List / Dashboard.
 * [x] Build Incident Detail page.
 * [x] Connect React to the Incident API.
+* [x] Add shared application layout and navigation.
 * [x] Add loading, validation and error states.
 
 ## Stage 5 — First Azure Environment
@@ -249,6 +292,8 @@ Configuration
 Move the working Cosmos-backed application from local-only development to an initial Azure development environment.
 
 * [ ] Create base Bicep structure and environment parameter files.
+* [ ] Configure GitHub → Azure deployment using OIDC.
+* [ ] Add Bicep validation/deployment workflow.
 * [ ] Create Cosmos DB Bicep module.
 * [ ] Create Log Analytics / Application Insights Bicep modules.
 * [ ] Deploy the first Azure development environment using Bicep.
@@ -395,7 +440,7 @@ Provision Event Grid and Functions before integrating them.
 
 * [ ] **Paginate the get all incidents endpoint.**
 * [ ] Expand unit and integration test coverage.
-* [ ] Add CI pipeline.
+* [ ] Add CI/CD pipeline.
 * [ ] Add container build/publish pipeline.
 * [ ] Add Bicep validation/deployment pipeline.
 * [ ] Support repeatable development-environment deployment from IaC.
