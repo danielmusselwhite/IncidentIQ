@@ -10,8 +10,8 @@ services:
       - Cosmos__IncidentsContainerName=Incidents
       - SSL_CERT_FILE=/cosmos-certs/ca-bundle.crt
     ports:
-      - "8080"
-      - "8081"
+      - "7155:8080"
+      - "7156:8081"
     volumes:
       - ${APPDATA}/Microsoft/UserSecrets:/home/app/.microsoft/usersecrets:ro
       - ${APPDATA}/Microsoft/UserSecrets:/root/.microsoft/usersecrets:ro
