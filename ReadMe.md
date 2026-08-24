@@ -277,6 +277,7 @@ The solution currently includes:
 * [x] Add `GET /api/incidents`.
 * [x] Add `GET /api/incidents/{id}`.
 * [x] Add incident API/application tests.
+* [ ] Paginate `GET /api/incidents`.
 
 ## Stage 4 — Core Incident Frontend
 
@@ -286,20 +287,23 @@ The solution currently includes:
 * [x] Connect React to the Incident API.
 * [x] Add shared application layout and navigation.
 * [x] Add loading, validation and error states.
+* [ ] Update Incident List to support paginated API results.
 
 ## Stage 5 — First Azure Environment
 
-Move the working Cosmos-backed application from local-only development to an initial Azure development environment.
+Move the working Cosmos-backed application from local development into an initial Azure development environment.
 
 * [ ] Create base Bicep structure and environment parameter files.
-* [ ] Configure GitHub → Azure deployment using OIDC.
+* [ ] Configure GitHub → Azure authentication using OIDC.
 * [ ] Add Bicep validation/deployment workflow.
 * [ ] Create Cosmos DB Bicep module.
-* [ ] Create Log Analytics / Application Insights Bicep modules.
+* [ ] Create Log Analytics and Application Insights Bicep modules.
 * [ ] Deploy the first Azure development environment using Bicep.
 * [ ] Configure the API to use Azure Cosmos DB.
+* [ ] Add initial API telemetry to Application Insights.
+* [ ] Introduce Managed Identity and Cosmos RBAC where practical.
 * [ ] Verify Incident CRUD against Azure Cosmos DB.
-* [ ] Keep the local Cosmos Emulator configuration for local development.
+* [ ] Keep the Cosmos Emulator configuration for local development.
 
 ## Stage 6 — Runbook Management
 
@@ -308,20 +312,23 @@ Move the working Cosmos-backed application from local-only development to an ini
 * [ ] Add Runbook CRUD API.
 * [ ] Build Runbook management frontend.
 * [ ] Add Runbook tests.
-* [ ] Update Cosmos Bicep configuration if additional containers/indexing are required.
+* [ ] Define the separation between Runbook documents and future vectorised Runbook chunks.
+* [ ] Update Cosmos Bicep configuration for additional containers/indexing where required.
 
 ## Stage 7 — Service Bus & Asynchronous Processing
 
-Create the Azure infrastructure **before** integrating it into the application.
+Provision the Azure messaging infrastructure before integrating it into the application.
 
 * [ ] Create Service Bus Bicep module.
 * [ ] Define queues/topics and DLQ configuration in Bicep.
 * [ ] Deploy Service Bus to the Azure development environment.
+* [ ] Configure Managed Identity/RBAC for Service Bus access where practical.
 * [ ] Add Service Bus application integration.
 * [ ] Define `AnalyseIncident` command.
 * [ ] Connect Incident submission to Service Bus.
 * [ ] Implement Worker message consumption.
 * [ ] Implement `Queued → Processing → Completed / Failed`.
+* [ ] Propagate correlation IDs between API and Worker.
 * [ ] Add frontend processing-status polling.
 
 ## Stage 8 — Reliability & Messaging
@@ -334,44 +341,53 @@ Create the Azure infrastructure **before** integrating it into the application.
 * [ ] Add admin retry/requeue functionality.
 * [ ] Add reliability and duplicate-message tests.
 
-## Stage 9 — Container Deployment
+## Stage 9 — Application Deployment
+
+Deploy the complete working application to Azure.
 
 * [ ] Create ACR Bicep module.
 * [ ] Create Container Apps Environment Bicep module.
 * [ ] Create API Container App Bicep module.
 * [ ] Create Worker Container App Bicep module.
-* [ ] Deploy ACR and Container Apps using Bicep.
+* [ ] Create frontend hosting infrastructure.
+* [ ] Deploy ACR, Container Apps and frontend hosting through Bicep.
+* [ ] Add API/Worker container build and publish workflow.
 * [ ] Build and push API/Worker images to ACR.
 * [ ] Deploy API and Worker containers.
-* [ ] Verify the asynchronous workflow in Azure.
+* [ ] Deploy the React frontend.
+* [ ] Configure frontend → API connectivity.
+* [ ] Verify the complete asynchronous workflow in Azure.
 
 ## Stage 10 — Azure AI
 
-Create Azure AI infrastructure before adding AI functionality.
+Provision Azure AI infrastructure before integrating AI functionality.
 
 * [ ] Create Azure AI resource/deployment Bicep modules.
 * [ ] Deploy Azure AI resources to the development environment.
+* [ ] Configure Managed Identity/RBAC where supported.
 * [ ] Add Azure AI application integration.
 * [ ] Generate structured incident analysis.
 * [ ] Validate structured AI responses.
-* [ ] Handle AI timeout/throttling/failure scenarios.
+* [ ] Handle AI timeout, throttling and failure scenarios.
+* [ ] Add AI request latency/failure telemetry.
 * [ ] Display likely causes and recommended actions.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
 
 * [ ] Define `IndexRunbook` workflow.
+* [ ] Define dedicated Runbook chunk/vector persistence.
+* [ ] Configure Cosmos vector policies and indexes through Bicep.
 * [ ] Chunk Runbook content.
 * [ ] Generate embeddings.
-* [ ] Configure Cosmos vector indexes through Bicep where applicable.
-* [ ] Store Runbook chunks and embeddings.
+* [ ] Store Runbook chunks, embeddings and retrieval metadata.
 * [ ] Implement Runbook vector retrieval.
 * [ ] Add metadata filtering.
 * [ ] Measure retrieval latency and RU usage.
 
 ## Stage 12 — Historical Incident Retrieval & RAG
 
-* [ ] Generate searchable historical Incident representations.
-* [ ] Add historical Incident embeddings.
+* [ ] Define searchable historical Incident representation/vector persistence.
+* [ ] Generate historical Incident embeddings.
 * [ ] Implement similar-Incident retrieval.
 * [ ] Keep historical Incident and Runbook evidence separate.
 * [ ] Build combined RAG context.
@@ -386,33 +402,37 @@ Create Azure AI infrastructure before adding AI functionality.
 * [ ] Measure retrieval relevance / Recall@K.
 * [ ] Measure citation validity.
 * [ ] Evaluate likely-cause and recommendation quality.
+* [ ] Record AI/retrieval evaluation metrics.
 * [ ] Add engineer analysis feedback functionality.
 
 ## Stage 14 — Security, Configuration & API Gateway
 
-Provision Azure resources through Bicep before application integration.
+Complete the application's production-style security and configuration model.
 
 * [ ] Create Key Vault Bicep module.
 * [ ] Create App Configuration Bicep module.
-* [ ] Create Managed Identities and RBAC assignments through Bicep.
 * [ ] Create APIM Bicep module.
+* [ ] Complete Managed Identity and least-privilege RBAC assignments through Bicep.
 * [ ] Deploy resources through Bicep.
-* [ ] Configure API and Worker Managed Identity.
-* [ ] Remove connection-string authentication where Managed Identity can be used.
+* [ ] Remove remaining connection-string authentication where Managed Identity can be used.
 * [ ] Move application configuration into App Configuration.
 * [ ] Store remaining secrets in Key Vault.
 * [ ] Route public API traffic through APIM.
 * [ ] Add Entra authentication.
 * [ ] Add Engineer / Administrator authorization.
+* [ ] Apply authorization to administrative and operational functionality.
 
 ## Stage 15 — Scaling & Observability
 
+Expand the telemetry introduced in earlier stages into full distributed observability.
+
 * [ ] Configure Worker KEDA scaling through Container Apps Bicep.
 * [ ] Add OpenTelemetry instrumentation.
-* [ ] Configure Application Insights through Bicep.
-* [ ] Propagate distributed trace/correlation information.
+* [ ] Propagate distributed trace/correlation information end-to-end.
 * [ ] Add analysis duration, queue wait and failure telemetry.
+* [ ] Add Service Bus, Cosmos and AI dependency telemetry.
 * [ ] Create useful KQL queries and dashboards.
+* [ ] Monitor queue depth, Worker scaling and DLQ activity.
 * [ ] Verify end-to-end distributed tracing.
 
 ## Stage 16 — Operations & Administration
@@ -436,16 +456,15 @@ Provision Event Grid and Functions before integrating them.
 * [ ] Consume completion events for audit/notification processing.
 * [ ] Add Managed Identity and telemetry to the Function.
 
-## Stage 18 — CI/CD & Portfolio Polish
+## Stage 18 — Hardening & Portfolio Polish
 
-* [ ] **Paginate the get all incidents endpoint.**
 * [ ] Expand unit and integration test coverage.
-* [ ] Add CI/CD pipeline.
-* [ ] Add container build/publish pipeline.
-* [ ] Add Bicep validation/deployment pipeline.
-* [ ] Support repeatable development-environment deployment from IaC.
+* [ ] Harden CI/CD and deployment workflows.
+* [ ] Add deployment verification/smoke tests.
+* [ ] Ensure repeatable development-environment deployment from IaC.
 * [ ] Seed realistic demo data.
 * [ ] Finalise frontend styling and UX.
+* [ ] Review error handling and edge cases.
 * [ ] Complete architecture documentation and ADRs.
 * [ ] Add architecture diagrams.
 * [ ] Create polished README.
@@ -454,11 +473,13 @@ Provision Event Grid and Functions before integrating them.
 
 ## Stage 19 — Optional AI-200 Experiments
 
-Each Azure experiment should also define its infrastructure through Bicep before deployment.
+Keep experiments isolated from the primary architecture and document the trade-offs discovered.
 
 * [ ] PostgreSQL + pgvector retriever.
 * [ ] Azure Managed Redis experiment.
 * [ ] AKS Worker deployment.
 * [ ] App Service API container deployment.
 * [ ] Cosmos Change Feed Runbook indexing experiment.
+* [ ] Define experiment infrastructure through Bicep.
+* [ ] Compare each experiment against the primary architecture.
 * [ ] Document findings and architectural trade-offs.
