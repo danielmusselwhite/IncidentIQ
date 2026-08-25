@@ -2,6 +2,26 @@
 
 IncidentIQ is an AI-powered incident analysis platform for engineers. Users submit technical incidents through a React frontend, and the system asynchronously analyses them using historical incidents and operational runbooks to produce likely causes, recommended actions, similar incidents, and supporting evidence.
 
+## Project Structure
+
+Each of these directories has its own README.md with more information:
+
+- infrastructure:
+  - [infra](infra) — Bicep infrastructure-as-code for Azure.
+- main projects:
+  - [IncidentIQ.Api](src/IncidentIQ.Api/) — ASP.NET Core Web API.
+  - [IncidentIQ.Worker](src/IncidentIQ.Worker/) — .NET Worker for background processing.
+  - [IncidentIQ.Web](src/IncidentIQ.Web/) — React frontend.
+- class libraries:
+  - [IncidentIQ.Domain](src/IncidentIQ.Domain/) — Core business models and rules.
+  - [IncidentIQ.Application](src/IncidentIQ.Application/) — Application use cases and abstractions.
+  - [IncidentIQ.Infrastructure](src/IncidentIQ.Infrastructure/) — Implementations for external services.
+
+## Other Documents:
+
+- [Azure Dev Lifecycle and how to configure the projects to communicate with the azure resources created by the infrastructure](docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md)
+
+
 ## Architecture
 
 ### Software architecture
