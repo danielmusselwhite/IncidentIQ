@@ -2,8 +2,16 @@ targetScope = 'resourceGroup'
 
 param location string
 param identityName string
+
+param githubOwner string
+param githubOwnerId string
+
 param githubRepository string
+param githubRepositoryId string
+
 param githubEnvironment string
+
+var githubSubject = 'repo:${githubOwner}@${githubOwnerId}/${githubRepository}@${githubRepositoryId}:environment:${githubEnvironment}'
 
 resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' = {
   name: identityName
@@ -18,7 +26,7 @@ resource githubFederation 'Microsoft.ManagedIdentity/userAssignedIdentities/fede
     audiences: [
       'api://AzureADTokenExchange'
     ]
-    subject: 'repo:${githubRepository}:environment:${githubEnvironment}'
+    subject: githubSubject
   }
 }
 

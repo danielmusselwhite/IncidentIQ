@@ -4,7 +4,10 @@ param location string = 'uksouth'
 param projectName string = 'incidentiq'
 param environmentName string = 'dev'
 
+param githubOwner string
+param githubOwnerId string
 param githubRepository string
+param githubRepositoryId string
 param githubEnvironment string = 'development'
 
 var bootstrapResourceGroupName = 'rg-${projectName}-bootstrap'
@@ -36,7 +39,13 @@ module githubIdentity './github-identity.bicep' = {
   params: {
     location: location
     identityName: 'id-${projectName}-github-${environmentName}'
+
+    githubOwner: githubOwner
+    githubOwnerId: githubOwnerId
+
     githubRepository: githubRepository
+    githubRepositoryId: githubRepositoryId
+
     githubEnvironment: githubEnvironment
   }
 }

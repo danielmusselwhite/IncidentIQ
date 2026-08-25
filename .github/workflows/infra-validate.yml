@@ -3,7 +3,7 @@ name: Validate Infrastructure
 on:
   pull_request:
     branches:
-      - main
+      - master
     paths:
       - "infra/**"
       - ".github/workflows/infra-*.yml"

@@ -3,7 +3,7 @@ name: Deploy Development Infrastructure
 on:
   push:
     branches:
-      - main
+      - master
     paths:
       - "infra/**"
       - ".github/workflows/infra-deploy.yml"
