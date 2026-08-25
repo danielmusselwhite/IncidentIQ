@@ -1,0 +1,104 @@
+.runbook-form {
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+/* Sections */
+
+.runbook-form__section {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.runbook-form__section + .runbook-form__section {
+    padding-top: 28px;
+
+    border-top: 1px solid var(--border);
+}
+
+.runbook-form__section h2 {
+    margin-bottom: 0;
+
+    color: var(--text);
+
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+/* Error */
+
+.runbook-form__error {
+    padding: 12px 14px;
+
+    border: 1px solid var(--danger-border);
+    border-radius: 8px;
+
+    background: var(--danger-background);
+    color: var(--danger);
+
+    font-size: 0.82rem;
+    font-weight: 500;
+}
+
+/* Disabled fields */
+
+.runbook-form input:disabled,
+.runbook-form textarea:disabled {
+    background: var(--surface-muted);
+    color: var(--text-secondary);
+
+    cursor: not-allowed;
+}
+
+/* Runbook content */
+
+.runbook-form__content {
+    min-height: 320px;
+}
+
+/* Actions */
+
+.runbook-form__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+
+    gap: 10px;
+
+    padding-top: 22px;
+
+    border-top: 1px solid var(--border);
+}
+
+/* Responsive */
+
+@media (max-width: 700px) {
+    .runbook-form {
+        gap: 26px;
+    }
+
+    .runbook-form__section {
+        gap: 18px;
+    }
+
+    .runbook-form__section + .runbook-form__section {
+        padding-top: 24px;
+    }
+
+    .runbook-form__content {
+        min-height: 280px;
+    }
+}
+
+@media (max-width: 480px) {
+    .runbook-form__actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .runbook-form__actions .button {
+        width: 100%;
+    }
+}

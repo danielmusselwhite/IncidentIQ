@@ -4,6 +4,10 @@ import AppLayout from "./layout/AppLayout";
 import IncidentDetailPage from "./pages/IncidentDetail/IncidentDetailPage";
 import SubmitIncidentPage from "./pages/SubmitIncident/SubmitIncidentPage";
 import IncidentsPage from "./pages/Incidents/IncidentsPage";
+import RunbooksPage from "./pages/Runbooks/RunbooksPage";
+import CreateRunbookPage from "./pages/CreateRunbook/CreateRunbookPage";
+import EditRunbookPage from "./pages/EditRunbook/EditRunbookPage";
+import RunbookDetailPage from "./pages/RunbookDetail/RunbookDetailPage";
 
 /**
  * Defines the application's top-level routes.
@@ -59,6 +63,30 @@ export default function App() {
                 <Route
                     path="/incidents"
                     element={<IncidentsPage />}
+                />
+
+                {/* Displays the runbook management page. */}
+                <Route
+                    path="runbooks"
+                    element={<RunbooksPage />}
+                />
+
+                {/* Displays the page for creating a new runbook. */}
+                <Route
+                    path="runbooks/new"
+                    element={<CreateRunbookPage />}
+                />
+
+                {/* Displays the details of an existing runbook. */}
+                <Route
+                    path="runbooks/:id"
+                    element={<RunbookDetailPage />}
+                />
+
+                {/* Displays the page for editing an existing runbook. */}
+                <Route
+                    path="runbooks/:id/edit"
+                    element={<EditRunbookPage />}
                 />
             </Route>
         </Routes>
