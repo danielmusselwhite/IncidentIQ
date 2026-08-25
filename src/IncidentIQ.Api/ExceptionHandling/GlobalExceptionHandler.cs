@@ -54,6 +54,19 @@ public sealed class GlobalExceptionHandler(
 
             return true;
         }
+        else if (exception is RunbookNotFoundException runbookNotFoundException)
+        {
+            var problemDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status404NotFound,
+                Title = "Runbook not found",
+                Detail = runbookNotFoundException.Message
+            };
+            problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+            httpContext.Response.StatusCode = StatusCodes.Status404NotFound;
+            await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+            return true;
+        }
 
         logger.LogError(exception, "Unhandled exception while processing request.");
 

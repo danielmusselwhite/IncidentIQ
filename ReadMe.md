@@ -336,14 +336,14 @@ Move the working Cosmos-backed application from local development into an initia
 
 ## Stage 6 — Runbook Management
 
-- [ ] Create `Runbook` domain model.
-- [ ] Create `IRunbookRepository`.
-- [ ] Create dedicated `Runbooks` Cosmos container and persistence model.
-- [ ] Add Runbook CRUD API.
-- [ ] Build Runbook management frontend.
-- [ ] Add Runbook tests.
-- [ ] Keep editable Runbooks separate from future vectorised `RunbookChunk` documents.
-- [ ] Update Cosmos Bicep configuration for the `Runbooks` container.
+- [x] Create `Runbook` domain model.
+- [x] Create `IRunbookRepository`.
+- [x] Create dedicated `Runbooks` Cosmos container and persistence model.
+- [x] Add Runbook CRUD API.
+- [x] Build Runbook management frontend.
+- [x] Add Runbook tests.
+- [x] Keep editable Runbooks separate from future vectorised `RunbookChunk` documents.
+- [x] Update Cosmos Bicep configuration for the `Runbooks` container.
 
 ## Stage 7 — Service Bus & Asynchronous Processing
 

@@ -24,7 +24,7 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     public IncidentsApiTests(IncidentIqApiFactory factory)
     {
         _factory = factory;
-        _factory.Repository.Clear();
+        _factory.IncidentRepository.Clear();
         _client = factory.CreateHttpsClient();
     }
 
@@ -93,7 +93,7 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     {
         var incident = CreateIncident();
 
-        await _factory.Repository.CreateAsync(incident);
+        await _factory.IncidentRepository.CreateAsync(incident);
 
         var response = await _client.GetAsync(
             $"/api/incidents/{incident.Id}");
@@ -127,8 +127,8 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     [Fact]
     public async Task GetAll_WhenIncidentsExist_ReturnsIncidents()
     {
-        await _factory.Repository.CreateAsync(CreateIncident());
-        await _factory.Repository.CreateAsync(CreateIncident());
+        await _factory.IncidentRepository.CreateAsync(CreateIncident());
+        await _factory.IncidentRepository.CreateAsync(CreateIncident());
 
         var response = await _client.GetAsync("/api/incidents");
 

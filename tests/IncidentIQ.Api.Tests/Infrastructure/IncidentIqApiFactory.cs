@@ -8,16 +8,23 @@ namespace IncidentIQ.Api.Tests.Infrastructure;
 
 public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
 {
-    public InMemoryIncidentRepository Repository { get; } = new();
+    public InMemoryIncidentRepository IncidentRepository { get; } = new();
+
+    public InMemoryRunbookRepository RunbookRepository { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing"); // as program.cs is configured to use Cosmos emulator in Debug vs live Cosmos in prod, it won't use Cosmos emulator in Testing environment, so we can use in-memory repo for testing safely
+        // Program.cs only initializes Cosmos in Development.
+        // Testing replaces the real Cosmos repositories with in-memory implementations.
+        builder.UseEnvironment("Testing");
 
         builder.ConfigureServices(services =>
         {
             services.RemoveAll<IIncidentRepository>();
-            services.AddSingleton<IIncidentRepository>(Repository);
+            services.AddSingleton<IIncidentRepository>(IncidentRepository);
+
+            services.RemoveAll<IRunbookRepository>();
+            services.AddSingleton<IRunbookRepository>(RunbookRepository);
         });
     }
 
