@@ -20,7 +20,30 @@ module cosmos './modules/cosmos.bicep' = {
   }
 }
 
+module logAnalytics './modules/log-analytics.bicep' = {
+  name: 'logAnalytics'
+  params: {
+    location: location
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+  }
+}
+
+module applicationInsights './modules/application-insights.bicep' = {
+  name: 'applicationInsights'
+  params: {
+    location: location
+    projectName: projectName
+    environmentName: environmentName
+    workspaceResourceId: logAnalytics.outputs.id
+    tags: tags
+  }
+}
+
 output cosmosAccountName string = cosmos.outputs.accountName
 output cosmosEndpoint string = cosmos.outputs.endpoint
 output cosmosDatabaseName string = cosmos.outputs.databaseName
 output cosmosIncidentsContainerName string = cosmos.outputs.incidentsContainerName
+output logAnalyticsWorkspaceName string = logAnalytics.outputs.name
+output applicationInsightsName string = applicationInsights.outputs.name
