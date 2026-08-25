@@ -1,5 +1,6 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
+using Azure.Identity;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -21,11 +22,9 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        services.AddSingleton(serviceProvider =>
+        services.AddSingleton(sp =>
         {
-            var options = serviceProvider
-                .GetRequiredService<IOptions<CosmosOptions>>()
-                .Value;
+            var options = sp.GetRequiredService<IOptions<CosmosOptions>>().Value;
 
             var serializerOptions = new JsonSerializerOptions
             {
@@ -40,7 +39,22 @@ public static class DependencyInjection
                 UseSystemTextJsonSerializerWithOptions = serializerOptions
             };
 
-            return new CosmosClient(options.Endpoint, options.Key, clientOptions);
+            // Local Cosmos Emulator uses its development account key.
+            if (!string.IsNullOrWhiteSpace(options.Key))
+            {
+                return new CosmosClient(
+                    options.Endpoint,
+                    options.Key,
+                    clientOptions);
+            }
+
+            // Azure uses Microsoft Entra authentication.
+            var credential = new DefaultAzureCredential();
+
+            return new CosmosClient(
+                options.Endpoint,
+                credential,
+                clientOptions);
         });
 
         services.AddSingleton<CosmosInitializer>();

@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "IncidentIQ.Api.Tests": {
+      "commandName": "Project",
+      "launchBrowser": true,
+      "environmentVariables": {
+        "ASPNETCORE_ENVIRONMENT": "Development"
+      },
+      "applicationUrl": "https://localhost:65164;http://localhost:65165"
+    }
+  }
+}

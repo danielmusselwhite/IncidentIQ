@@ -54,14 +54,43 @@ Supporting services will include **ACR, Managed Identity, Key Vault, App Configu
 
 ### Local development
 
-Docker Compose currently runs the API alongside the **Cosmos DB Emulator**.
+IncidentIQ supports two development modes for Cosmos DB:
 
-The local environment includes:
+* **Docker Compose** runs the API alongside the local **Cosmos DB Emulator**. The emulator uses persistent Docker volumes, so local Cosmos data is retained between container restarts.
 
-* Persistent Cosmos data and certificate volumes.
-* HTTPS communication with the Cosmos Emulator.
-* Fixed local API ports for predictable frontend configuration.
-* Cosmos database/container initialization during development.
+* **Running the API directly** with `dotnet run` uses the configured **Azure Cosmos DB development account** instead of the emulator. Azure connection settings are kept outside source control using local configuration/user secrets.
+
+**Docker-Compose, running local cosmos**
+
+```text
+Docker Compose
+    ↓
+IncidentIQ.Api
+    ↓
+Local Cosmos DB Emulator
+    ↓
+Persistent Docker volume
+```
+
+**dotnet run, using Azure Cosmos DB**
+
+```text
+dotnet run
+    ↓
+IncidentIQ.Api
+    ↓
+Azure Cosmos DB
+    ↓
+IncidentIQ / Incidents
+```
+
+The Docker Compose environment also includes:
+- Persistent Cosmos data and certificate volumes.
+- HTTPS communication with the Cosmos Emulator.
+- Fixed local API ports for predictable frontend configuration.
+- Cosmos database/container initialization during development.
+
+This keeps everyday local development fast and self-contained while still allowing the API to be run directly against the real Azure development database when Azure integration needs to be verified.
 
 ---
 

@@ -6,7 +6,12 @@ public sealed class CosmosOptions
 
     public required string Endpoint { get; init; }
 
-    public required string Key { get; init; }
+    /// <summary>
+    /// The primary key for the Cosmos DB account.
+    /// Optional, as it is needed when running in dev with the Cosmos emulator, 
+    /// But not needed when running in Azure with managed identity.
+    /// </summary>
+    public required string? Key { get; init; }
 
     public required string DatabaseName { get; init; }
 
