@@ -37,5 +37,11 @@ public sealed class CosmosInitializer
             _options.IncidentsContainerName,
             "/id",
             cancellationToken: cancellationToken);
+
+        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
+            new ContainerProperties(
+                _options.RunbooksContainerName,
+                "/id"),
+            cancellationToken: cancellationToken);
     }
 }

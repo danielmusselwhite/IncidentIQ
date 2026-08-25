@@ -8,6 +8,7 @@ services:
       - Cosmos__Key=C2y6yDjf5/R+ob0N8A7Cgv30VRDJIWEHLM+4QDU5DE2nQ9nDuVTqobD4b8mGGyPMbIZnqyMsEcaGQy67XIw/Jw==
       - Cosmos__DatabaseName=IncidentIQ
       - Cosmos__IncidentsContainerName=Incidents
+      - Cosmos__RunbooksContainerName=Runbooks
       - SSL_CERT_FILE=/cosmos-certs/ca-bundle.crt
     ports:
       - "7155:8080"

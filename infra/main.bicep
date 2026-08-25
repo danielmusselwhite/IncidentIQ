@@ -60,3 +60,4 @@ output logAnalyticsWorkspaceName string = logAnalytics.outputs.name
 output applicationInsightsName string = applicationInsights.outputs.name
 output apiIdentityName string = apiIdentity.outputs.name
 output apiIdentityClientId string = apiIdentity.outputs.clientId
+output cosmosRunbooksContainerName string = cosmos.outputs.runbooksContainerName

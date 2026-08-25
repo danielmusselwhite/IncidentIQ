@@ -15,5 +15,8 @@ public sealed class CosmosOptions
 
     public required string DatabaseName { get; init; }
 
+    #region Containers
     public required string IncidentsContainerName { get; init; }
+    public required string RunbooksContainerName { get; init; }
+    #endregion
 }
