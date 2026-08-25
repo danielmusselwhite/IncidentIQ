@@ -10,5 +10,17 @@ param tags object = {
   managedBy: 'Bicep'
 }
 
-output environmentName string = environmentName
-output location string = location
+module cosmos './modules/cosmos.bicep' = {
+  name: 'cosmos'
+  params: {
+    location: location
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+  }
+}
+
+output cosmosAccountName string = cosmos.outputs.accountName
+output cosmosEndpoint string = cosmos.outputs.endpoint
+output cosmosDatabaseName string = cosmos.outputs.databaseName
+output cosmosIncidentsContainerName string = cosmos.outputs.incidentsContainerName
