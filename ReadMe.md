@@ -322,17 +322,17 @@ The solution currently includes:
 
 Move the working Cosmos-backed application from local development into an initial Azure development environment.
 
-* [ ] Create base Bicep structure and environment parameter files.
-* [ ] Configure GitHub → Azure authentication using OIDC.
-* [ ] Add Bicep validation/deployment workflow.
-* [ ] Create Cosmos DB Bicep module.
-* [ ] Create Log Analytics and Application Insights Bicep modules.
-* [ ] Deploy the first Azure development environment using Bicep.
-* [ ] Configure the API to use Azure Cosmos DB.
-* [ ] Add initial API telemetry to Application Insights.
-* [ ] Introduce Managed Identity and Cosmos RBAC where practical.
-* [ ] Verify Incident CRUD against Azure Cosmos DB.
-* [ ] Keep the Cosmos Emulator configuration for local development.
+* [x] Create base Bicep structure and environment parameter files.
+* [x] Configure GitHub → Azure authentication using OIDC.
+* [x] Add Bicep validation/deployment workflow.
+* [x] Create Cosmos DB Bicep module.
+* [x] Create Log Analytics and Application Insights Bicep modules.
+* [x] Deploy the first Azure development environment using Bicep.
+* [x] Configure the API to use Azure Cosmos DB.
+* [x] Add initial API telemetry to Application Insights.
+* [x] Introduce Managed Identity and Cosmos RBAC where practical.
+* [x] Verify Incident CRUD against Azure Cosmos DB.
+* [x] Keep the Cosmos Emulator configuration for local development.
 
 ## Stage 6 — Runbook Management
 
