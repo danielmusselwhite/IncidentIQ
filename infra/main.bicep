@@ -10,6 +10,16 @@ param tags object = {
   managedBy: 'Bicep'
 }
 
+module apiIdentity './modules/api-identity.bicep' = {
+  name: 'apiIdentity'
+  params: {
+    location: location
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+  }
+}
+
 module cosmos './modules/cosmos.bicep' = {
   name: 'cosmos'
   params: {
@@ -17,6 +27,7 @@ module cosmos './modules/cosmos.bicep' = {
     projectName: projectName
     environmentName: environmentName
     tags: tags
+    apiPrincipalId: apiIdentity.outputs.principalId
   }
 }
 
@@ -47,3 +58,5 @@ output cosmosDatabaseName string = cosmos.outputs.databaseName
 output cosmosIncidentsContainerName string = cosmos.outputs.incidentsContainerName
 output logAnalyticsWorkspaceName string = logAnalytics.outputs.name
 output applicationInsightsName string = applicationInsights.outputs.name
+output apiIdentityName string = apiIdentity.outputs.name
+output apiIdentityClientId string = apiIdentity.outputs.clientId

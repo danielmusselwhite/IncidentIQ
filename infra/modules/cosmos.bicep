@@ -8,7 +8,24 @@ param tags object
 param databaseName string = 'IncidentIQ'
 param incidentsContainerName string = 'Incidents'
 
+param apiPrincipalId string
+
 var cosmosAccountName = 'cosmos-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
+
+var cosmosDataContributorRoleId = '00000000-0000-0000-0000-000000000002' // Cosmos built in Data Contributor role definition ID
+
+var cosmosDataContributorRoleDefinitionId = '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDataContributorRoleId}'
+
+resource apiCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2026-03-15' = {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, apiPrincipalId, cosmosDataContributorRoleId)
+
+  properties: {
+    principalId: apiPrincipalId
+    roleDefinitionId: cosmosDataContributorRoleDefinitionId
+    scope: cosmosAccount.id
+  }
+}
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2026-03-15' = {
   name: cosmosAccountName
