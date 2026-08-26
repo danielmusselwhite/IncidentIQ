@@ -295,3 +295,23 @@
         grid-template-columns: 1fr;
     }
 }
+
+/* Incident status badges */
+
+.badge.badge--status-completed {
+    border-color: #bbf7d0;
+    background: #f0fdf4;
+    color: #15803d;
+}
+
+.badge.badge--status-processing {
+    border-color: #bfdbfe;
+    background: #eff6ff;
+    color: #2563eb;
+}
+
+.badge.badge--status-failed {
+    border-color: #fecaca;
+    background: #fef2f2;
+    color: #dc2626;
+}

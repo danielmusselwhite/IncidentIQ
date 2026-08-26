@@ -29,4 +29,12 @@ public interface IIncidentRepository
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
     /// <returns>A read-only collection of <see cref="Incident"/>.</returns>
     Task<IReadOnlyCollection<Incident>> GetAllAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Updates an existing incident in the repository.
+    /// </summary>
+    /// <param name="incident">The incident to update.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
+    /// <returns>The updated <see cref="Incident"/>.</returns>
+    Task<Incident> UpdateAsync(Incident incident, CancellationToken cancellationToken = default);
 }

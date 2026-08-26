@@ -4,9 +4,42 @@ services:
     build:
       context: .
       dockerfile: src/IncidentIQ.Api/Dockerfile
+    environment:
+      - ServiceBus__ConnectionString=Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;
+      - ServiceBus__FullyQualifiedNamespace=servicebus-emulator
+      - ServiceBus__AnalyseIncidentQueueName=analyse-incident
     depends_on:
       cosmos:
         condition: service_healthy
+      servicebus-emulator:
+        condition: service_started
+    volumes:
+      - cosmos-certs:/cosmos-certs:ro
+
+  incidentiq.worker:
+    build:
+      context: .
+      dockerfile: src/IncidentIQ.Worker/Dockerfile
+
+    depends_on:
+      cosmos:
+        condition: service_healthy
+      servicebus-emulator:
+        condition: service_started
+
+    environment:
+      Cosmos__Endpoint: "https://cosmos:8081"
+      Cosmos__Key: "${COSMOS_EMULATOR_KEY}"
+      Cosmos__DatabaseName: "IncidentIQ"
+      Cosmos__IncidentsContainerName: "Incidents"
+      Cosmos__RunbooksContainerName: "Runbooks"
+
+      ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+      ServiceBus__FullyQualifiedNamespace: "servicebus-emulator"
+      ServiceBus__AnalyseIncidentQueueName: "analyse-incident"
+
+      SSL_CERT_FILE: "/cosmos-certs/ca-bundle.crt"
+
     volumes:
       - cosmos-certs:/cosmos-certs:ro
 
@@ -74,6 +107,31 @@ services:
       timeout: 5s
       retries: 20
 
+  servicebus-sql:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SERVICEBUS_SQL_PASSWORD}"
+    volumes:
+      - servicebus-sql-data:/var/opt/mssql
+
+  servicebus-emulator:
+    image: mcr.microsoft.com/azure-messaging/servicebus-emulator:latest
+    depends_on:
+      - servicebus-sql
+    environment:
+      SQL_SERVER: servicebus-sql
+      MSSQL_SA_PASSWORD: "${SERVICEBUS_SQL_PASSWORD}"
+      ACCEPT_EULA: "Y"
+      SQL_WAIT_INTERVAL: "15"
+      EMULATOR_HTTP_PORT: "5300"
+    volumes:
+      - ./infra/local/servicebus/Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
+    ports:
+      - "5672:5672"
+      - "5300:5300"
+
 volumes:
   cosmos-data:
   cosmos-certs:
+  servicebus-sql-data:

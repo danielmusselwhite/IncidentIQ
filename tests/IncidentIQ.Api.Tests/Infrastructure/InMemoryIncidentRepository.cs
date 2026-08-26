@@ -39,6 +39,14 @@ public sealed class InMemoryIncidentRepository : IIncidentRepository
         return Task.FromResult(incidents);
     }
 
+    public Task<Incident> UpdateAsync(
+        Incident incident,
+        CancellationToken cancellationToken = default)
+    {
+        _incidents[incident.Id] = incident;
+        return Task.FromResult(incident);
+    }
+
     public void Clear()
     {
         _incidents.Clear();

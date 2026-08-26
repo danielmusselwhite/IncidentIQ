@@ -1,7 +1,6 @@
-﻿using IncidentIQ.Application.Common.Abstractions;
-using Microsoft.AspNetCore.Hosting;
+﻿using IncidentIQ.Api.Tests.Fakes;
+using IncidentIQ.Application.Common.Abstractions;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace IncidentIQ.Api.Tests.Infrastructure;
@@ -11,6 +10,8 @@ public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
     public InMemoryIncidentRepository IncidentRepository { get; } = new();
 
     public InMemoryRunbookRepository RunbookRepository { get; } = new();
+
+    public InMemoryIncidentAnalysisQueue AnalysisQueue { get; } = new();
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -25,6 +26,9 @@ public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IRunbookRepository>();
             services.AddSingleton<IRunbookRepository>(RunbookRepository);
+
+            services.RemoveAll<IIncidentAnalysisQueue>();
+            services.AddSingleton<IIncidentAnalysisQueue>(AnalysisQueue);
         });
     }
 
