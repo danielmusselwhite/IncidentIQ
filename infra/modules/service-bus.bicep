@@ -1,14 +1,18 @@
+// Create the Service Bus namespace and queue, and assign the API and Worker identities the appropriate RBAC roles to send and receive messages.
 targetScope = 'resourceGroup'
 
 param location string
 param projectName string
 param environmentName string
 param tags object
+param apiPrincipalId string
+param workerPrincipalId string
 
 param analyseIncidentQueueName string = 'analyse-incident'
 
 var namespaceName = 'sb-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
 
+// Create the Service Bus namespace
 resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2026-01-01' = {
   name: namespaceName
   location: location
@@ -31,6 +35,7 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2026-01-01' = {
   }
 }
 
+// Within the namespace, create the queue for incident analysis commands
 resource analyseIncidentQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' = {
   parent: serviceBusNamespace
   name: analyseIncidentQueueName
@@ -56,6 +61,40 @@ resource analyseIncidentQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01
     enableBatchedOperations: true
     enablePartitioning: false
     status: 'Active'
+  }
+}
+
+// Assign the API identity the Built-In Service Bus Data Sender role for this queue, so it can send messages to it.
+var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
+)
+resource apiSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(analyseIncidentQueue.id, apiPrincipalId, serviceBusDataSenderRoleDefinitionId)
+
+  scope: analyseIncidentQueue
+
+  properties: {
+    principalId: apiPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataSenderRoleDefinitionId
+  }
+}
+
+// Assign the Worker identity the Built-In Service Bus Data Receiver role for this queue, so it can receive messages from it.
+var serviceBusDataReceiverRoleDefinitionId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0'
+)
+resource workerReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(analyseIncidentQueue.id, workerPrincipalId, serviceBusDataReceiverRoleDefinitionId)
+
+  scope: analyseIncidentQueue
+
+  properties: {
+    principalId: workerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataReceiverRoleDefinitionId
   }
 }
 
