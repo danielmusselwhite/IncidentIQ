@@ -2,7 +2,6 @@
 using IncidentIQ.Api.Tests.Infrastructure;
 using IncidentIQ.Domain.Incidents;
 using System.Net;
-using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -24,12 +23,16 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     public IncidentsApiTests(IncidentIqApiFactory factory)
     {
         _factory = factory;
+
+        // Clear shared in-memory state before each test.
         _factory.IncidentRepository.Clear();
+        _factory.AnalysisQueue.Clear();
+
         _client = factory.CreateHttpsClient();
     }
 
     [Fact]
-    public async Task Create_WithValidRequest_ReturnsCreated()
+    public async Task Create_WithValidRequest_ReturnsCreatedAndQueuesAnalysis()
     {
         var request = new CreateIncidentRequest(
             "Payments API timeout",
@@ -39,9 +42,13 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             IncidentSeverity.High,
             "Database timeout errors");
 
-        var response = await _client.PostAsJsonAsync("/api/incidents", request);
+        var response = await _client.PostAsJsonAsync(
+            "/api/incidents",
+            request);
 
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Created,
+            response.StatusCode);
 
         var incident = await response.Content
             .ReadFromJsonAsync<IncidentResponse>(JsonOptions);
@@ -55,12 +62,44 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         Assert.Equal(request.Severity, incident.Severity);
         Assert.Equal(IncidentStatus.Queued, incident.Status);
 
+        // The Location header should point to the newly created incident.
         Assert.NotNull(response.Headers.Location);
-        Assert.Contains(incident.Id, response.Headers.Location.ToString());
+        Assert.Contains(
+            incident.Id,
+            response.Headers.Location.ToString());
+
+        // The API should return the correlation ID used for the
+        // asynchronous analysis workflow.
+        Assert.True(
+            response.Headers.Contains("X-Correlation-ID"));
+
+        var correlationId = response.Headers
+            .GetValues("X-Correlation-ID")
+            .Single();
+
+        Assert.False(
+            string.IsNullOrWhiteSpace(correlationId));
+
+        // Creating an incident should also queue exactly one
+        // asynchronous analysis command.
+        var analyseCommand = Assert.Single(
+            _factory.AnalysisQueue.Commands);
+
+        Assert.Equal(
+            incident.Id,
+            analyseCommand.IncidentId);
+
+        Assert.Equal(
+            correlationId,
+            analyseCommand.CorrelationId);
+
+        Assert.NotEqual(
+            Guid.Empty,
+            analyseCommand.CommandId);
     }
 
     [Fact]
-    public async Task Create_WithInvalidRequest_ReturnsBadRequest()
+    public async Task Create_WithInvalidRequest_ReturnsBadRequestAndDoesNotQueueAnalysis()
     {
         var request = new CreateIncidentRequest(
             "",
@@ -70,9 +109,13 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             IncidentSeverity.High,
             null);
 
-        var response = await _client.PostAsJsonAsync("/api/incidents", request);
+        var response = await _client.PostAsJsonAsync(
+            "/api/incidents",
+            request);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
 
         var json = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync());
@@ -86,6 +129,10 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         Assert.True(
             root.GetProperty("errors")
                 .TryGetProperty("Title", out _));
+
+        // Invalid incidents should never reach Service Bus.
+        Assert.Empty(
+            _factory.AnalysisQueue.Commands);
     }
 
     [Fact]
@@ -93,12 +140,15 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     {
         var incident = CreateIncident();
 
-        await _factory.IncidentRepository.CreateAsync(incident);
+        await _factory.IncidentRepository.CreateAsync(
+            incident);
 
         var response = await _client.GetAsync(
             $"/api/incidents/{incident.Id}");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
 
         var result = await response.Content
             .ReadFromJsonAsync<IncidentResponse>(JsonOptions);
@@ -114,25 +164,35 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         var response = await _client.GetAsync(
             "/api/incidents/missing-id");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            response.StatusCode);
 
         var json = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync());
 
         Assert.Equal(
             "Incident not found",
-            json.RootElement.GetProperty("title").GetString());
+            json.RootElement
+                .GetProperty("title")
+                .GetString());
     }
 
     [Fact]
     public async Task GetAll_WhenIncidentsExist_ReturnsIncidents()
     {
-        await _factory.IncidentRepository.CreateAsync(CreateIncident());
-        await _factory.IncidentRepository.CreateAsync(CreateIncident());
+        await _factory.IncidentRepository.CreateAsync(
+            CreateIncident());
 
-        var response = await _client.GetAsync("/api/incidents");
+        await _factory.IncidentRepository.CreateAsync(
+            CreateIncident());
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var response = await _client.GetAsync(
+            "/api/incidents");
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
 
         var incidents = await response.Content
             .ReadFromJsonAsync<IncidentResponse[]>(JsonOptions);

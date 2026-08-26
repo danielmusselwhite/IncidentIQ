@@ -3,13 +3,14 @@ using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
 using IncidentIQ.Application.Incidents.GetById;
 using Microsoft.AspNetCore.Mvc;
+using System.Diagnostics;
 
 namespace IncidentIQ.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class IncidentsController(CreateIncidentHandler createIncidentHandler, 
-    GetAllIncidentsHandler getAllIncidentsHandler, 
+public sealed class IncidentsController(CreateIncidentHandler createIncidentHandler,
+    GetAllIncidentsHandler getAllIncidentsHandler,
     GetIncidentByIdHandler getIncidentByIdHandler) : ControllerBase
 {
 
@@ -35,8 +36,14 @@ public sealed class IncidentsController(CreateIncidentHandler createIncidentHand
             request.Severity,
             request.Symptoms);
 
+        // generate correlationId for logging and tracing
+        var correlationId = Activity.Current?.TraceId.ToString() ?? HttpContext.TraceIdentifier;
+
+        //!IMPORTANT add correlationId to response headers for client-side tracing
+        Response.Headers["X-Correlation-ID"] = correlationId;
+
         // call the application handler to create the incident, getting back the domain incident
-        var incident = await createIncidentHandler.HandleAsync(command, cancellationToken);
+        var incident = await createIncidentHandler.HandleAsync(command, correlationId, cancellationToken);
         var response = IncidentResponse.FromDomain(incident); // convert to response DTO
 
         // return a 201 Created response with the location of the new incident

@@ -1,32 +1,51 @@
 ﻿using FluentValidation;
 using IncidentIQ.Application.Common.Abstractions;
+using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
 
 namespace IncidentIQ.Application.Incidents.Create;
 
 /// <summary>
-/// Represents a handler for the <see cref="CreateIncidentCommand"/>.
-/// (What the application does with the request.)
+/// Handles the creation of incidents and queues them for asynchronous analysis.
 /// </summary>
-/// <param name="incidentRepository"></param>
-/// <param name="validator"></param>
+/// <param name="incidentRepository">
+/// Repository used to persist the incident.
+/// </param>
+/// <param name="incidentAnalysisQueue">
+/// Queue used to request asynchronous incident analysis.
+/// </param>
+/// <param name="validator">
+/// Validator used to validate the create incident command.
+/// </param>
 public sealed class CreateIncidentHandler(
     IIncidentRepository incidentRepository,
+    IIncidentAnalysisQueue incidentAnalysisQueue,
     IValidator<CreateIncidentCommand> validator)
 {
     /// <summary>
-    /// Handles the creation of an incident based on the provided <see cref="CreateIncidentCommand"/>.
-    /// Validates the command using FluentValidation and, if valid, creates a new incident in the repository.
+    /// Validates and creates an incident, then queues it for asynchronous analysis.
     /// </summary>
-    /// <param name="command">The command containing the details of the incident to be created.</param>
-    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <param name="command">
+    /// The command containing the details of the incident to create.
+    /// </param>
+    /// <param name="correlationId">
+    /// Identifier used to correlate the API request with the asynchronous analysis workflow.
+    /// </param>
+    /// <param name="cancellationToken">
+    /// The cancellation token.
+    /// </param>
     /// <returns>The created incident.</returns>
     public async Task<Incident> HandleAsync(
         CreateIncidentCommand command,
+        string correlationId,
         CancellationToken cancellationToken = default)
     {
-        await validator.ValidateAndThrowAsync(command, cancellationToken);
+        // Validate the incoming command before creating or persisting anything.
+        await validator.ValidateAndThrowAsync(
+            command,
+            cancellationToken);
 
+        // Create the domain entity.
         var incident = Incident.Create(
             command.Title,
             command.Description,
@@ -35,6 +54,24 @@ public sealed class CreateIncidentHandler(
             command.Severity,
             command.Symptoms);
 
-        return await incidentRepository.CreateAsync(incident, cancellationToken);
+        // Persist the incident before requesting analysis.
+        var createdIncident = await incidentRepository.CreateAsync(
+            incident,
+            cancellationToken);
+
+        // Create a lightweight command for the asynchronous Worker.
+        // The Worker will retrieve the full incident from Cosmos using the ID.
+        var analyseIncidentCommand = new AnalyseIncidentCommand(
+            CommandId: Guid.NewGuid(),
+            IncidentId: createdIncident.Id,
+            CorrelationId: correlationId,
+            QueuedAtUtc: createdIncident.CreatedAt);
+
+        // Send the analysis request to the configured messaging implementation.
+        await incidentAnalysisQueue.EnqueueAsync(
+            analyseIncidentCommand,
+            cancellationToken);
+
+        return createdIncident;
     }
 }
