@@ -102,13 +102,49 @@ Use this only when the bootstrap infrastructure does not exist.
 
 ## 1. Register Azure Resource Providers
 
-Normally required only once per subscription:
+Azure resource providers are registered at the **subscription level** and normally only need to be registered once.
+
+They do **not** need to be registered again when `rg-incidentiq-dev` is deleted and recreated, instead they are **normally required only once per subscription**:
+
+Register the providers currently required by IncidentIQ:
 
 ```powershell
-az provider register --namespace Microsoft.DocumentDB
-az provider register --namespace Microsoft.OperationalInsights
-az provider register --namespace Microsoft.Insights
+az provider register --namespace Microsoft.DocumentDB --wait
+az provider register --namespace Microsoft.OperationalInsights --wait
+az provider register --namespace Microsoft.Insights --wait
+az provider register --namespace Microsoft.ServiceBus --wait
 ```
+
+These providers are used for:
+
+```text
+Microsoft.DocumentDB
+└── Azure Cosmos DB
+
+Microsoft.OperationalInsights
+└── Log Analytics
+
+Microsoft.Insights
+└── Application Insights
+
+Microsoft.ServiceBus
+└── Azure Service Bus
+```
+
+To verify their registration status:
+
+```powershell
+az provider show --namespace Microsoft.DocumentDB --query registrationState --output tsv
+az provider show --namespace Microsoft.OperationalInsights --query registrationState --output tsv
+az provider show --namespace Microsoft.Insights --query registrationState --output tsv
+az provider show --namespace Microsoft.ServiceBus --query registrationState --output tsv
+```
+
+Each should return:
+
+`Registered`
+
+As additional Azure services are introduced, their required resource providers should be added here.
 
 ## 2. Deploy Bootstrap Infrastructure
 

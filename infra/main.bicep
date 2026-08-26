@@ -52,6 +52,16 @@ module applicationInsights './modules/application-insights.bicep' = {
   }
 }
 
+module serviceBus './modules/service-bus.bicep' = {
+  name: 'serviceBus'
+  params: {
+    location: location
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+  }
+}
+
 output cosmosAccountName string = cosmos.outputs.accountName
 output cosmosEndpoint string = cosmos.outputs.endpoint
 output cosmosDatabaseName string = cosmos.outputs.databaseName
@@ -61,3 +71,6 @@ output applicationInsightsName string = applicationInsights.outputs.name
 output apiIdentityName string = apiIdentity.outputs.name
 output apiIdentityClientId string = apiIdentity.outputs.clientId
 output cosmosRunbooksContainerName string = cosmos.outputs.runbooksContainerName
+output serviceBusNamespaceName string = serviceBus.outputs.namespaceName
+output serviceBusFullyQualifiedNamespace string = serviceBus.outputs.fullyQualifiedNamespace
+output analyseIncidentQueueName string = serviceBus.outputs.analyseIncidentQueueName
