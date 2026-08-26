@@ -4,28 +4,37 @@ This folder contains the **Infrastructure as Code (IaC)** for IncidentIQ.
 
 Azure resources are defined using **Bicep** and deployed through **GitHub Actions** using **OIDC authentication**. The goal is to keep the development environment reproducible, version-controlled, and easy to recreate without manually configuring resources in the Azure Portal.
 
+**For instructions on deleting/recreating the development environment and refreshing local configuration, see**:
+
+```text
+docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md
+```
+
 ---
 
 ## Overview
 
 The infrastructure is split into two areas:
 
-- **Bootstrap infrastructure** — creates the Azure resources needed for GitHub to deploy the application infrastructure.
-- **Environment infrastructure** — creates the resources used by IncidentIQ itself.
+- **Bootstrap infrastructure** — creates the Azure deployment foundation used by GitHub Actions.
+- **Environment infrastructure** — creates the Azure resources used by IncidentIQ itself.
 
 ```mermaid
 flowchart TD
-    A[Bootstrap Bicep] --> B[Bootstrap Resource Group]
-    A --> C[Development Resource Group]
+    A[Bootstrap Bicep] --> B[rg-incidentiq-bootstrap]
+    A --> C[rg-incidentiq-dev]
 
     B --> D[GitHub Deployment Managed Identity]
     D --> E[GitHub OIDC Federated Credential]
 
-    D -->|Contributor on dev resource group| C
+    D -->|Contributor| C
+    D -->|RBAC Administrator| C
 
     F[GitHub Actions] -->|OIDC| D
     F -->|Deploy main.bicep| C
 ```
+
+The bootstrap identity is deliberately kept outside `rg-incidentiq-dev`, allowing the development resource group to be deleted and recreated without breaking GitHub authentication.
 
 ---
 
@@ -41,11 +50,17 @@ infra/
 ├── environments/
 │   └── dev.bicepparam
 │
+├── local/
+│   └── servicebus/
+│       └── Config.json
+│
 ├── modules/
 │   ├── api-identity.bicep
 │   ├── application-insights.bicep
 │   ├── cosmos.bicep
-│   └── log-analytics.bicep
+│   ├── log-analytics.bicep
+│   ├── service-bus.bicep
+│   └── worker-identity.bicep
 │
 ├── main.bicep
 └── README.md
@@ -55,7 +70,7 @@ infra/
 
 # Bootstrap Infrastructure
 
-The bootstrap deployment is intended to be run only when the Azure deployment foundation needs to be created or changed.
+The bootstrap deployment is used when the Azure deployment foundation needs to be created, recreated, or changed.
 
 It runs at **subscription scope** because it creates resource groups.
 
@@ -66,12 +81,10 @@ Creates:
 - `rg-incidentiq-bootstrap`
 - `rg-incidentiq-dev`
 - GitHub deployment managed identity
-- GitHub OIDC federation
-- Contributor role assignment for the deployment identity on the development resource group
+- GitHub OIDC federated credential
+- deployment RBAC assignments on `rg-incidentiq-dev`
 
-The deployment identity is deliberately kept in a separate bootstrap resource group.
-
-This means the development resource group can be deleted and recreated without deleting the identity GitHub uses to deploy it.
+The deployment identity remains in `rg-incidentiq-bootstrap`, so deleting `rg-incidentiq-dev` does not delete the identity GitHub uses to deploy it.
 
 ---
 
@@ -85,7 +98,7 @@ Example:
 id-incidentiq-github-dev
 ```
 
-It also creates a federated identity credential that trusts the GitHub repository and `development` environment.
+It also creates the federated identity credential used by the GitHub `development` environment.
 
 ```mermaid
 sequenceDiagram
@@ -98,14 +111,14 @@ sequenceDiagram
     GH->>OIDC: Request workload token
     OIDC-->>GH: Signed OIDC token
     GH->>Entra: Exchange token
-    Entra->>MI: Validate federated identity
+    Entra->>MI: Validate federation
     MI-->>GH: Azure access token
     GH->>Azure: Deploy Bicep
 ```
 
 No Azure client secret is stored in GitHub.
 
-The GitHub environment contains only the identifiers required for login:
+The GitHub `development` environment contains only:
 
 ```text
 AZURE_CLIENT_ID
@@ -117,43 +130,61 @@ AZURE_SUBSCRIPTION_ID
 
 ## `bootstrap/deployment-role.bicep`
 
-Grants the GitHub deployment identity the **Contributor** role on:
+Grants the GitHub deployment identity permissions on:
 
 ```text
 rg-incidentiq-dev
 ```
 
-The role is scoped to the development resource group rather than the entire subscription.
+Current roles:
+
+```text
+Contributor
+└── create and update application infrastructure
+
+Role Based Access Control Administrator
+└── create workload RBAC assignments
+```
+
+Both roles are scoped to the **development resource group**, rather than the subscription.
+
+This allows the infrastructure pipeline to create assignments such as:
+
+```text
+API identity
+└── Service Bus Data Sender
+
+Worker identity
+└── Service Bus Data Receiver
+```
+
+without granting the deployment identity subscription-wide RBAC control.
 
 ---
 
 # Environment Infrastructure
 
-`main.bicep` is the entry point for the actual IncidentIQ Azure environment.
+`main.bicep` is the composition root for the actual IncidentIQ Azure environment.
 
-Environment-specific values are supplied using:
+Environment-specific values are supplied through:
 
 ```text
 environments/dev.bicepparam
 ```
 
-The current development environment is deployed to:
+The current environment is:
 
 ```text
-rg-incidentiq-dev
-```
-
-in:
-
-```text
-UK South
+Resource group: rg-incidentiq-dev
+Region:         UK South
+Environment:    dev
 ```
 
 ---
 
 # Current Azure Resources
 
-The development environment currently contains the following core resources:
+The current development environment contains:
 
 ```mermaid
 flowchart TD
@@ -161,16 +192,26 @@ flowchart TD
 
     RG --> COSMOS[Azure Cosmos DB]
     COSMOS --> DB[IncidentIQ Database]
-    DB --> INC[Incidents Container<br/>Partition Key: /id]
+    DB --> INC[Incidents /id]
+    DB --> RUN[Runbooks /id]
 
-    RG --> APIID[API Managed Identity<br/>id-incidentiq-api-dev]
+    RG --> SB[Azure Service Bus]
+    SB --> QUEUE[analyse-incident Queue]
+    QUEUE --> DLQ[Dead-letter Subqueue]
+
+    RG --> APIID[API Managed Identity]
+    RG --> WORKERID[Worker Managed Identity]
+
     APIID -->|Cosmos Data Contributor| COSMOS
+    APIID -->|Service Bus Data Sender| QUEUE
+    WORKERID -->|Service Bus Data Receiver| QUEUE
 
     RG --> LOG[Log Analytics Workspace]
     RG --> APPI[Application Insights]
-
     APPI -->|Workspace-based telemetry| LOG
 ```
+
+At this stage, the Worker identity's Service Bus access is provisioned. Any additional Azure-hosted Worker permissions, such as Cosmos access, should be added through Bicep before the Worker Container App is deployed.
 
 ---
 
@@ -187,22 +228,54 @@ Creates:
 - Azure Cosmos DB for NoSQL account
 - `IncidentIQ` database
 - `Incidents` container
-- `/id` partition key
-- consistent indexing
-- Cosmos RBAC assignment for the API managed identity
+- `Runbooks` container
+- `/id` partition key for both containers
+- Cosmos indexing configuration
+- Cosmos RBAC for the API managed identity
 
-The development account uses the **Serverless** capability to keep the environment lightweight while usage is low.
-
-The Azure structure is:
+The development account uses the **Serverless** capability to keep development usage lightweight.
 
 ```text
 Cosmos Account
 └── IncidentIQ
-    └── Incidents
+    ├── Incidents
+    │   └── Partition Key: /id
+    │
+    └── Runbooks
         └── Partition Key: /id
 ```
 
-This mirrors the local Cosmos Emulator structure used during development.
+Future AI stages will add dedicated vector/chunk persistence rather than storing embeddings directly on editable Runbook documents.
+
+---
+
+## Service Bus
+
+Defined in:
+
+```text
+modules/service-bus.bicep
+```
+
+Creates the Azure Service Bus namespace and the queue used to request asynchronous incident analysis:
+
+```text
+Service Bus Namespace
+└── analyse-incident
+    └── $DeadLetterQueue
+```
+
+The queue is configured with development-friendly reliability settings including:
+
+- explicit message lock duration
+- maximum delivery count
+- dead-lettering on message expiration
+- duplicate detection
+- message TTL
+
+`AnalyseIncident` is treated as a **command**, so it uses a queue with one logical consumer: the IncidentIQ Worker.
+
+Completion events such as `AnalysisCompleted` and `AnalysisFailed` are planned for Event Grid rather than Service Bus topics.
 
 ---
 
@@ -220,22 +293,48 @@ Creates:
 id-incidentiq-api-dev
 ```
 
-This identity is intended to be attached to the IncidentIQ API when it is later deployed to Azure Container Apps.
+The identity is intended to be attached to the API Container App when application deployment is introduced.
 
-The identity is granted the Cosmos DB **Data Contributor** role.
+Current permissions include:
 
-This allows the API to eventually access Cosmos without storing an account key.
+```text
+Azure Cosmos DB
+└── Cosmos DB Built-in Data Contributor
 
-```mermaid
-flowchart LR
-    API[IncidentIQ API] --> MI[API Managed Identity]
-    MI --> RBAC[Cosmos Data Contributor]
-    RBAC --> COSMOS[Azure Cosmos DB]
+analyse-incident
+└── Azure Service Bus Data Sender
 ```
 
-Local development still uses the Cosmos Emulator account key.
+This allows the Azure-hosted API to use `DefaultAzureCredential` instead of storing Cosmos or Service Bus credentials.
 
-Azure-hosted execution will use Managed Identity.
+---
+
+## Worker Managed Identity
+
+Defined in:
+
+```text
+modules/worker-identity.bicep
+```
+
+Creates:
+
+```text
+id-incidentiq-worker-dev
+```
+
+The identity is intended to be attached to the Worker Container App.
+
+Current Service Bus permission:
+
+```text
+analyse-incident
+└── Azure Service Bus Data Receiver
+```
+
+This allows the Worker to consume `AnalyseIncident` commands using Managed Identity once deployed to Azure.
+
+Additional workload permissions will be added through Bicep as the Azure-hosted Worker requires them.
 
 ---
 
@@ -247,15 +346,15 @@ Defined in:
 modules/log-analytics.bicep
 ```
 
-Creates the Log Analytics workspace used as the central telemetry store for the development environment.
+Creates the central Log Analytics workspace for development telemetry.
 
-Example resource name:
+Example:
 
 ```text
 log-incidentiq-dev
 ```
 
-It currently uses a short retention period suitable for development.
+The workspace currently uses a short retention period appropriate for a development environment.
 
 ---
 
@@ -267,19 +366,17 @@ Defined in:
 modules/application-insights.bicep
 ```
 
-Creates the Application Insights resource used by the API.
-
-Example:
+Creates the workspace-based Application Insights resource:
 
 ```text
 appi-incidentiq-dev
 ```
 
-Application Insights is linked to the Log Analytics workspace.
+It is linked to the Log Analytics workspace.
 
-The API will send telemetry using OpenTelemetry and Azure Monitor.
+The API already supports Azure Monitor/OpenTelemetry integration when an Application Insights connection string is configured.
 
-Typical telemetry will include:
+Typical telemetry includes:
 
 - HTTP requests
 - application traces
@@ -287,13 +384,15 @@ Typical telemetry will include:
 - dependency calls
 - metrics
 
+Worker telemetry will be expanded later as part of the observability stage.
+
 ---
 
 # Environment Parameters
 
-`environments/dev.bicepparam` contains configuration specific to the development environment.
+`environments/dev.bicepparam` contains values specific to the development environment.
 
-For example:
+Example:
 
 ```bicep
 using '../main.bicep'
@@ -303,9 +402,7 @@ param projectName = 'incidentiq'
 param environmentName = 'dev'
 ```
 
-Future environments can use the same `main.bicep` and modules with different parameter files.
-
-For example:
+Future environments can reuse the same modules and `main.bicep` with different parameter files:
 
 ```text
 environments/
@@ -322,8 +419,6 @@ Only `dev` currently exists.
 
 Infrastructure deployment is handled by GitHub Actions.
 
-The important workflows are:
-
 ```text
 .github/workflows/
 ├── infra-validate.yml
@@ -332,33 +427,33 @@ The important workflows are:
 
 ## Validation
 
-Pull requests containing infrastructure changes run Bicep validation.
+Pull requests containing infrastructure changes run Bicep validation before deployment.
 
-This catches template or parameter errors before deployment.
+This catches template and parameter errors before Azure resources are changed.
 
 ## Deployment
 
-Changes merged into the deployment branch trigger the development infrastructure workflow.
+Changes to the deployment branch can trigger the development deployment workflow.
 
 ```mermaid
 flowchart LR
-    A[Git Push / Merge] --> B[GitHub Actions]
-    B --> C[OIDC Login to Azure]
+    A[Git Push / Manual Trigger] --> B[GitHub Actions]
+    B --> C[OIDC Login]
     C --> D[Bicep Validation]
     D --> E[Azure What-If]
     E --> F[Bicep Deployment]
     F --> G[rg-incidentiq-dev]
 ```
 
-The workflow uses:
+The workflow runs:
 
 ```text
 az deployment group what-if
 ```
 
-before the actual deployment so the expected changes can be inspected in the job output.
+before the deployment so expected changes are visible in the workflow output.
 
-The deployment itself uses:
+The deployment uses:
 
 ```text
 infra/environments/dev.bicepparam
@@ -370,42 +465,66 @@ which references:
 infra/main.bicep
 ```
 
+Normal environment deployments should be performed through GitHub Actions rather than manually.
+
 ---
 
-# Local vs Azure Development
+# Local Infrastructure
 
-IncidentIQ keeps the local Cosmos Emulator workflow alongside Azure.
+Azure resources are represented locally where practical so everyday development does not require the Azure environment to remain running.
 
-```mermaid
-flowchart TD
-    API[IncidentIQ API]
+Docker Compose currently provides:
 
-    API -->|Local development| EMU[Cosmos Emulator]
-    EMU --> KEY[Local Emulator Key]
-
-    API -->|Azure hosted| MI[Managed Identity]
-    MI --> AZCOSMOS[Azure Cosmos DB]
+```text
+Docker Compose
+├── IncidentIQ.Api
+├── IncidentIQ.Worker
+├── Cosmos DB Emulator
+│   └── persistent data + development HTTPS certificate
+└── Service Bus Emulator
+    ├── analyse-incident
+    └── SQL Server dependency
 ```
 
-### Local
+The Service Bus emulator queue definition is stored in:
+
+```text
+infra/local/servicebus/Config.json
+```
+
+Docker Compose uses local environment configuration rather than Azure credentials.
+
+The intended development split is:
+
+```text
+Docker Compose
+├── Cosmos DB Emulator
+└── Service Bus Emulator
+```
+
+versus:
+
+```text
+dotnet run
+├── Azure Cosmos DB
+└── Azure Service Bus
+```
+
+This allows local end-to-end testing of:
 
 ```text
 API
-→ Cosmos Emulator
-→ Account key authentication
+ ↓
+Cosmos
+ ↓
+Service Bus
+ ↓
+Worker
+ ↓
+Cosmos status update
 ```
 
-### Azure
-
-```text
-API
-→ DefaultAzureCredential
-→ Managed Identity
-→ Cosmos RBAC
-→ Azure Cosmos DB
-```
-
-The local emulator remains useful for fast development and automated testing without requiring Azure.
+without keeping the Azure development resources running continuously.
 
 ---
 
@@ -413,18 +532,23 @@ The local emulator remains useful for fast development and automated testing wit
 
 | Resource | Defined In | Purpose |
 |---|---|---|
-| Bootstrap resource group | `bootstrap/main.bicep` | Holds deployment identity |
-| Development resource group | `bootstrap/main.bicep` | Holds IncidentIQ dev resources |
-| GitHub deployment identity | `bootstrap/github-identity.bicep` | Allows GitHub Actions to authenticate to Azure |
-| GitHub federated credential | `bootstrap/github-identity.bicep` | Enables secretless OIDC authentication |
-| Deployment RBAC | `bootstrap/deployment-role.bicep` | Allows GitHub to deploy into the dev resource group |
-| Cosmos DB | `modules/cosmos.bicep` | Incident persistence |
+| Bootstrap resource group | `bootstrap/main.bicep` | Holds the persistent deployment identity |
+| Development resource group | `bootstrap/main.bicep` | Holds IncidentIQ development resources |
+| GitHub deployment identity | `bootstrap/github-identity.bicep` | GitHub → Azure OIDC identity |
+| GitHub federated credential | `bootstrap/github-identity.bicep` | Enables secretless GitHub authentication |
+| Deployment RBAC | `bootstrap/deployment-role.bicep` | Allows infrastructure and workload RBAC deployment |
+| Cosmos DB | `modules/cosmos.bicep` | Operational persistence |
 | IncidentIQ database | `modules/cosmos.bicep` | Main Cosmos database |
 | Incidents container | `modules/cosmos.bicep` | Stores incident documents |
+| Runbooks container | `modules/cosmos.bicep` | Stores editable runbooks |
 | API managed identity | `modules/api-identity.bicep` | Azure identity for the API |
-| Cosmos RBAC | `modules/cosmos.bicep` | Allows API identity to read/write Cosmos data |
+| Worker managed identity | `modules/worker-identity.bicep` | Azure identity for the Worker |
+| Service Bus namespace | `modules/service-bus.bicep` | Asynchronous messaging |
+| `analyse-incident` queue | `modules/service-bus.bicep` | Carries incident-analysis commands |
+| Service Bus RBAC | `modules/service-bus.bicep` | Sender/Receiver access for API and Worker |
 | Log Analytics | `modules/log-analytics.bicep` | Central telemetry workspace |
-| Application Insights | `modules/application-insights.bicep` | Application telemetry and tracing |
+| Application Insights | `modules/application-insights.bicep` | Application telemetry |
+| Local Service Bus config | `local/servicebus/Config.json` | Defines emulator queues |
 
 ---
 
@@ -436,7 +560,10 @@ From the repository root:
 
 ```powershell
 az bicep build --file infra\main.bicep --stdout | Out-Null
-az bicep build-params --file infra\environments\dev.bicepparam --stdout | Out-Null
+
+az bicep build-params `
+    --file infra\environments\dev.bicepparam `
+    --stdout | Out-Null
 ```
 
 ## Preview
@@ -447,7 +574,13 @@ az deployment group what-if `
     --parameters "infra/environments/dev.bicepparam"
 ```
 
-Normal deployments should be performed through GitHub Actions rather than manually.
+Normal environment deployments should be performed through GitHub Actions.
+
+For bootstrap/development-environment recreation instructions, see:
+
+```text
+docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md
+```
 
 ---
 
@@ -455,37 +588,42 @@ Normal deployments should be performed through GitHub Actions rather than manual
 
 The infrastructure follows a few simple rules:
 
-- Azure resources are defined in Bicep before being deployed.
+- Azure resources are defined in Bicep before they are provisioned.
 - Resource-specific configuration lives in reusable modules.
 - Environment-specific values live in `.bicepparam` files.
-- GitHub Actions uses OIDC rather than Azure client secrets.
+- `main.bicep` acts as the composition root for environment infrastructure.
+- GitHub Actions authenticates through OIDC rather than client secrets.
 - Deployment permissions are scoped to the development resource group.
-- Application workloads use Managed Identity where practical.
-- Local development remains independent through the Cosmos Emulator.
-- `main.bicep` acts as the composition root for the IncidentIQ Azure environment.
+- Workloads use Managed Identity and least-privilege RBAC where practical.
+- Commands use Service Bus; future integration events use Event Grid.
+- Local development uses emulators where practical.
+- Bootstrap infrastructure remains separate from disposable development resources.
 
 ---
 
 # Current Infrastructure Flow
 
-At a high level:
-
 ```mermaid
 flowchart LR
     DEV[Developer] --> GH[GitHub]
     GH --> ACTIONS[GitHub Actions]
+
     ACTIONS -->|OIDC| DEPLOYID[Deployment Identity]
     DEPLOYID --> ARM[Azure Resource Manager]
-
     ARM --> RG[rg-incidentiq-dev]
 
     RG --> COSMOS[Cosmos DB]
-    RG --> APIID[API Managed Identity]
+    RG --> SB[Service Bus]
+    RG --> APIID[API Identity]
+    RG --> WORKERID[Worker Identity]
     RG --> APPI[Application Insights]
     RG --> LOG[Log Analytics]
 
-    APIID -->|RBAC| COSMOS
+    APIID -->|Cosmos Data Contributor| COSMOS
+    APIID -->|Data Sender| SB
+    WORKERID -->|Data Receiver| SB
+
     APPI --> LOG
 ```
 
-As IncidentIQ grows, additional services such as Container Apps, Service Bus, Azure AI, Key Vault and Event Grid will be added as new Bicep modules and composed through the same `main.bicep`.
+As IncidentIQ grows, additional resources such as Container Apps, ACR, Azure AI, Key Vault, App Configuration, APIM and Event Grid will be added as dedicated Bicep modules and composed through the same `main.bicep`.

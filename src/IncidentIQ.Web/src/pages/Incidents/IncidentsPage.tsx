@@ -310,7 +310,9 @@ function IncidentRow({ incident }: { incident: Incident }) {
             </td>
 
             <td>
-                <span className="badge badge--status">
+                <span
+                    className={`badge badge--status badge--status-${incident.status.toLowerCase()}`}
+                >
                     {incident.status}
                 </span>
             </td>

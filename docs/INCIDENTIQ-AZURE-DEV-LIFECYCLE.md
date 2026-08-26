@@ -14,11 +14,13 @@ Keep:
 rg-incidentiq-bootstrap
 ```
 
-The bootstrap resource group contains the GitHub deployment identity and OIDC federation, so keeping it means the GitHub environment values do **not** need to change.
+The bootstrap resource group contains the GitHub deployment identity and OIDC federation, so keeping it means the GitHub `development` environment values do **not** need to change.
+
+Deleting `rg-incidentiq-dev` removes the development resources, including Cosmos DB, Service Bus, monitoring resources, and the API/Worker managed identities.
 
 ### Recreate the Dev Environment
 
-1. Re-run the bootstrap Bicep so `rg-incidentiq-dev` and its GitHub RBAC assignment are recreated:
+1. Re-run the bootstrap Bicep so `rg-incidentiq-dev` and the GitHub deployment identity's resource-group RBAC assignments are recreated:
 
 ```powershell
 az deployment sub create `
@@ -34,15 +36,44 @@ az deployment sub create `
 
 2. Run the **Deploy Development Infrastructure** GitHub Actions workflow.
 
-This recreates the Azure resources in `rg-incidentiq-dev`.
+This recreates the resources defined in `infra/main.bicep`, including Cosmos DB, Service Bus, monitoring resources, managed identities, and their application RBAC assignments.
 
 ---
 
-## Local `secrets.json` After Redeploy
+## Local Configuration After Redeploy
 
-The local API uses user-secrets when running directly against Azure.
+IncidentIQ has two local development modes:
 
-After recreating `rg-incidentiq-dev`, update:
+```text
+Docker Compose
+├── Cosmos DB Emulator
+└── Service Bus Emulator
+```
+
+```text
+dotnet run
+├── Azure Cosmos DB
+└── Azure Service Bus
+```
+
+### Docker Compose
+
+Docker Compose uses environment variables and the local `.env` file rather than .NET user-secrets.
+
+Typical `.env` values include:
+
+```env
+COSMOS_EMULATOR_KEY=<local Cosmos emulator key>
+SERVICEBUS_SQL_PASSWORD=<local Service Bus emulator SQL password>
+```
+
+The `.env` file must remain outside source control.
+
+### API User-Secrets
+
+When running `IncidentIQ.Api` directly against Azure, the API requires Azure Cosmos, Service Bus, and Application Insights configuration.
+
+After recreating `rg-incidentiq-dev`, refresh:
 
 ```json
 {
@@ -51,18 +82,70 @@ After recreating `rg-incidentiq-dev`, update:
 }
 ```
 
-These values normally stay unchanged:
+The following normally remain unchanged because the resource and container names are deterministic:
 
 ```json
 {
   "Cosmos:Endpoint": "https://cosmos-incidentiq-dev-sw6lfgr7whyxm.documents.azure.com:443/",
   "Cosmos:DatabaseName": "IncidentIQ",
   "Cosmos:IncidentsContainerName": "Incidents",
-  "Cosmos:RunbooksContainerName": "Runbooks"
+  "Cosmos:RunbooksContainerName": "Runbooks",
+  "ServiceBus:FullyQualifiedNamespace": "<service-bus-namespace>.servicebus.windows.net",
+  "ServiceBus:AnalyseIncidentQueueName": "analyse-incident"
 }
 ```
 
-### Get the Cosmos Key
+Service Bus authentication uses `DefaultAzureCredential` when no `ServiceBus:ConnectionString` is configured. The local developer identity therefore needs the required Service Bus RBAC permissions.
+
+If a local Service Bus connection string is being used instead, it should also be refreshed after the Service Bus namespace is recreated:
+
+```json
+{
+  "ServiceBus:ConnectionString": "<new Service Bus connection string>"
+}
+```
+
+### Worker User-Secrets
+
+`IncidentIQ.Worker` has its own user-secrets store.
+
+When running the Worker directly against Azure, configure the same Cosmos and Service Bus settings it needs to consume commands and update incidents:
+
+```json
+{
+  "Cosmos:Endpoint": "https://cosmos-incidentiq-dev-sw6lfgr7whyxm.documents.azure.com:443/",
+  "Cosmos:Key": "<new Cosmos primary key>",
+  "Cosmos:DatabaseName": "IncidentIQ",
+  "Cosmos:IncidentsContainerName": "Incidents",
+  "Cosmos:RunbooksContainerName": "Runbooks",
+  "ServiceBus:FullyQualifiedNamespace": "<service-bus-namespace>.servicebus.windows.net",
+  "ServiceBus:AnalyseIncidentQueueName": "analyse-incident"
+}
+```
+
+If the Worker uses a local Service Bus connection string instead of `DefaultAzureCredential`, also configure:
+
+```json
+{
+  "ServiceBus:ConnectionString": "<new Service Bus connection string>"
+}
+```
+
+---
+
+## Retrieve Azure Configuration Values
+
+### Cosmos Endpoint
+
+```powershell
+az cosmosdb show `
+    --name "cosmos-incidentiq-dev-sw6lfgr7whyxm" `
+    --resource-group "rg-incidentiq-dev" `
+    --query documentEndpoint `
+    --output tsv
+```
+
+### Cosmos Key
 
 ```powershell
 az cosmosdb keys list `
@@ -73,7 +156,7 @@ az cosmosdb keys list `
     --output tsv
 ```
 
-### Get the Application Insights Connection String
+### Application Insights Connection String
 
 ```powershell
 az monitor app-insights component show `
@@ -83,28 +166,86 @@ az monitor app-insights component show `
     --output tsv
 ```
 
-Set them with:
+### Service Bus Namespace
 
 ```powershell
-cd src\IncidentIQ.Api
+az servicebus namespace list `
+    --resource-group "rg-incidentiq-dev" `
+    --query "[0].name" `
+    --output tsv
+```
 
-dotnet user-secrets set "Cosmos:Key" "<COSMOS_KEY>"
-dotnet user-secrets set "APPLICATIONINSIGHTS_CONNECTION_STRING" "<APP_INSIGHTS_CONNECTION_STRING>"
+Use the returned value as:
 
-cd ..\..
+```text
+<namespace-name>.servicebus.windows.net
+```
+
+### Service Bus Connection String
+
+Only required when local development is using SAS authentication instead of `DefaultAzureCredential`.
+
+```powershell
+az servicebus namespace authorization-rule keys list `
+    --resource-group "rg-incidentiq-dev" `
+    --namespace-name "<SERVICE_BUS_NAMESPACE>" `
+    --name "RootManageSharedAccessKey" `
+    --query primaryConnectionString `
+    --output tsv
+```
+
+---
+
+## Update User-Secrets
+
+### API
+
+```powershell
+dotnet user-secrets set "Cosmos:Key" "<COSMOS_KEY>" `
+    --project src\IncidentIQ.Api
+
+dotnet user-secrets set "APPLICATIONINSIGHTS_CONNECTION_STRING" "<APP_INSIGHTS_CONNECTION_STRING>" `
+    --project src\IncidentIQ.Api
+```
+
+If required:
+
+```powershell
+dotnet user-secrets set "ServiceBus:ConnectionString" "<SERVICE_BUS_CONNECTION_STRING>" `
+    --project src\IncidentIQ.Api
+```
+
+### Worker
+
+```powershell
+dotnet user-secrets set "Cosmos:Key" "<COSMOS_KEY>" `
+    --project src\IncidentIQ.Worker
+```
+
+If required:
+
+```powershell
+dotnet user-secrets set "ServiceBus:ConnectionString" "<SERVICE_BUS_CONNECTION_STRING>" `
+    --project src\IncidentIQ.Worker
 ```
 
 ---
 
 # Full Deployment From Scratch
 
-Use this only when the bootstrap infrastructure does not exist.
+Use this when the IncidentIQ bootstrap infrastructure does not yet exist.
 
-## 1. Register Azure Resource Providers
+## 1. Login to Azure
+
+```powershell
+az login
+```
+
+## 2. Register Azure Resource Providers
 
 Azure resource providers are registered at the **subscription level** and normally only need to be registered once.
 
-They do **not** need to be registered again when `rg-incidentiq-dev` is deleted and recreated, instead they are **normally required only once per subscription**:
+They do **not** need to be registered again when `rg-incidentiq-dev` is deleted and recreated.
 
 Register the providers currently required by IncidentIQ:
 
@@ -131,7 +272,7 @@ Microsoft.ServiceBus
 └── Azure Service Bus
 ```
 
-To verify their registration status:
+Verify their registration:
 
 ```powershell
 az provider show --namespace Microsoft.DocumentDB --query registrationState --output tsv
@@ -142,11 +283,13 @@ az provider show --namespace Microsoft.ServiceBus --query registrationState --ou
 
 Each should return:
 
-`Registered`
+```text
+Registered
+```
 
-As additional Azure services are introduced, their required resource providers should be added here.
+As additional Azure services are introduced, their required providers should be added here.
 
-## 2. Deploy Bootstrap Infrastructure
+## 3. Deploy Bootstrap Infrastructure
 
 ```powershell
 az deployment sub create `
@@ -160,17 +303,22 @@ az deployment sub create `
         githubRepositoryId="1342669343"
 ```
 
-This creates:
+This creates the bootstrap and development resource groups and configures the GitHub deployment identity:
 
 ```text
 rg-incidentiq-bootstrap
-└── GitHub deployment managed identity + OIDC
+└── GitHub deployment managed identity
+    └── GitHub OIDC federated credential
 
 rg-incidentiq-dev
-└── GitHub Contributor role assignment
+└── GitHub deployment identity RBAC
+    ├── Contributor
+    └── Role Based Access Control Administrator
 ```
 
-## 3. Configure the GitHub `development` Environment
+The RBAC Administrator role is scoped to `rg-incidentiq-dev` so the deployment workflow can create application role assignments without receiving subscription-wide RBAC permissions.
+
+## 4. Configure the GitHub `development` Environment
 
 Set these GitHub environment secrets using the bootstrap deployment outputs:
 
@@ -180,25 +328,66 @@ AZURE_TENANT_ID       → tenantId
 AZURE_SUBSCRIPTION_ID → subscriptionId
 ```
 
-## 4. Deploy the Development Infrastructure
+No client secret is required because GitHub authenticates to Azure using OIDC.
+
+## 5. Deploy the Development Infrastructure
 
 Run the **Deploy Development Infrastructure** GitHub Actions workflow.
 
-This deploys the resources defined by:
+The workflow deploys:
 
 ```text
 infra/main.bicep
 └── infra/environments/dev.bicepparam
 ```
 
-## 5. Refresh Local User-Secrets
+Current development infrastructure includes:
 
-Retrieve the new Cosmos key and Application Insights connection string using the commands above, then update the API user-secrets.
+```text
+rg-incidentiq-dev
+├── Cosmos DB
+│   ├── Incidents
+│   └── Runbooks
+├── Service Bus
+│   └── analyse-incident
+│       └── Dead-letter subqueue
+├── API Managed Identity
+├── Worker Managed Identity
+├── Log Analytics
+└── Application Insights
+```
 
-After this, running:
+Service Bus RBAC is configured so:
+
+```text
+API Managed Identity
+└── Azure Service Bus Data Sender
+    └── analyse-incident
+
+Worker Managed Identity
+└── Azure Service Bus Data Receiver
+    └── analyse-incident
+```
+
+## 6. Refresh Local Configuration
+
+Retrieve the Cosmos, Service Bus, and Application Insights values using the commands above and update the API/Worker user-secrets as required.
+
+After this:
 
 ```powershell
 dotnet run --project src\IncidentIQ.Api
+dotnet run --project src\IncidentIQ.Worker
 ```
 
-uses Azure Cosmos DB, while Docker Compose continues to use the local Cosmos Emulator.
+can use the Azure development resources.
+
+Docker Compose remains fully local:
+
+```text
+Docker Compose
+├── IncidentIQ.Api
+├── IncidentIQ.Worker
+├── Cosmos DB Emulator
+└── Service Bus Emulator
+```

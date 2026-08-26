@@ -118,7 +118,9 @@ export default function IncidentDetailPage() {
                             {incident.severity}
                         </span>
 
-                        <span className="badge badge--status">
+                        <span
+                            className={`badge badge--status badge--status-${incident.status.toLowerCase()}`}
+                        >
                             {incident.status}
                         </span>
                     </div>

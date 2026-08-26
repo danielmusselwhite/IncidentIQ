@@ -25,6 +25,14 @@ public sealed class Incident
 
     public DateTimeOffset UpdatedAt { get; private set; }
 
+    public DateTimeOffset? ProcessingStartedAt { get; private set; }
+
+    public DateTimeOffset? CompletedAt { get; private set; }
+
+    public string? FailureReason { get; private set; }
+
+    public DateTimeOffset? FailedAt { get; private set; }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Incident"/> class with the specified details.
     /// </summary>
@@ -124,4 +132,46 @@ public sealed class Incident
 
         return incident;
     }
+
+    #region Status Transitions
+    /// <summary>
+    /// Marks the incident as actively being processed by the analysis worker.
+    /// </summary>
+    public void MarkProcessing()
+    {
+        if (Status != IncidentStatus.Queued)
+        {
+            throw new InvalidOperationException($"Incident cannot move from {Status} to Processing.");
+        }
+
+        Status = IncidentStatus.Processing;
+        ProcessingStartedAt = DateTimeOffset.UtcNow;
+    }
+
+    /// <summary>
+    /// Marks the incident analysis as successfully completed.
+    /// </summary>
+    public void MarkCompleted()
+    {
+        if (Status != IncidentStatus.Processing)
+        {
+            throw new InvalidOperationException($"Incident cannot move from {Status} to Completed.");
+        }
+
+        Status = IncidentStatus.Completed;
+        CompletedAt = DateTimeOffset.UtcNow;
+    }
+
+    public void MarkFailed(string failureReason)
+    {
+        if (Status != IncidentStatus.Processing && Status != IncidentStatus.Queued)
+        {
+            throw new InvalidOperationException($"Incident cannot move from {Status} to Failed.");
+        }
+
+        Status = IncidentStatus.Failed;
+        FailureReason = failureReason;
+        FailedAt = DateTimeOffset.UtcNow;
+    }
+    #endregion
 }

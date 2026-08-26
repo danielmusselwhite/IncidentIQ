@@ -16,6 +16,33 @@ services:
     volumes:
       - cosmos-certs:/cosmos-certs:ro
 
+  incidentiq.worker:
+    build:
+      context: .
+      dockerfile: src/IncidentIQ.Worker/Dockerfile
+
+    depends_on:
+      cosmos:
+        condition: service_healthy
+      servicebus-emulator:
+        condition: service_started
+
+    environment:
+      Cosmos__Endpoint: "https://cosmos:8081"
+      Cosmos__Key: "${COSMOS_EMULATOR_KEY}"
+      Cosmos__DatabaseName: "IncidentIQ"
+      Cosmos__IncidentsContainerName: "Incidents"
+      Cosmos__RunbooksContainerName: "Runbooks"
+
+      ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
+      ServiceBus__FullyQualifiedNamespace: "servicebus-emulator"
+      ServiceBus__AnalyseIncidentQueueName: "analyse-incident"
+
+      SSL_CERT_FILE: "/cosmos-certs/ca-bundle.crt"
+
+    volumes:
+      - cosmos-certs:/cosmos-certs:ro
+
   cosmos-cert-gen:
     image: alpine:3.24.1
     user: "0:0"

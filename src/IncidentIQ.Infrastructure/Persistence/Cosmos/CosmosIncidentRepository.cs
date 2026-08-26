@@ -72,4 +72,17 @@ internal sealed class CosmosIncidentRepository : IIncidentRepository
 
         return incidents;
     }
+
+    public async Task<Incident> UpdateAsync(Incident incident, CancellationToken cancellationToken = default)
+    {
+        var document = IncidentDocument.FromDomain(incident);
+
+        var response = await _container.ReplaceItemAsync(
+            document,
+            document.Id,
+            new PartitionKey(document.Id),
+            cancellationToken: cancellationToken);
+
+        return response.Resource.ToDomain();
+    }
 }

@@ -27,6 +27,8 @@ public static class DependencyInjection
         services.AddScoped<UpdateRunbookHandler>();
         services.AddScoped<DeleteRunbookHandler>();
 
+        services.AddTransient<AnalyseIncidentHandler>();
+
         return services;
     }
 }
