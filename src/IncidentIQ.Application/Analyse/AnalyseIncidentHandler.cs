@@ -25,4 +25,31 @@ public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepositor
         #endregion
 
     }
+
+    /// <summary>
+    /// Marks the specified incident as failed with the given failure reason.
+    /// </summary>
+    /// <param name="command">The command containing the incident ID to mark as failed.</param>
+    /// <param name="failureReason">The reason why the incident is being marked as failed.</param>
+    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
+    public async Task MarkFailedAsync(
+    AnalyseIncidentCommand command,
+    string failureReason,
+    CancellationToken cancellationToken = default)
+    {
+        var incident = await incidentRepository.GetByIdAsync(command.IncidentId, cancellationToken);
+
+        if (incident is null)
+        {
+            return;
+        }
+
+        if (incident.Status is IncidentStatus.Completed or IncidentStatus.Failed)
+        {
+            return;
+        }
+
+        incident.MarkFailed(failureReason);
+        await incidentRepository.UpdateAsync(incident, cancellationToken);
+    }
 }

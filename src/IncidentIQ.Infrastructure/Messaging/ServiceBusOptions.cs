@@ -13,4 +13,11 @@ public sealed class ServiceBusOptions
     /// So in production it is done via API Managed Identity, but in development it is done via connection string. 
     /// </summary>
     public string? ConnectionString { get; init; }
+
+    /// <summary>
+    /// The maximum number of times a message can be delivered before it is dead-lettered.
+    /// Must align with both the 'Bicep' configuration and the Service Bus entity settings.
+    /// And (if working locally) the local Service Bus emulator settings.
+    /// </summary>
+    public int MaxDeliveryCount { get; init; } = 5;
 }

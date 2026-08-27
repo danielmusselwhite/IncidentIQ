@@ -462,11 +462,13 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 
 ## Stage 8 — Reliability & Messaging
 
-* [ ] Add transient retry handling.
+* [x] Add transient retry handling.
 
-* [ ] Add dead-letter handling.
+* [x] Add dead-letter handling.
 
-* [ ] Make Worker processing idempotent.
+* [x] Final `Failed` handling after retries are exhausted.
+
+* [x] Make Worker processing idempotent (done via basic state-based idempotency).
 
 * [x] Add processing attempt/failure metadata.
 
@@ -476,7 +478,6 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 
 * [ ] Add reliability and duplicate-message tests.
   
-* [ ] Final `Failed` handling after retries are exhausted.
 
 ## Stage 9 — Application Deployment
 
@@ -489,6 +490,7 @@ Deploy the complete working application to Azure.
 * [ ] Create API Container App Bicep module.
 
 * [ ] Create Worker Container App Bicep module.
+  * [ ] When deploying worker to ACA make sure application setting matches the bicep queue setting for `MaxDeliveryCount`.
 
 * [ ] Create frontend hosting infrastructure.
 
@@ -692,6 +694,7 @@ Provision Event Grid and Functions before integrating them.
 
 - [ ] Add Polly maybe?
 - [ ] Atm we just have basic state-based idempotency by disallowing work on incidents that are already marked as completed. Could strengthen this by implementing more robust idempotency mechanisms, such as request tokens, distributed locks, or optimistic concurrecy/ eTags.
+- [ ] Add a flow chart to show how everything goes together eg the API, Worker but also internally eg Command, Handler, etc. etc. 
 
 ## Stage 20 — Optional AI-200 Experiments
 

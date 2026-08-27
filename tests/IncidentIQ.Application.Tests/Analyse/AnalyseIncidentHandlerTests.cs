@@ -32,8 +32,7 @@ public sealed class AnalyseIncidentHandlerTests
         Assert.NotNull(incident.ProcessingStartedAt);
         Assert.NotNull(incident.CompletedAt);
 
-        // The incident is persisted once when processing starts
-        // and again when processing completes.
+        // The incident is persisted once when processing starts and again when processing completes.
         _repository.Verify(
             repository => repository.UpdateAsync(incident, It.IsAny<CancellationToken>()),
             Times.Exactly(2));
@@ -66,7 +65,6 @@ public sealed class AnalyseIncidentHandlerTests
         var incident = CreateIncident();
         incident.StartProcessingAttempt();
         incident.MarkCompleted();
-
         var command = CreateAnalyseIncidentCommand(incident.Id);
 
         _repository
@@ -93,7 +91,6 @@ public sealed class AnalyseIncidentHandlerTests
         // Arrange
         var incident = CreateIncident();
         incident.StartProcessingAttempt();
-
         Assert.Equal(1, incident.AttemptCount);
 
         var command = CreateAnalyseIncidentCommand(incident.Id);
@@ -116,6 +113,86 @@ public sealed class AnalyseIncidentHandlerTests
         _repository.Verify(
             repository => repository.UpdateAsync(incident, It.IsAny<CancellationToken>()),
             Times.Exactly(2));
+    }
+
+    [Fact]
+    public async Task MarkFailedAsync_WhenIncidentIsProcessing_MarksIncidentFailed()
+    {
+        // Arrange
+        var incident = CreateIncident();
+        incident.StartProcessingAttempt();
+        var command = CreateAnalyseIncidentCommand(incident.Id);
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(incident);
+
+        var handler = new AnalyseIncidentHandler(_repository.Object);
+
+        // Act
+        await handler.MarkFailedAsync(command, "AI service unavailable");
+
+        // Assert
+        Assert.Equal(IncidentStatus.Failed, incident.Status);
+        Assert.Equal("AI service unavailable", incident.FailureReason);
+        Assert.NotNull(incident.FailedAt);
+
+        _repository.Verify(
+            repository => repository.UpdateAsync(incident, It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task MarkFailedAsync_WhenIncidentIsCompleted_DoesNothing()
+    {
+        // Arrange
+        var incident = CreateIncident();
+        incident.StartProcessingAttempt();
+        incident.MarkCompleted();
+        var command = CreateAnalyseIncidentCommand(incident.Id);
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(incident);
+
+        var handler = new AnalyseIncidentHandler(_repository.Object);
+
+        // Act
+        await handler.MarkFailedAsync(command, "Late failure");
+
+        // Assert
+        Assert.Equal(IncidentStatus.Completed, incident.Status);
+
+        _repository.Verify(
+            repository => repository.UpdateAsync(It.IsAny<Incident>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task MarkFailedAsync_WhenIncidentIsAlreadyFailed_DoesNothing()
+    {
+        // Arrange
+        var incident = CreateIncident();
+        incident.StartProcessingAttempt();
+        incident.MarkFailed("Initial failure");
+        var command = CreateAnalyseIncidentCommand(incident.Id);
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(incident);
+
+        var handler = new AnalyseIncidentHandler(_repository.Object);
+
+        // Act
+        await handler.MarkFailedAsync(command, "Duplicate failure");
+
+        // Assert
+        Assert.Equal(IncidentStatus.Failed, incident.Status);
+        Assert.Equal("Initial failure", incident.FailureReason);
+
+        _repository.Verify(
+            repository => repository.UpdateAsync(It.IsAny<Incident>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     private static Incident CreateIncident()
