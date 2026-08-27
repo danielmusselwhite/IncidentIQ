@@ -11,6 +11,12 @@ internal sealed class IncidentDocument
     [JsonPropertyName("id")]
     public required string Id { get; init; }
 
+    [JsonPropertyName("incidentId")]
+    public required string IncidentId { get; init; } // required to allow outbox pattern (to ensure eventual consistency) as Cosmos TransactionalBatch can only atomically operate on items sharing the same logical partition key, so need to make a separate shared IncidentId for both, as otherwise they'd have different unique automatically assigned Id's
+
+    [JsonPropertyName("documentType")]
+    public string DocumentType { get; init; } = "Incident";
+
     public required string Title { get; init; }
 
     public required string Description { get; init; }
@@ -51,6 +57,7 @@ internal sealed class IncidentDocument
         return new IncidentDocument
         {
             Id = incident.Id,
+            IncidentId = incident.Id,
             Title = incident.Title,
             Description = incident.Description,
             Service = incident.Service,
@@ -65,7 +72,7 @@ internal sealed class IncidentDocument
             FailureReason = incident.FailureReason,
             FailedAt = incident.FailedAt,
             AttemptCount = incident.AttemptCount,
-            LastAttemptAt = incident.LastAttemptAt,
+            LastAttemptAt = incident.LastAttemptAt
         };
     }
 

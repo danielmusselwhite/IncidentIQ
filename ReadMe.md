@@ -472,9 +472,12 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 
 * [x] Add processing attempt/failure metadata.
 
-* [ ] Handle Cosmos + Service Bus dual-write consistency.
+* [~] Handle Cosmos + Service Bus dual-write consistency.
+  * [ ] Done via outbox pattern to ensure eventual consistency between Cosmos DB and Service Bus.
 
 * [ ] Add admin retry/requeue functionality.
+  * [ ] Only the backend logic and API endpoint
+  * [ ] Will later in stage 16 include the front-end side on  the admin operations page
 
 * [ ] Add reliability and duplicate-message tests.
   

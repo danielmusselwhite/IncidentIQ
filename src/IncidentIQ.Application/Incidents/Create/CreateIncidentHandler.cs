@@ -18,8 +18,7 @@ namespace IncidentIQ.Application.Incidents.Create;
 /// Validator used to validate the create incident command.
 /// </param>
 public sealed class CreateIncidentHandler(
-    IIncidentRepository incidentRepository,
-    IIncidentAnalysisQueue incidentAnalysisQueue,
+    IIncidentSubmissionStore incidentSubmissionStore,
     IValidator<CreateIncidentCommand> validator)
 {
     /// <summary>
@@ -54,24 +53,18 @@ public sealed class CreateIncidentHandler(
             command.Severity,
             command.Symptoms);
 
-        // Persist the incident before requesting analysis.
-        var createdIncident = await incidentRepository.CreateAsync(
-            incident,
-            cancellationToken);
-
-        // Create a lightweight command for the asynchronous Worker.
-        // The Worker will retrieve the full incident from Cosmos using the ID.
+        // create the analyse incident command
         var analyseIncidentCommand = new AnalyseIncidentCommand(
             CommandId: Guid.NewGuid(),
-            IncidentId: createdIncident.Id,
+            IncidentId: incident.Id,
             CorrelationId: correlationId,
-            QueuedAtUtc: createdIncident.CreatedAt);
+            QueuedAtUtc: incident.CreatedAt);
 
-        // Send the analysis request to the configured messaging implementation.
-        await incidentAnalysisQueue.EnqueueAsync(
+        // create the incident + outbox message in the submission store
+        // (this outbox will be relayed to the se)
+        return await incidentSubmissionStore.CreateAsync(
+            incident,
             analyseIncidentCommand,
             cancellationToken);
-
-        return createdIncident;
     }
 }

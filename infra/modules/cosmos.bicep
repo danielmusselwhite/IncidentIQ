@@ -11,7 +11,6 @@ param runbooksContainerName string = 'Runbooks'
 
 param apiPrincipalId string
 
-
 var cosmosAccountName = 'cosmos-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
 
 var cosmosDataContributorRoleId = '00000000-0000-0000-0000-000000000002' // Cosmos built in Data Contributor role definition ID
@@ -83,7 +82,7 @@ resource incidentsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
 
       partitionKey: {
         paths: [
-          '/id'
+          '/incidentId'
         ]
         kind: 'Hash'
         version: 2

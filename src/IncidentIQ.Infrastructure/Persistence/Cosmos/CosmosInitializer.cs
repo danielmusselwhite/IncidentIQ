@@ -21,7 +21,7 @@ public sealed class CosmosInitializer
         _client = client;
         _options = options.Value;
     }
-    
+
     /// <summary>
     /// Initializes the Cosmos DB database and containers if they do not already exist.
     /// </summary>
