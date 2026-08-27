@@ -468,7 +468,7 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 
 * [ ] Make Worker processing idempotent.
 
-* [ ] Add processing attempt/failure metadata.
+* [x] Add processing attempt/failure metadata.
 
 * [ ] Handle Cosmos + Service Bus dual-write consistency.
 
@@ -688,7 +688,11 @@ Provision Event Grid and Functions before integrating them.
 
 * [ ] Perform final end-to-end testing.
 
-## Stage 19 — Optional AI-200 Experiments
+## Stage 19 - Optional other potential improvements
+
+- [ ] Add Polly maybe?
+
+## Stage 20 — Optional AI-200 Experiments
 
 Keep experiments isolated from the primary architecture and document the trade-offs discovered.
 

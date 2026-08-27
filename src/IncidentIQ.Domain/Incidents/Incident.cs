@@ -33,6 +33,10 @@ public sealed class Incident
 
     public DateTimeOffset? FailedAt { get; private set; }
 
+    public int AttemptCount { get; private set; }
+
+    public DateTimeOffset? LastAttemptAt { get; private set; }
+
     /// <summary>
     /// Initializes a new instance of the <see cref="Incident"/> class with the specified details.
     /// </summary>
@@ -122,12 +126,32 @@ public sealed class Incident
     string? symptoms,
     IncidentStatus status,
     DateTimeOffset createdAt,
-    DateTimeOffset updatedAt)
+    DateTimeOffset updatedAt,
+    DateTimeOffset? processingStartedAt,
+    DateTimeOffset? completedAt,
+    string? failureReason,
+    DateTimeOffset? failedAt,
+    int attemptCount,
+    DateTimeOffset? lastAttemptAt)
     {
-        var incident = new Incident(id, title, description, service, environment, severity, symptoms, createdAt)
+        var incident = new Incident(
+            id,
+            title,
+            description,
+            service,
+            environment,
+            severity,
+            symptoms,
+            createdAt)
         {
             Status = status,
-            UpdatedAt = updatedAt
+            UpdatedAt = updatedAt,
+            ProcessingStartedAt = processingStartedAt,
+            CompletedAt = completedAt,
+            FailureReason = failureReason,
+            FailedAt = failedAt,
+            AttemptCount = attemptCount,
+            LastAttemptAt = lastAttemptAt
         };
 
         return incident;
@@ -135,17 +159,30 @@ public sealed class Incident
 
     #region Status Transitions
     /// <summary>
-    /// Marks the incident as actively being processed by the analysis worker.
+    /// Records the start of an analysis processing attempt.
+    ///
+    /// The first attempt moves the Incident from Queued to Processing.
+    /// Subsequent attempts are allowed while the Incident is already Processing.
     /// </summary>
-    public void MarkProcessing()
+    public void StartProcessingAttempt()
     {
-        if (Status != IncidentStatus.Queued)
+        if (Status is not IncidentStatus.Queued and not IncidentStatus.Processing)
         {
-            throw new InvalidOperationException($"Incident cannot move from {Status} to Processing.");
+            throw new InvalidOperationException(
+                $"Cannot process an incident with status '{Status}'.");
         }
 
-        Status = IncidentStatus.Processing;
-        ProcessingStartedAt = DateTimeOffset.UtcNow;
+        var now = DateTimeOffset.UtcNow;
+
+        if (Status == IncidentStatus.Queued)
+        {
+            Status = IncidentStatus.Processing;
+            ProcessingStartedAt = now;
+        }
+
+        AttemptCount++;
+        LastAttemptAt = now;
+        UpdatedAt = now;
     }
 
     /// <summary>
@@ -155,23 +192,33 @@ public sealed class Incident
     {
         if (Status != IncidentStatus.Processing)
         {
-            throw new InvalidOperationException($"Incident cannot move from {Status} to Completed.");
+            throw new InvalidOperationException(
+                $"Incident cannot move from {Status} to Completed.");
         }
 
+        var now = DateTimeOffset.UtcNow;
+
         Status = IncidentStatus.Completed;
-        CompletedAt = DateTimeOffset.UtcNow;
+        CompletedAt = now;
+        UpdatedAt = now;
     }
 
     public void MarkFailed(string failureReason)
     {
-        if (Status != IncidentStatus.Processing && Status != IncidentStatus.Queued)
+        ArgumentException.ThrowIfNullOrWhiteSpace(failureReason);
+
+        if (Status != IncidentStatus.Processing)
         {
-            throw new InvalidOperationException($"Incident cannot move from {Status} to Failed.");
+            throw new InvalidOperationException(
+                $"Incident cannot move from {Status} to Failed.");
         }
+
+        var now = DateTimeOffset.UtcNow;
 
         Status = IncidentStatus.Failed;
         FailureReason = failureReason;
-        FailedAt = DateTimeOffset.UtcNow;
+        FailedAt = now;
+        UpdatedAt = now;
     }
     #endregion
 }

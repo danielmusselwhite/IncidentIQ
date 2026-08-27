@@ -23,7 +23,7 @@ public sealed class AnalyseIncidentHandler(
 
         #region TODO - Temporary placeholder. Actual AI analysis will replace this later.
         // do the processing
-        incident.MarkProcessing();
+        incident.StartProcessingAttempt();
 
         await incidentRepository.UpdateAsync(
             incident,

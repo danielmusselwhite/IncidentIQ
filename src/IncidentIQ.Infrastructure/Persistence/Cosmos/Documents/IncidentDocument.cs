@@ -28,7 +28,19 @@ internal sealed class IncidentDocument
     public required DateTimeOffset CreatedAt { get; init; }
 
     public required DateTimeOffset UpdatedAt { get; init; }
-    
+
+    public DateTimeOffset? ProcessingStartedAt { get; set; }
+
+    public DateTimeOffset? CompletedAt { get; set; }
+
+    public string? FailureReason { get; set; }
+
+    public DateTimeOffset? FailedAt { get; set; }
+
+    public int AttemptCount { get; set; }
+
+    public DateTimeOffset? LastAttemptAt { get; set; }
+
     /// <summary>
     /// Creates an <see cref="IncidentDocument"/> from the specified domain <see cref="Incident"/>.
     /// </summary>
@@ -47,7 +59,13 @@ internal sealed class IncidentDocument
             Symptoms = incident.Symptoms,
             Status = incident.Status,
             CreatedAt = incident.CreatedAt,
-            UpdatedAt = incident.UpdatedAt
+            UpdatedAt = incident.UpdatedAt,
+            ProcessingStartedAt = incident.ProcessingStartedAt,
+            CompletedAt = incident.CompletedAt,
+            FailureReason = incident.FailureReason,
+            FailedAt = incident.FailedAt,
+            AttemptCount = incident.AttemptCount,
+            LastAttemptAt = incident.LastAttemptAt,
         };
     }
 
@@ -67,6 +85,12 @@ internal sealed class IncidentDocument
             Symptoms,
             Status,
             CreatedAt,
-            UpdatedAt);
+            UpdatedAt,
+            ProcessingStartedAt,
+            CompletedAt,
+            FailureReason,
+            FailedAt,
+            AttemptCount,
+            LastAttemptAt);
     }
 }
