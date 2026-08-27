@@ -13,49 +13,29 @@ public sealed class AnalyseIncidentHandlerTests
     public async Task HandleAsync_WhenIncidentExists_MarksIncidentCompleted()
     {
         // Arrange
-        var incident = Incident.Create(
-            "Payments API timeout",
-            "Checkout requests are timing out.",
-            "Payments",
-            "Production",
-            IncidentSeverity.High,
-            "Database timeout errors");
-
-        var command = new AnalyseIncidentCommand(
-            Guid.NewGuid(),
-            incident.Id,
-            "test-correlation-id",
-            DateTimeOffset.UtcNow);
+        var incident = CreateIncident();
+        var command = CreateAnalyseIncidentCommand(incident.Id);
 
         _repository
-            .Setup(repository => repository.GetByIdAsync(
-                incident.Id,
-                It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(incident);
 
-        var handler = new AnalyseIncidentHandler(
-            _repository.Object);
+        var handler = new AnalyseIncidentHandler(_repository.Object);
 
         // Act
         await handler.HandleAsync(command);
 
         // Assert
-        Assert.Equal(
-            IncidentStatus.Completed,
-            incident.Status);
-
-        Assert.NotNull(
-            incident.ProcessingStartedAt);
-
-        Assert.NotNull(
-            incident.CompletedAt);
+        Assert.Equal(IncidentStatus.Completed, incident.Status);
+        Assert.Equal(1, incident.AttemptCount);
+        Assert.NotNull(incident.LastAttemptAt);
+        Assert.NotNull(incident.ProcessingStartedAt);
+        Assert.NotNull(incident.CompletedAt);
 
         // The incident is persisted once when processing starts
         // and again when processing completes.
         _repository.Verify(
-            repository => repository.UpdateAsync(
-                incident,
-                It.IsAny<CancellationToken>()),
+            repository => repository.UpdateAsync(incident, It.IsAny<CancellationToken>()),
             Times.Exactly(2));
     }
 
@@ -63,29 +43,98 @@ public sealed class AnalyseIncidentHandlerTests
     public async Task HandleAsync_WhenIncidentDoesNotExist_ThrowsException()
     {
         // Arrange
-        var command = new AnalyseIncidentCommand(
-            Guid.NewGuid(),
-            "missing-incident",
-            "test-correlation-id",
-            DateTimeOffset.UtcNow);
+        var command = CreateAnalyseIncidentCommand("missing-incident");
 
         _repository
-            .Setup(repository => repository.GetByIdAsync(
-                command.IncidentId,
-                It.IsAny<CancellationToken>()))
+            .Setup(repository => repository.GetByIdAsync(command.IncidentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Incident?)null);
 
-        var handler = new AnalyseIncidentHandler(
-            _repository.Object);
+        var handler = new AnalyseIncidentHandler(_repository.Object);
 
         // Act + Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(
-            () => handler.HandleAsync(command));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.HandleAsync(command));
 
         _repository.Verify(
-            repository => repository.UpdateAsync(
-                It.IsAny<Incident>(),
-                It.IsAny<CancellationToken>()),
+            repository => repository.UpdateAsync(It.IsAny<Incident>(), It.IsAny<CancellationToken>()),
             Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenIncidentIsAlreadyCompleted_DoesNothing()
+    {
+        // Arrange
+        var incident = CreateIncident();
+        incident.StartProcessingAttempt();
+        incident.MarkCompleted();
+
+        var command = CreateAnalyseIncidentCommand(incident.Id);
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(incident);
+
+        var handler = new AnalyseIncidentHandler(_repository.Object);
+
+        // Act
+        await handler.HandleAsync(command);
+
+        // Assert
+        Assert.Equal(IncidentStatus.Completed, incident.Status);
+        Assert.Equal(1, incident.AttemptCount);
+
+        _repository.Verify(
+            repository => repository.UpdateAsync(It.IsAny<Incident>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenIncidentIsAlreadyProcessing_RetriesProcessing()
+    {
+        // Arrange
+        var incident = CreateIncident();
+        incident.StartProcessingAttempt();
+
+        Assert.Equal(1, incident.AttemptCount);
+
+        var command = CreateAnalyseIncidentCommand(incident.Id);
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(incident);
+
+        var handler = new AnalyseIncidentHandler(_repository.Object);
+
+        // Act
+        await handler.HandleAsync(command);
+
+        // Assert
+        Assert.Equal(IncidentStatus.Completed, incident.Status);
+        Assert.Equal(2, incident.AttemptCount);
+        Assert.NotNull(incident.LastAttemptAt);
+        Assert.NotNull(incident.CompletedAt);
+
+        _repository.Verify(
+            repository => repository.UpdateAsync(incident, It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    private static Incident CreateIncident()
+    {
+        return Incident.Create(
+            "Payments API timeout",
+            "Checkout requests are timing out.",
+            "Payments",
+            "Production",
+            IncidentSeverity.High,
+            "Database timeout errors");
+    }
+
+    private static AnalyseIncidentCommand CreateAnalyseIncidentCommand(string incidentId)
+    {
+        return new AnalyseIncidentCommand(
+            Guid.NewGuid(),
+            incidentId,
+            "test-correlation-id",
+            DateTimeOffset.UtcNow);
     }
 }

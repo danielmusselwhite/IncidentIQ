@@ -691,6 +691,7 @@ Provision Event Grid and Functions before integrating them.
 ## Stage 19 - Optional other potential improvements
 
 - [ ] Add Polly maybe?
+- [ ] Atm we just have basic state-based idempotency by disallowing work on incidents that are already marked as completed. Could strengthen this by implementing more robust idempotency mechanisms, such as request tokens, distributed locks, or optimistic concurrecy/ eTags.
 
 ## Stage 20 — Optional AI-200 Experiments
 
