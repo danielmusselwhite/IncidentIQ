@@ -44,7 +44,7 @@ Each main area has its own responsibility:
 
 ### Software architecture
 
-![Clean Architecture Diagram: credit Dor Lugasi-Gal, Microsoft Dev Blogs](docs/images/clean-architecture-diagram.png)
+![Clean Architecture Diagram: credit Dor Lugasi-Gal, Microsoft Dev Blogs](docs/images/clean-architecture.png)
 
 IncidentIQ uses a lightweight **Clean Architecture** approach:
 
