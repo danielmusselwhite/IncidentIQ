@@ -18,7 +18,7 @@ public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepositor
         incident.StartProcessingAttempt();
         await incidentRepository.UpdateAsync(incident, cancellationToken);
 
-        Thread.Sleep(5000); // just sleep so we can see the processing state in the UI
+        Thread.Sleep(15000); // just sleep so we can see the processing state in the UI
 
         incident.MarkCompleted();
         await incidentRepository.UpdateAsync(incident, cancellationToken);

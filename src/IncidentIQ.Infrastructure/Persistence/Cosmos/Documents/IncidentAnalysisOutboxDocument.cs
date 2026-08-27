@@ -17,12 +17,16 @@ public sealed class IncidentAnalysisOutboxDocument
     [JsonPropertyName("documentType")]
     public string DocumentType { get; init; } = "AnalyseIncidentOutbox";
 
+    [JsonPropertyName("commandId")]
     public required Guid CommandId { get; init; }
 
+    [JsonPropertyName("correlationId")]
     public required string CorrelationId { get; init; }
 
+    [JsonPropertyName("queuedAtUtc")]
     public required DateTimeOffset QueuedAtUtc { get; init; }
 
+    [JsonPropertyName("createdAt")]
     public required DateTimeOffset CreatedAt { get; init; }
 
     public static IncidentAnalysisOutboxDocument FromCommand(AnalyseIncidentCommand command)

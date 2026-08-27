@@ -50,7 +50,7 @@ public sealed class IncidentOutboxWorker : BackgroundService
         _changeFeedProcessor = incidentsContainer
             .GetChangeFeedProcessorBuilder<JsonElement>(ProcessorName, HandleChangesAsync)
             .WithInstanceName(Environment.MachineName)
-            .WithLeaseContainer(leaseContainer)
+            .WithLeaseContainer(leaseContainer) // !IMPORTANT - The lease container is used to track the progress of the Change Feed Processor across multiple instances. In outbox pattern this allows us to determine which changes have already been processed and which are new.
             .WithStartTime(DateTime.MinValue.ToUniversalTime())
             .WithPollInterval(TimeSpan.FromSeconds(2))
             .Build();
