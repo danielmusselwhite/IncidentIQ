@@ -11,12 +11,13 @@ public sealed class CosmosOptions
     /// Optional, as it is needed when running in dev with the Cosmos emulator, 
     /// But not needed when running in Azure with managed identity.
     /// </summary>
-    public required string? Key { get; init; }
+    public string? Key { get; init; }
 
     public required string DatabaseName { get; init; }
 
     #region Containers
     public required string IncidentsContainerName { get; init; }
     public required string RunbooksContainerName { get; init; }
+    public required string ChangeFeedLeasesContainerName { get; init; }
     #endregion
 }

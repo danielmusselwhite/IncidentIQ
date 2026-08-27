@@ -90,6 +90,7 @@ The following normally remain unchanged because the resource and container names
   "Cosmos:DatabaseName": "IncidentIQ",
   "Cosmos:IncidentsContainerName": "Incidents",
   "Cosmos:RunbooksContainerName": "Runbooks",
+  "Cosmos:ChangeFeedLeasesContainerName": "ChangeFeedLeases",
   "ServiceBus:FullyQualifiedNamespace": "<service-bus-namespace>.servicebus.windows.net",
   "ServiceBus:AnalyseIncidentQueueName": "analyse-incident"
 }
@@ -118,6 +119,7 @@ When running the Worker directly against Azure, configure the same Cosmos and Se
   "Cosmos:DatabaseName": "IncidentIQ",
   "Cosmos:IncidentsContainerName": "Incidents",
   "Cosmos:RunbooksContainerName": "Runbooks",
+  "Cosmos:ChangeFeedLeasesContainerName": "ChangeFeedLeases",
   "ServiceBus:FullyQualifiedNamespace": "<service-bus-namespace>.servicebus.windows.net",
   "ServiceBus:AnalyseIncidentQueueName": "analyse-incident"
 }

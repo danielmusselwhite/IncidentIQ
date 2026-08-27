@@ -10,7 +10,10 @@ builder.Services.AddInfrastructureDependencies(builder.Configuration);
 // Register application services and handlers.
 builder.Services.AddApplicationDependencies();
 
-// Register the background worker responsible for consuming AnalyseIncident commands from Service Bus.
+// Relays persisted Cosmos outbox entries into Service Bus.
+builder.Services.AddHostedService<IncidentOutboxWorker>();
+
+// Consumes AnalyseIncident commands from Service Bus.
 builder.Services.AddHostedService<AnalyseIncidentWorker>();
 
 var host = builder.Build();

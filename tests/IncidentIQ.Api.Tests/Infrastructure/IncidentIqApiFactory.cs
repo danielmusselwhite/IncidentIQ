@@ -13,6 +13,13 @@ public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
 
     public InMemoryIncidentAnalysisQueue AnalysisQueue { get; } = new();
 
+    public InMemoryIncidentSubmissionStore IncidentSubmissionStore { get; }
+
+    public IncidentIqApiFactory()
+    {
+        IncidentSubmissionStore = new InMemoryIncidentSubmissionStore(IncidentRepository);
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         // Program.cs only initializes Cosmos in Development.
@@ -29,6 +36,9 @@ public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IIncidentAnalysisQueue>();
             services.AddSingleton<IIncidentAnalysisQueue>(AnalysisQueue);
+
+            services.RemoveAll<IIncidentSubmissionStore>();
+            services.AddSingleton<IIncidentSubmissionStore>(IncidentSubmissionStore);
         });
     }
 

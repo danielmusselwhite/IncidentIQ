@@ -98,6 +98,7 @@ output applicationInsightsName string = applicationInsights.outputs.name
 output apiIdentityName string = apiIdentity.outputs.name
 output apiIdentityClientId string = apiIdentity.outputs.clientId
 output cosmosRunbooksContainerName string = cosmos.outputs.runbooksContainerName
+output cosmosChangeFeedLeasesContainerName string = cosmos.outputs.changeFeedLeasesContainerName
 output serviceBusNamespaceName string = serviceBus.outputs.namespaceName
 output serviceBusFullyQualifiedNamespace string = serviceBus.outputs.fullyQualifiedNamespace
 output analyseIncidentQueueName string = serviceBus.outputs.analyseIncidentQueueName

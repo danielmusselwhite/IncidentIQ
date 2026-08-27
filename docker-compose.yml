@@ -33,6 +33,7 @@ services:
       Cosmos__DatabaseName: "IncidentIQ"
       Cosmos__IncidentsContainerName: "Incidents"
       Cosmos__RunbooksContainerName: "Runbooks"
+      Cosmos__ChangeFeedLeasesContainerName: "ChangeFeedLeases"
 
       ServiceBus__ConnectionString: "Endpoint=sb://servicebus-emulator;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=SAS_KEY_VALUE;UseDevelopmentEmulator=true;"
       ServiceBus__FullyQualifiedNamespace: "servicebus-emulator"

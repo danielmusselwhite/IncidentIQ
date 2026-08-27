@@ -6,7 +6,7 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 /// <summary>
 /// Represents a pending AnalyseIncident command persisted atomically alongside its Incident.
 /// </summary>
-internal sealed class IncidentAnalysisOutboxDocument
+public sealed class IncidentAnalysisOutboxDocument
 {
     [JsonPropertyName("id")]
     public required string Id { get; init; }

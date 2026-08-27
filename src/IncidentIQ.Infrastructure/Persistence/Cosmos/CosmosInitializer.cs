@@ -35,12 +35,18 @@ public sealed class CosmosInitializer
 
         await databaseResponse.Database.CreateContainerIfNotExistsAsync(
             _options.IncidentsContainerName,
-            "/id",
+            "/incidentId",
             cancellationToken: cancellationToken);
 
         await databaseResponse.Database.CreateContainerIfNotExistsAsync(
             new ContainerProperties(
                 _options.RunbooksContainerName,
+                "/id"),
+            cancellationToken: cancellationToken);
+
+        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
+            new ContainerProperties(
+                _options.ChangeFeedLeasesContainerName,
                 "/id"),
             cancellationToken: cancellationToken);
     }

@@ -254,6 +254,7 @@ Typical configuration includes:
   "Cosmos:DatabaseName": "IncidentIQ",
   "Cosmos:IncidentsContainerName": "Incidents",
   "Cosmos:RunbooksContainerName": "Runbooks",
+  "Cosmos:ChangeFeedLeasesContainerName": "ChangeFeedLeases",
   "ServiceBus:FullyQualifiedNamespace": "<SERVICE_BUS_NAMESPACE>.servicebus.windows.net",
   "ServiceBus:AnalyseIncidentQueueName": "analyse-incident",
   "APPLICATIONINSIGHTS_CONNECTION_STRING": "<APP_INSIGHTS_CONNECTION_STRING>"
