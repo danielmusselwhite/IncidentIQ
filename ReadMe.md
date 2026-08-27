@@ -105,21 +105,18 @@ Each main project also has its own README for implementation-specific responsibi
 
 ## Quick Start
 
-For normal local development:
+### Docker-Compose
 
-```powershell
-docker compose up --build
-```
+**For normal local development**, as the project has enabled Container, and Container Orchestration Support within **Visual Studio** you should be able to select in the **Debug Target** dropdown the appropriate service (e.g., `docker-compose`) then click **debug** to run the application within the containerized environment along with debugging support.
 
-Then start the frontend:
+After doing so you can then find:
+- API: https://localhost:7156/swagger
+- Web: http://localhost:5173
+- Cosmos DB Emulator: http://localhost:1234/
 
-```powershell
-cd src\IncidentIQ.Web
-npm install
-npm run dev
-```
+#### Connected to Azure
 
-See the [Development Guide](docs/DEVELOPMENT.md) for configuration, URLs, local emulators, and Azure-connected development.
+- If instead you wish to connect to the real, non-emulated Azure services, you will need to configure the appropriate environment variables and credentials as described in the [Development Guide](docs/DEVELOPMENT.md), and then run either outside of Docker-Compose, or modify the Docker-Compose setup environment variables and secrets to use those Azure services.
 
 ## Testing
 
@@ -129,7 +126,7 @@ Run the backend test suite from the repository root:
 dotnet test
 ```
 
-See [tests/README.md](tests/README.md) for the testing strategy and end-to-end reliability checks.
+See [tests/README.md](tests/ReadMe.md) for the testing strategy and end-to-end reliability checks.
 
 ## Roadmap
 
