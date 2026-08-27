@@ -7,6 +7,16 @@ import type { Incident } from "../../types/incident";
 
 import "./IncidentDetailPage.css";
 
+const POLL_INTERVAL_MS = 2000;
+
+/**
+ * Simple helper function to determine if an incident should be polled based on its status.
+ * Only incidents with a status of "Queued" or "Processing" should be polled.
+ */
+function shouldPoll(status: Incident["status"]) {
+    return status === "Queued" || status === "Processing";
+}
+
 /**
  * Displays the details of a single incident.
  *
@@ -34,40 +44,93 @@ export default function IncidentDetailPage() {
      * with something outside of rendering the component itself.
      */
     useEffect(() => {
-        // The route should always provide an ID, but guard against a malformed
-        // or incorrectly configured route before attempting an API request.
         if (!id) {
             setError("Incident ID is missing.");
             setIsLoading(false);
             return;
         }
 
+        let isCancelled = false;
+        let pollTimeout: number | undefined;
+
         /**
-         * Fetches the incident from the API and updates the component state.
+         * Loads the Incident and continues polling while the backend is
+         * asynchronously processing it.
+         *
+         * The initial request controls the page loading state. Later polling
+         * requests update the Incident silently so the page does not flicker
+         * between loading and loaded states.
          */
-        const loadIncident = async () => {
+        async function loadIncident(isInitialLoad: boolean) {
             try {
-                const result = await getIncident(id);
-                setIncident(result);
-            } catch (error) {
-                // Give the user a more specific message when the API explicitly
-                // reports that the requested incident does not exist.
-                if (error instanceof ApiError && error.status === 404) {
+                if (isInitialLoad) {
+                    setIsLoading(true);
+                }
+
+                const loadedIncident = await getIncident(id!);
+
+                if (isCancelled) {
+                    return;
+                }
+
+                setIncident(loadedIncident);
+                setError(null);
+
+                /*
+                 * Queued and Processing are temporary states.
+                 *
+                 * Once the Incident reaches Completed or Failed there is no
+                 * reason to continue polling.
+                 */
+                if (shouldPoll(loadedIncident.status)) {
+                    pollTimeout = window.setTimeout(
+                        () => void loadIncident(false),
+                        POLL_INTERVAL_MS,
+                    );
+                }
+            } catch (caughtError) {
+                if (isCancelled) {
+                    return;
+                }
+
+                if (caughtError instanceof ApiError && caughtError.status === 404) {
                     setError("Incident not found.");
-                } else {
+                    return;
+                }
+
+                /*
+                 * An initial failure prevents the page from loading.
+                 * A polling failure should not remove an Incident that the user
+                 * has already successfully loaded.
+                 */
+                if (isInitialLoad) {
                     setError("Unable to load incident.");
+                } else {
+                    pollTimeout = window.setTimeout(
+                        () => void loadIncident(false),
+                        POLL_INTERVAL_MS,
+                    );
                 }
             } finally {
-                // finally runs whether the request succeeded or failed.
-                setIsLoading(false);
+                if (!isCancelled && isInitialLoad) {
+                    setIsLoading(false);
+                }
+            }
+        }
+
+        void loadIncident(true);
+
+        /*
+         * Prevent a pending poll from running after the user navigates away.
+         */
+        return () => {
+            isCancelled = true;
+
+            if (pollTimeout !== undefined) {
+                window.clearTimeout(pollTimeout);
             }
         };
-
-        // Effects themselves cannot be async, so the async work is placed in
-        // loadIncident() and invoked from within the effect.
-        // "void" indicates that we intentionally do not use the returned Promise.
-        void loadIncident();
-    }, [id]); // Re-run this effect if the incident ID in the URL changes.
+    }, [id]);
 
     // Return early while the API request is still in progress.
     // This prevents the main page from rendering before incident data exists.

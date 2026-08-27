@@ -452,15 +452,13 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 
 * [x] Implement Worker message consumption.
 
-* [ ] Implement `Queued → Processing → Completed / Failed`.
+* [x] Implement `Queued → Processing → Completed / Failed` (failed is moved to stage 8).
 
   * [x] `Queued → Processing → Completed`
 
-  * [ ] Final `Failed` handling after retries are exhausted.
-
 * [x] Propagate correlation IDs between API and Worker.
 
-* [ ] Add frontend processing-status polling.
+* [x] Add frontend processing-status polling.
 
 ## Stage 8 — Reliability & Messaging
 
@@ -477,6 +475,8 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 * [ ] Add admin retry/requeue functionality.
 
 * [ ] Add reliability and duplicate-message tests.
+  
+* [ ] Final `Failed` handling after retries are exhausted.
 
 ## Stage 9 — Application Deployment
 
