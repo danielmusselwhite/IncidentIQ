@@ -19,4 +19,16 @@ public interface IIncidentSubmissionStore
         Incident incident,
         AnalyseIncidentCommand analyseIncidentCommand,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Persists a failed incident along with the associated retry analysis command.
+    /// </summary>
+    /// <param name="incident">The failed incident to persist.</param>
+    /// <param name="retryAnalyseIncidentCommand">The retry analysis command associated with the incident.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
+    /// <returns>The persisted <see cref="Incident"/>.</returns>
+    Task<Incident> RetryAsync(
+        Incident incident,
+        AnalyseIncidentCommand retryAnalyseIncidentCommand,
+        CancellationToken cancellationToken = default);
 }

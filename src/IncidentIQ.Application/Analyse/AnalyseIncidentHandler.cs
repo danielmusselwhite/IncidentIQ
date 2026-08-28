@@ -1,6 +1,8 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
+using IncidentIQ.Application.Common.Exceptions;
+namespace IncidentIQ.Application.Incidents.Analyse;
 
 public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepository)
 {
@@ -8,7 +10,7 @@ public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepositor
     {
         // first, get the incident we have been messaged to analyse
         var incident = await incidentRepository.GetByIdAsync(command.IncidentId, cancellationToken);
-        if (incident is null) throw new InvalidOperationException($"Incident '{command.IncidentId}' could not be found.");
+        if (incident is null) throw new IncidentNotFoundException(command.IncidentId);
 
         // basic state-based idempotency: (if incident has already been processed, return and treat as a no-op so worker can safely complete it, prevents same work from being done multiple times)
         if (incident.Status == IncidentStatus.Completed) return;

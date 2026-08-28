@@ -166,12 +166,8 @@ public sealed class Incident
     /// </summary>
     public void StartProcessingAttempt()
     {
-        if (Status is not IncidentStatus.Queued and not IncidentStatus.Processing)
-        {
-            throw new InvalidOperationException(
-                $"Cannot process an incident with status '{Status}'.");
-        }
-
+        if (Status is not IncidentStatus.Queued and not IncidentStatus.Processing) throw new InvalidOperationException($"Cannot process an incident with status '{Status}'.");
+        
         var now = DateTimeOffset.UtcNow;
 
         if (Status == IncidentStatus.Queued)
@@ -190,11 +186,7 @@ public sealed class Incident
     /// </summary>
     public void MarkCompleted()
     {
-        if (Status != IncidentStatus.Processing)
-        {
-            throw new InvalidOperationException(
-                $"Incident cannot move from {Status} to Completed.");
-        }
+        if (Status != IncidentStatus.Processing) throw new InvalidOperationException($"Incident cannot move from {Status} to Completed.");
 
         var now = DateTimeOffset.UtcNow;
 
@@ -207,11 +199,7 @@ public sealed class Incident
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(failureReason);
 
-        if (Status != IncidentStatus.Processing)
-        {
-            throw new InvalidOperationException(
-                $"Incident cannot move from {Status} to Failed.");
-        }
+        if (Status != IncidentStatus.Processing) throw new InvalidOperationException($"Incident cannot move from {Status} to Failed.");
 
         var now = DateTimeOffset.UtcNow;
 
@@ -219,6 +207,20 @@ public sealed class Incident
         FailureReason = failureReason;
         FailedAt = now;
         UpdatedAt = now;
+    }
+
+    public void ResetForRetry()
+    {
+        if (Status != IncidentStatus.Failed) throw new InvalidOperationException($"Incident cannot be reset for retry unless it is in Failed status. Current status: {Status}.");
+        
+        Status = IncidentStatus.Queued;
+        FailureReason = null;
+        FailedAt = null;
+        UpdatedAt = DateTimeOffset.UtcNow;
+        AttemptCount = 0;
+        LastAttemptAt = null;
+        ProcessingStartedAt = null;
+        CompletedAt = null;
     }
     #endregion
 }

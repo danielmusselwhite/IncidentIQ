@@ -1,5 +1,6 @@
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Retry;
 using IncidentIQ.Domain.Incidents;
 using IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 using Microsoft.Azure.Cosmos;
@@ -37,6 +38,27 @@ internal sealed class CosmosIncidentSubmissionStore : IIncidentSubmissionStore
             .CreateItem(outboxDocument)
             .ExecuteAsync(cancellationToken);
         if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Failed to persist Incident and analysis outbox message. Cosmos returned {response.StatusCode}.");
+
+        // Retrieve the persisted incident document from the transactional batch response (the first result)
+        var incidentResult = response.GetOperationResultAtIndex<IncidentDocument>(0);
+
+        // Convert back to the domain incident object.
+        return incidentResult.Resource.ToDomain();
+    }
+
+    public async Task<Incident> RetryAsync(Incident incident, AnalyseIncidentCommand command, CancellationToken cancellationToken = default)
+    {
+        // Convert the domain incident and retry analysis command into their respective Cosmos DB documents.
+        var incidentDocument = IncidentDocument.FromDomain(incident);
+        var outboxDocument = IncidentAnalysisOutboxDocument.FromCommand(command);
+
+        // Execute the transactional batch to persist both documents atomically.
+        using var response = await _container
+            .CreateTransactionalBatch(new PartitionKey(incident.Id)) // use the incident ID as the partition key for the transactional batch
+            .ReplaceItem(incident.Id, incidentDocument) // update the existing incident document 
+            .CreateItem(outboxDocument) // create a new outbox with a new CommandId and CorrelationId, this means Outbox worker will pick up and create a new message in the azure service bus
+            .ExecuteAsync(cancellationToken);
+        if (!response.IsSuccessStatusCode) throw new InvalidOperationException($"Failed to persist Incident and retry analysis outbox message. Cosmos returned {response.StatusCode}.");
 
         // Retrieve the persisted incident document from the transactional batch response (the first result)
         var incidentResult = response.GetOperationResultAtIndex<IncidentDocument>(0);

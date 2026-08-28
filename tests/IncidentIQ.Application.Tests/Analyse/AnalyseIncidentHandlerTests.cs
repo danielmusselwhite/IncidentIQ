@@ -1,4 +1,5 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
+using IncidentIQ.Application.Common.Exceptions;
 using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
 using Moq;
@@ -51,7 +52,7 @@ public sealed class AnalyseIncidentHandlerTests
         var handler = new AnalyseIncidentHandler(_repository.Object);
 
         // Act + Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() => handler.HandleAsync(command));
+        await Assert.ThrowsAsync<IncidentNotFoundException>(() => handler.HandleAsync(command));
 
         _repository.Verify(
             repository => repository.UpdateAsync(It.IsAny<Incident>(), It.IsAny<CancellationToken>()),

@@ -28,6 +28,17 @@ public sealed class InMemoryIncidentSubmissionStore : IIncidentSubmissionStore
         return createdIncident;
     }
 
+    public async Task<Incident> RetryAsync(
+        Incident incident,
+        AnalyseIncidentCommand analyseIncidentCommand,
+        CancellationToken cancellationToken = default)
+    {
+        var createdIncident = await _incidentRepository.UpdateAsync(incident, cancellationToken);
+        _commands.Enqueue(analyseIncidentCommand);
+
+        return createdIncident;
+    }
+
     public void Clear()
     {
         while (_commands.TryDequeue(out _))
