@@ -145,6 +145,90 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         Assert.Equal(2, incidents.Length);
     }
 
+    #region Retry Tests
+
+    [Fact]
+    public async Task Retry_WhenIncidentIsFailed_ReturnsAcceptedAndPersistsNewAnalysisRequest()
+    {
+        // Arrange
+        var incident = CreateFailedIncident();
+
+        await _factory.IncidentRepository.CreateAsync(incident);
+
+        // Act
+        var response = await _client.PostAsync($"/api/incidents/{incident.Id}/retry", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+        var retriedIncidentResponse = await response.Content.ReadFromJsonAsync<IncidentResponse>(JsonOptions);
+        var retriedIncident = await _factory.IncidentRepository.GetByIdAsync(incident.Id);
+
+        Assert.NotNull(retriedIncident);
+        Assert.Equal(incident.Id, retriedIncident.Id);
+        Assert.Equal(IncidentStatus.Queued, retriedIncident.Status);
+        Assert.Equal(0, retriedIncident.AttemptCount);
+        Assert.Null(retriedIncident.LastAttemptAt);
+        Assert.Null(retriedIncident.ProcessingStartedAt);
+        Assert.Null(retriedIncident.CompletedAt);
+        Assert.Null(retriedIncident.FailureReason);
+        Assert.Null(retriedIncident.FailedAt);
+
+        Assert.True(response.Headers.Contains("X-Correlation-ID"));
+
+        var correlationId = response.Headers.GetValues("X-Correlation-ID").Single();
+
+        Assert.False(string.IsNullOrWhiteSpace(correlationId));
+
+        var analyseCommand = Assert.Single(_factory.IncidentSubmissionStore.Commands);
+
+        Assert.Equal(incident.Id, analyseCommand.IncidentId);
+        Assert.Equal(correlationId, analyseCommand.CorrelationId);
+        Assert.NotEqual(Guid.Empty, analyseCommand.CommandId);
+
+        Assert.NotNull(response.Headers.Location);
+        Assert.Contains(incident.Id, response.Headers.Location.ToString());
+    }
+
+    [Fact]
+    public async Task Retry_WhenIncidentDoesNotExist_ReturnsNotFoundAndDoesNotPersistAnalysisRequest()
+    {
+        // Act
+        var response = await _client.PostAsync("/api/incidents/missing-id/retry", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal("Incident not found", json.RootElement.GetProperty("title").GetString());
+
+        Assert.Empty(_factory.IncidentSubmissionStore.Commands);
+    }
+
+    [Fact]
+    public async Task Retry_WhenIncidentIsNotFailed_ReturnsConflictAndDoesNotPersistAnalysisRequest()
+    {
+        // Arrange
+        var incident = CreateIncident();
+
+        await _factory.IncidentRepository.CreateAsync(incident);
+
+        // Act
+        var response = await _client.PostAsync($"/api/incidents/{incident.Id}/retry", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal("Incident not retryable", json.RootElement.GetProperty("title").GetString());
+
+        Assert.Empty(_factory.IncidentSubmissionStore.Commands);
+    }
+
+    #endregion
+
     private static Incident CreateIncident()
     {
         return Incident.Create(
@@ -154,5 +238,15 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             "Production",
             IncidentSeverity.High,
             "Database timeout errors");
+    }
+    
+    private static Incident CreateFailedIncident()
+    {
+        var incident = CreateIncident();
+
+        incident.StartProcessingAttempt();
+        incident.MarkFailed("Analysis failed.");
+
+        return incident;
     }
 }
