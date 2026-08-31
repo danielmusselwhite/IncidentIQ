@@ -1,18 +1,17 @@
-// Create the Service Bus namespace and queue, and assign the API and Worker identities the appropriate RBAC roles to send and receive messages.
+// Azure Service Bus namespace, AnalyseIncident queue and Worker messaging RBAC.
 targetScope = 'resourceGroup'
 
 param location string
 param projectName string
 param environmentName string
 param tags object
-param apiPrincipalId string
 param workerPrincipalId string
 
 param analyseIncidentQueueName string = 'analyse-incident'
+param maxDeliveryCount int = 5
 
 var namespaceName = 'sb-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
 
-// Create the Service Bus namespace
 resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2026-01-01' = {
   name: namespaceName
   location: location
@@ -27,33 +26,32 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2026-01-01' = {
     minimumTlsVersion: '1.2'
     publicNetworkAccess: 'Enabled'
 
-    // Keep SAS available temporarily while we introduce and verify
-    // Managed Identity/RBAC. We can disable local auth afterwards.
+    // Keep SAS available while Managed Identity/RBAC is being verified end-to-end.
+    // This can be disabled during the later security-hardening stage.
     disableLocalAuth: false
 
     zoneRedundant: false
   }
 }
 
-// Within the namespace, create the queue for incident analysis commands
 resource analyseIncidentQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' = {
   parent: serviceBusNamespace
   name: analyseIncidentQueueName
 
   properties: {
-    // A Worker owns a message for up to one minute while processing it.
+    // PeekLock initially owns a delivery for one minute. The Worker SDK can renew
+    // the lock while a longer-running analysis is still being processed.
     lockDuration: 'PT1M'
 
-    // After five unsuccessful deliveries, Service Bus automatically
-    // moves the message into this queue's dead-letter subqueue.
-    maxDeliveryCount: 5
+    // Service Bus moves a message to the DLQ after the configured delivery limit.
+    // The same value is also passed to the Worker application configuration.
+    maxDeliveryCount: maxDeliveryCount
 
     // Analysis commands should not remain actionable indefinitely.
     defaultMessageTimeToLive: 'P1D'
     deadLetteringOnMessageExpiration: true
 
-    // Helps prevent duplicate commands when the same MessageId is
-    // accidentally sent again within this window.
+    // Suppress repeated MessageIds published within the duplicate-detection window.
     requiresDuplicateDetection: true
     duplicateDetectionHistoryTimeWindow: 'PT10M'
 
@@ -64,31 +62,31 @@ resource analyseIncidentQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01
   }
 }
 
-// Assign the API identity the Built-In Service Bus Data Sender role for this queue, so it can send messages to it.
+// Built-in Azure Service Bus Data Sender role. Required by IncidentOutboxWorker.
 var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
   '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
 )
-resource apiSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(analyseIncidentQueue.id, apiPrincipalId, serviceBusDataSenderRoleDefinitionId)
 
+resource workerSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(analyseIncidentQueue.id, workerPrincipalId, serviceBusDataSenderRoleDefinitionId)
   scope: analyseIncidentQueue
 
   properties: {
-    principalId: apiPrincipalId
+    principalId: workerPrincipalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: serviceBusDataSenderRoleDefinitionId
   }
 }
 
-// Assign the Worker identity the Built-In Service Bus Data Receiver role for this queue, so it can receive messages from it.
+// Built-in Azure Service Bus Data Receiver role. Required by AnalyseIncidentWorker.
 var serviceBusDataReceiverRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
   '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0'
 )
+
 resource workerReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(analyseIncidentQueue.id, workerPrincipalId, serviceBusDataReceiverRoleDefinitionId)
-
   scope: analyseIncidentQueue
 
   properties: {

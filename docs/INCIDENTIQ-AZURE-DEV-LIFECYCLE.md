@@ -20,7 +20,7 @@ rg-incidentiq-bootstrap
 
 `rg-incidentiq-bootstrap` contains the GitHub deployment identity and OIDC federation. Keeping it means the GitHub `development` environment identity values do not need to change.
 
-Deleting `rg-incidentiq-dev` removes the disposable development resources such as Cosmos DB, Service Bus, monitoring resources, and workload identities.
+Deleting `rg-incidentiq-dev` removes the disposable development resources such as Azure Container Registry, Container Apps, Static Web Apps, Cosmos DB, Service Bus, monitoring resources, and workload identities.
 
 ### Recreate the Dev Environment
 
@@ -38,7 +38,9 @@ az deployment sub create `
         githubRepositoryId="1342669343"
 ```
 
-Then run the **Deploy Development Infrastructure** GitHub Actions workflow.
+Then run the **Deploy Development** GitHub Actions workflow.
+
+The workflow provisions or updates the Azure resources, builds and pushes the API and Worker images to ACR, deploys the Container Apps, and deploys the React frontend.
 
 The normal environment deployment is defined by:
 
@@ -58,6 +60,10 @@ ServiceBus:ConnectionString    (only when SAS authentication is used)
 ```
 
 Deterministic resource/container names normally remain unchanged.
+
+These values are mainly required when running the API or Worker locally against the recreated Azure environment.
+
+The deployed Container Apps receive their Azure resource configuration through Bicep and authenticate to Azure services using Managed Identity.
 
 Common Cosmos configuration:
 
@@ -183,6 +189,10 @@ az provider register --namespace Microsoft.DocumentDB --wait
 az provider register --namespace Microsoft.OperationalInsights --wait
 az provider register --namespace Microsoft.Insights --wait
 az provider register --namespace Microsoft.ServiceBus --wait
+az provider register --namespace Microsoft.App --wait
+az provider register --namespace Microsoft.ContainerRegistry --wait
+az provider register --namespace Microsoft.Web --wait
+az provider register --namespace Microsoft.ManagedIdentity --wait
 ```
 
 These registrations are subscription-level and normally only need to be completed once.
@@ -211,10 +221,15 @@ rg-incidentiq-bootstrap
 rg-incidentiq-dev
 └── deployment identity RBAC
     ├── Contributor
-    └── Role Based Access Control Administrator
+    ├── Role Based Access Control Administrator
+    └── AcrPush
 ```
 
 The RBAC Administrator role is scoped to `rg-incidentiq-dev`.
+
+`AcrPush` allows the GitHub deployment identity to push the API and Worker container images into the development Azure Container Registry.
+
+Bootstrap is intentionally separate from normal application deployment. Re-run it manually when bootstrap-level identity, OIDC federation, or deployment RBAC changes.
 
 ### 4. Configure the GitHub `development` Environment
 
@@ -228,27 +243,43 @@ AZURE_SUBSCRIPTION_ID
 
 No client secret is required because GitHub authenticates through OIDC.
 
-### 5. Deploy Environment Infrastructure
+### 5. Deploy the Development Environment
 
-Run the **Deploy Development Infrastructure** workflow.
+Run the **Deploy Development** GitHub Actions workflow.
 
-The current environment includes Cosmos DB, Service Bus, workload identities, Log Analytics, and Application Insights.
-
-The Cosmos database includes:
+The deployment workflow:
 
 ```text
-IncidentIQ
-├── Incidents              /incidentId
-├── Runbooks               /id
-└── ChangeFeedLeases       /id
+tests
+→ Bicep validation + What-If
+→ provision/update infrastructure
+→ build + push API/Worker images
+→ deploy Container Apps
+→ build + deploy React frontend
 ```
 
-The messaging infrastructure includes:
+The current environment includes:
 
 ```text
-Service Bus
-└── analyse-incident
-    └── $DeadLetterQueue
+rg-incidentiq-dev
+
+├── Azure Container Registry
+├── Azure Container Apps Environment
+│   ├── API Container App
+│   └── Worker Container App
+├── Azure Static Web Apps
+├── Azure Cosmos DB
+│   └── IncidentIQ
+│       ├── Incidents              /incidentId
+│       ├── Runbooks               /id
+│       └── ChangeFeedLeases       /id
+├── Azure Service Bus
+│   └── analyse-incident
+│       └── $DeadLetterQueue
+├── API Managed Identity
+├── Worker Managed Identity
+├── Application Insights
+└── Log Analytics
 ```
 
 ### 6. Refresh Local Configuration

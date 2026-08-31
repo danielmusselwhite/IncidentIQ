@@ -137,29 +137,42 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 
 * [x] Add reliability and duplicate-message tests.
 
-## Stage 9 — Application Deployment
+## Stage 9 — Azure Deployment
 
 Deploy the complete working application to Azure.
 
-* [ ] Create ACR Bicep module.
-* [ ] Create Container Apps Environment Bicep module.
+### 9A — RBAC
+* [x] Align Azure RBAC with the transactional outbox architecture.
 
-* [ ] Create API Container App Bicep module.
-* [ ] Create Worker Container App Bicep module.
+### 9B — Azure Container Registry
+* [x] Create ACR Bicep module.
+* [x] Configure managed identity image pull access.
 
-  * [ ] When deploying worker to ACA make sure application setting matches the bicep queue setting for `MaxDeliveryCount`.
+### 9C — Container Apps Environment
+* [x] Create Container Apps Environment Bicep module.
+* [x] Connect it to the existing Log Analytics workspace.
 
-* [ ] Create frontend hosting infrastructure.
-* [ ] Deploy ACR, Container Apps and frontend hosting through Bicep.
+### 9D — API Container App
+* [x] Create API Container App Bicep module.
+* [x] Configure ingress, managed identity and Cosmos settings.
 
-* [ ] Add API/Worker container build and publish workflow.
-* [ ] Build and push API/Worker images to ACR.
+### 9E — Worker Container App
+* [x] Create Worker Container App Bicep module.
+* [x] Configure managed identity, Cosmos and Service Bus settings.
+* [x] Ensure `MaxDeliveryCount` matches the Service Bus queue configuration.
 
-* [ ] Deploy API and Worker containers.
-* [ ] Deploy the React frontend.
+### 9F — Frontend Hosting
+* [x] Create frontend hosting infrastructure.
+* [x] Configure frontend → API connectivity.
 
-* [ ] Configure frontend → API connectivity.
-* [ ] Verify the complete asynchronous workflow in Azure.
+### 9G — CI/CD & Deployment
+* [x] Add API/Worker container build and publish workflow.
+* [x] Build and push images to ACR.
+* [x] Deploy API, Worker and React frontend.
+
+### 9H — Azure Verification
+* [x] Verify the complete asynchronous workflow in Azure.
+* [x] Verify retry and failure behaviour.
 
 ## Stage 10 — Azure AI
 
@@ -312,6 +325,7 @@ Provision Event Grid and Functions before integrating them.
 - [ ] Atm we just have basic state-based idempotency by disallowing work on incidents that are already marked as completed. Could strengthen this by implementing more robust idempotency mechanisms, such as request tokens, distributed locks, or optimistic concurrecy/ eTags.
 
 - [x] Add architecture and create-incident message-flow diagrams. 
+- [ ] See about integrating with repo eg github so it can analyse for potentially breaking changes. (Eg if payments fail it may notice that a commit changed the payment service just before these related incidents started rolling in)
 
 ## Stage 20 — Optional AI-200 Experiments
 

@@ -1,3 +1,4 @@
+// User-assigned managed identity used by the API Container App.
 targetScope = 'resourceGroup'
 
 param location string
@@ -14,6 +15,6 @@ resource identity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' 
 }
 
 output id string = identity.id
+output name string = identity.name
 output clientId string = identity.properties.clientId
 output principalId string = identity.properties.principalId
-output name string = identity.name

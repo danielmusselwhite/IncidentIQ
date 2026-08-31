@@ -1,0 +1,318 @@
+name: Deploy Development
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  RESOURCE_GROUP: rg-incidentiq-dev
+  API_CONTAINER_APP_NAME: ca-incidentiq-api-dev
+  WORKER_CONTAINER_APP_NAME: ca-incidentiq-worker-dev
+  BOOTSTRAP_IMAGE: mcr.microsoft.com/azuredocs/containerapps-helloworld:latest
+  API_IMAGE_REPOSITORY: incidentiq-api
+  WORKER_IMAGE_REPOSITORY: incidentiq-worker
+
+# Never allow two deployments to mutate the shared dev environment at once.
+concurrency:
+  group: incidentiq-development-deploy
+  cancel-in-progress: false
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore ./IncidentIQ.slnx
+
+      - name: Build
+        run: dotnet build ./IncidentIQ.slnx --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test ./IncidentIQ.slnx --no-build --configuration Release
+
+  what-if:
+    name: Infrastructure What-If
+    runs-on: ubuntu-latest
+    needs: test
+    environment: development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Bicep
+        run: |
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          az bicep build --file infra/bootstrap/main.bicep --stdout > /dev/null
+          az bicep build-params --file infra/environments/dev.bicepparam --stdout > /dev/null
+
+      - name: Login to Azure with OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve currently deployed images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_image() {
+            local app_name="$1"
+
+            az resource show \
+              --resource-group "$RESOURCE_GROUP" \
+              --resource-type "Microsoft.App/containerApps" \
+              --api-version "2026-01-01" \
+              --name "$app_name" \
+              --query "properties.template.containers[0].image" \
+              --output tsv 2>/dev/null || true
+          }
+
+          API_IMAGE="$(current_image "$API_CONTAINER_APP_NAME")"
+          WORKER_IMAGE="$(current_image "$WORKER_CONTAINER_APP_NAME")"
+
+          API_IMAGE="${API_IMAGE:-$BOOTSTRAP_IMAGE}"
+          WORKER_IMAGE="${WORKER_IMAGE:-$BOOTSTRAP_IMAGE}"
+
+          echo "API_IMAGE=$API_IMAGE" >> "$GITHUB_ENV"
+          echo "WORKER_IMAGE=$WORKER_IMAGE" >> "$GITHUB_ENV"
+
+      - name: Preview development infrastructure changes
+        run: |
+          az deployment group what-if \
+            --resource-group "$RESOURCE_GROUP" \
+            --parameters infra/environments/dev.bicepparam \
+            apiImage="$API_IMAGE" \
+            workerImage="$WORKER_IMAGE"
+
+  deploy:
+    name: Deploy Application
+    runs-on: ubuntu-latest
+    needs: what-if
+    environment: development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Login to Azure with OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve currently deployed images
+        id: current-images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_image() {
+            local app_name="$1"
+
+            az resource show \
+              --resource-group "$RESOURCE_GROUP" \
+              --resource-type "Microsoft.App/containerApps" \
+              --api-version "2026-01-01" \
+              --name "$app_name" \
+              --query "properties.template.containers[0].image" \
+              --output tsv 2>/dev/null || true
+          }
+
+          API_IMAGE="$(current_image "$API_CONTAINER_APP_NAME")"
+          WORKER_IMAGE="$(current_image "$WORKER_CONTAINER_APP_NAME")"
+
+          API_IMAGE="${API_IMAGE:-$BOOTSTRAP_IMAGE}"
+          WORKER_IMAGE="${WORKER_IMAGE:-$BOOTSTRAP_IMAGE}"
+
+          echo "api_image=$API_IMAGE" >> "$GITHUB_OUTPUT"
+          echo "worker_image=$WORKER_IMAGE" >> "$GITHUB_OUTPUT"
+
+      - name: Provision/update Azure infrastructure
+        id: base-infra
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          DEPLOYMENT_NAME="incidentiq-base-${GITHUB_RUN_NUMBER}"
+
+          az deployment group create \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --parameters infra/environments/dev.bicepparam \
+            apiImage="${{ steps.current-images.outputs.api_image }}" \
+            workerImage="${{ steps.current-images.outputs.worker_image }}"
+
+          ACR_NAME="$(az deployment group show \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "properties.outputs.acrName.value" \
+            --output tsv)"
+
+          ACR_LOGIN_SERVER="$(az deployment group show \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "properties.outputs.acrLoginServer.value" \
+            --output tsv)"
+
+          echo "acr_name=$ACR_NAME" >> "$GITHUB_OUTPUT"
+          echo "acr_login_server=$ACR_LOGIN_SERVER" >> "$GITHUB_OUTPUT"
+
+      - name: Login to ACR
+        run: az acr login --name "${{ steps.base-infra.outputs.acr_name }}"
+
+      - name: Resolve application versions
+        id: versions
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          API_VERSION="$(dotnet msbuild src/IncidentIQ.Api/IncidentIQ.Api.csproj -getProperty:VersionPrefix)"
+          WORKER_VERSION="$(dotnet msbuild src/IncidentIQ.Worker/IncidentIQ.Worker.csproj -getProperty:VersionPrefix)"
+          SHORT_SHA="${GITHUB_SHA::7}"
+
+          echo "api_version=$API_VERSION" >> "$GITHUB_OUTPUT"
+          echo "worker_version=$WORKER_VERSION" >> "$GITHUB_OUTPUT"
+          echo "short_sha=$SHORT_SHA" >> "$GITHUB_OUTPUT"
+
+      - name: Build and push API image
+        shell: bash
+        run: |
+          set -euo pipefail
+          
+          IMAGE="${{ steps.base-infra.outputs.acr_login_server }}/${API_IMAGE_REPOSITORY}:${{steps.versions.outputs.api_version}}-${{ steps.versions.outputs.short_sha }}"
+
+          docker build \
+            --file src/IncidentIQ.Api/Dockerfile \
+            --tag "$IMAGE" \
+            .
+
+          docker push "$IMAGE"
+          echo "API_IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Build and push Worker image
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          IMAGE="${{ steps.base-infra.outputs.acr_login_server }}/${WORKER_IMAGE_REPOSITORY}:${{steps.versions.outputs.worker_version}}-${{ steps.versions.outputs.short_sha }}"
+
+          docker build \
+            --file src/IncidentIQ.Worker/Dockerfile \
+            --tag "$IMAGE" \
+            .
+
+          docker push "$IMAGE"
+          echo "WORKER_IMAGE=$IMAGE" >> "$GITHUB_ENV"
+
+      - name: Deploy application images
+        id: app-deployment
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          # Workload AcrPull assignments are created by the infrastructure
+          # deployment. Give Azure a short period to propagate fresh RBAC on the
+          # first deployment before ACA attempts to pull the private images.
+          sleep 30
+
+          DEPLOYMENT_NAME="incidentiq-${GITHUB_RUN_NUMBER}"
+
+          az deployment group create \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --parameters infra/environments/dev.bicepparam \
+            apiImage="$API_IMAGE" \
+            workerImage="$WORKER_IMAGE"
+
+          API_URL="$(az deployment group show \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "properties.outputs.apiUrl.value" \
+            --output tsv)"
+
+          FRONTEND_NAME="$(az deployment group show \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "properties.outputs.frontendName.value" \
+            --output tsv)"
+
+          FRONTEND_URL="$(az deployment group show \
+            --name "$DEPLOYMENT_NAME" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "properties.outputs.frontendUrl.value" \
+            --output tsv)"
+
+          echo "api_url=$API_URL" >> "$GITHUB_OUTPUT"
+          echo "frontend_name=$FRONTEND_NAME" >> "$GITHUB_OUTPUT"
+          echo "frontend_url=$FRONTEND_URL" >> "$GITHUB_OUTPUT"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22.x"
+          cache: npm
+          cache-dependency-path: src/IncidentIQ.Web/package-lock.json
+
+      - name: Install frontend dependencies
+        working-directory: src/IncidentIQ.Web
+        run: npm ci
+
+      - name: Build frontend
+        working-directory: src/IncidentIQ.Web
+        env:
+          VITE_API_BASE_URL: ${{ steps.app-deployment.outputs.api_url }}
+        run: npm run build
+
+      - name: Get Static Web Apps deployment token
+        id: swa-token
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          TOKEN="$(az staticwebapp secrets list \
+            --name "${{ steps.app-deployment.outputs.frontend_name }}" \
+            --resource-group "$RESOURCE_GROUP" \
+            --query "properties.apiKey" \
+            --output tsv)"
+
+          echo "::add-mask::$TOKEN"
+          echo "token=$TOKEN" >> "$GITHUB_OUTPUT"
+
+      - name: Deploy frontend
+        uses: Azure/static-web-apps-deploy@v1
+        with:
+          azure_static_web_apps_api_token: ${{ steps.swa-token.outputs.token }}
+          action: upload
+          app_location: src/IncidentIQ.Web/dist
+          output_location: ""
+          skip_app_build: true
+          skip_api_build: true
+
+      - name: Deployment summary
+        run: |
+          echo "### IncidentIQ development deployment" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- API: ${{ steps.app-deployment.outputs.api_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Frontend: ${{ steps.app-deployment.outputs.frontend_url }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- API image: $API_IMAGE" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Worker image: $WORKER_IMAGE" >> "$GITHUB_STEP_SUMMARY"

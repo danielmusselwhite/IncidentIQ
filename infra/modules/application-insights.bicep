@@ -1,3 +1,4 @@
+// Workspace-based Application Insights resource for application telemetry.
 targetScope = 'resourceGroup'
 
 param location string

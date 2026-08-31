@@ -1,10 +1,8 @@
 # IncidentIQ Infrastructure
 
-The `infra` folder contains the Infrastructure as Code for IncidentIQ.
+The `infra` folder contains the Azure Infrastructure as Code for IncidentIQ.
 
-Azure resources are defined with Bicep and deployed through GitHub Actions using OIDC authentication.
-
-For environment teardown/recreation and configuration refresh commands, see [IncidentIQ Azure Dev Environment Lifecycle](../docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
+Azure resources are defined with Bicep and deployed through GitHub Actions using OIDC authentication. For environment teardown/recreation and configuration refresh commands, see [IncidentIQ Azure Dev Environment Lifecycle](../docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
 
 ## Structure
 
@@ -20,14 +18,19 @@ infra/
 │   └── servicebus/
 │       └── Config.json
 ├── modules/
+│   ├── acr.bicep
+│   ├── api-container-app.bicep
 │   ├── api-identity.bicep
 │   ├── application-insights.bicep
+│   ├── container-apps-environment.bicep
 │   ├── cosmos.bicep
+│   ├── frontend.bicep
 │   ├── log-analytics.bicep
 │   ├── service-bus.bicep
+│   ├── worker-container-app.bicep
 │   └── worker-identity.bicep
 ├── main.bicep
-└── README.md
+└── ReadMe.md
 ```
 
 ## Bootstrap Infrastructure
@@ -40,28 +43,31 @@ rg-incidentiq-bootstrap
     └── OIDC federated credential
 ```
 
-The deployment identity receives resource-group-scoped permissions on:
+The deployment identity receives resource-group-scoped permissions on `rg-incidentiq-dev`:
 
 ```text
-rg-incidentiq-dev
-├── Contributor
-└── Role Based Access Control Administrator
+Contributor
+Role Based Access Control Administrator
+AcrPush
 ```
 
-This allows GitHub Actions to recreate the development environment and its workload RBAC assignments without storing an Azure client secret.
+This lets GitHub Actions provision the development environment, create workload RBAC assignments, and push application images to ACR without storing an Azure client secret.
 
-## Environment Infrastructure
+Bootstrap is run manually using the documented Azure CLI command when the deployment identity, OIDC federation, or bootstrap-level RBAC changes.
 
-`main.bicep` is the composition root for the application environment and receives environment-specific values from:
+## Development Environment
 
-```text
-environments/dev.bicepparam
-```
+`main.bicep` is the composition root for the application environment and receives environment-specific values from `environments/dev.bicepparam`.
 
 Current development resources include:
 
 ```text
 rg-incidentiq-dev
+├── Azure Container Registry
+├── Azure Container Apps Environment
+│   ├── API Container App
+│   └── Worker Container App
+├── Azure Static Web Apps
 ├── Azure Cosmos DB
 │   └── IncidentIQ
 │       ├── Incidents
@@ -78,13 +84,7 @@ rg-incidentiq-dev
 
 ## Cosmos DB
 
-Defined in:
-
-```text
-modules/cosmos.bicep
-```
-
-Current containers:
+Defined in `modules/cosmos.bicep`.
 
 | Container | Partition key | Purpose |
 |---|---|---|
@@ -92,87 +92,105 @@ Current containers:
 | `Runbooks` | `/id` | Editable operational Runbooks |
 | `ChangeFeedLeases` | `/id` | SDK-managed Change Feed Processor checkpoints/ownership |
 
-The shared `/incidentId` partition allows the API to atomically create:
-
-```text
-IncidentDocument
-+
-IncidentAnalysisOutboxDocument
-```
-
-using a single Cosmos transactional batch.
-
-The Change Feed Processor uses `ChangeFeedLeases` to relay outbox entries asynchronously.
+The shared `/incidentId` partition allows an Incident and its associated outbox document to be persisted atomically using a Cosmos transactional batch. The Worker later reads the outbox change through the Cosmos Change Feed and publishes the command to Service Bus.
 
 See [Design Decisions & Trade-offs](../docs/DESIGN-DECISIONS.md) for the reasoning behind the outbox and partition-key change.
 
 ## Service Bus
 
-Defined in:
+Defined in `modules/service-bus.bicep`.
+
+`analyse-incident` carries durable analysis commands and is configured for bounded redelivery, dead-lettering, TTL, and duplicate detection. The queue's `maxDeliveryCount` and the Worker application's `ServiceBus__MaxDeliveryCount` setting are sourced from the same Bicep parameter to keep retry behaviour aligned.
+
+## Container Hosting
+
+The API and Worker run in a shared Azure Container Apps Environment connected to Log Analytics.
 
 ```text
-modules/service-bus.bicep
+API Container App
+├── external HTTPS ingress
+├── scale-to-zero enabled
+├── API managed identity
+└── Cosmos + ACR access
+
+Worker Container App
+├── no ingress
+├── one replica kept running during Stage 9
+├── Worker managed identity
+├── Cosmos + ACR access
+└── Service Bus sender + receiver access
 ```
 
-Current queue:
+The Worker remains at one replica until queue/KEDA scaling is introduced later.
+
+## Container Registry
+
+ACR stores the API and Worker images.
+
+- Admin credentials are disabled.
+- Anonymous pull is disabled.
+- API and Worker managed identities receive `AcrPull` on the registry.
+- The GitHub deployment identity receives `AcrPush` at the development resource-group scope through bootstrap RBAC.
+- Container images are tagged as `<VersionPrefix>-<short-git-sha>` for human-readable versioning and source traceability.
+
+Example:
 
 ```text
-analyse-incident
-└── $DeadLetterQueue
+incidentiq-api:1.0.0-a83bf21
+incidentiq-worker:1.0.0-a83bf21
 ```
 
-The queue is configured for bounded redelivery, dead-lettering, TTL, and duplicate detection.
+## Frontend Hosting
 
-`AnalyseIncident` is a command and is therefore carried through a queue rather than an event topic.
+The React/Vite frontend is hosted in Azure Static Web Apps on the Free tier. Bicep provisions the Static Web App resource; GitHub Actions builds the frontend with the deployed API URL and uploads the generated `dist` directory.
 
 ## Workload Identities
 
 ### API Identity
 
-The API requires Cosmos access for incident and Runbook persistence.
-
-With the transactional outbox, the API no longer needs to publish the create-incident analysis command directly to Service Bus.
+The API uses Managed Identity for Cosmos DB and ACR. With the transactional outbox architecture, it does not publish directly to Service Bus.
 
 ### Worker Identity
 
-The Worker host runs both the outbox relay and analysis consumer.
-
-When deployed to Azure it therefore requires permissions for:
+The Worker host runs both background services:
 
 ```text
-Cosmos DB
-└── read Change Feed / leases and read-update Incidents
+IncidentOutboxWorker
+→ Cosmos Change Feed
+→ Service Bus Data Sender
 
-Service Bus
-├── Data Sender   (IncidentOutboxWorker)
-└── Data Receiver (AnalyseIncidentWorker)
+AnalyseIncidentWorker
+→ Service Bus Data Receiver
+→ Cosmos read/update
 ```
 
-Before the Worker Container App is deployed, Bicep RBAC should be aligned with these responsibilities. Any legacy API Service Bus sender assignment can be removed once the outbox architecture is fully reflected in Azure RBAC.
+It therefore requires Cosmos DB Data Contributor plus queue-scoped Service Bus Data Sender and Data Receiver roles.
 
 ## Monitoring
 
-`application-insights.bicep` and `log-analytics.bicep` create the initial telemetry resources.
+`application-insights.bicep`, `log-analytics.bicep`, and `container-apps-environment.bicep` provide the initial telemetry foundation. API and Worker Container Apps receive the Application Insights connection string through environment configuration.
 
-The API already supports Application Insights / Azure Monitor integration. Worker and distributed telemetry will be expanded during the observability stage.
+## GitHub Actions
 
-## GitHub Actions Deployment
-
-Infrastructure deployments use GitHub OIDC rather than a client secret.
-
-Typical flow:
+Deployment authentication uses GitHub OIDC and the `development` GitHub Environment.
 
 ```text
-GitHub Actions
-      ↓ OIDC
-Deployment Identity
-      ↓
-Bicep validation / what-if
-      ↓
-rg-incidentiq-dev
+Pull request → main
+→ tests
+→ Bicep validation
+→ Azure What-If
+
+Push → main / manual trigger
+→ tests
+→ Bicep validation + What-If
+→ provision/update Azure infrastructure
+→ build + push API/Worker images to ACR
+→ deploy Container App revisions
+→ build React with the deployed API URL
+→ deploy frontend to Static Web Apps
 ```
 
-Normal environment deployments should be performed through the repository deployment workflow.
+Normal application-environment deployments should be performed through the repository workflows. Bootstrap infrastructure remains a separate, intentionally infrequent manual operation.
 
 ## Local Infrastructure
 
@@ -186,11 +204,7 @@ Service Bus Emulator
 └── SQL Server dependency
 ```
 
-The Service Bus Emulator queue definition is stored at:
-
-```text
-infra/local/servicebus/Config.json
-```
+The Service Bus Emulator queue definition is stored at `infra/local/servicebus/Config.json`.
 
 For startup commands and local URLs, see the [Development Guide](../docs/DEVELOPMENT.md).
 
@@ -203,6 +217,11 @@ For startup commands and local URLs, see the [Development Guide](../docs/DEVELOP
 | Deployment RBAC | `bootstrap/deployment-role.bicep` |
 | Cosmos DB / containers / Cosmos RBAC | `modules/cosmos.bicep` |
 | Service Bus / queue / messaging RBAC | `modules/service-bus.bicep` |
+| Azure Container Registry / workload pull RBAC | `modules/acr.bicep` |
+| Container Apps Environment | `modules/container-apps-environment.bicep` |
+| API Container App | `modules/api-container-app.bicep` |
+| Worker Container App | `modules/worker-container-app.bicep` |
+| Static Web App | `modules/frontend.bicep` |
 | API identity | `modules/api-identity.bicep` |
 | Worker identity | `modules/worker-identity.bicep` |
 | Application Insights | `modules/application-insights.bicep` |
@@ -214,7 +233,7 @@ For startup commands and local URLs, see the [Development Guide](../docs/DEVELOP
 - Keep resource-specific configuration in modules.
 - Keep environment values in `.bicepparam` files.
 - Use OIDC rather than GitHub client secrets.
-- Scope deployment permissions to the development resource group.
 - Use Managed Identity and least-privilege RBAC where practical.
 - Keep bootstrap resources separate from disposable application resources.
+- Tag deployed container images as `<VersionPrefix>-<short-git-sha>` for human-readable versioning and source traceability.
 - Use local emulators for normal development where practical.

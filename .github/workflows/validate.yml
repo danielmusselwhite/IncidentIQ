@@ -1,0 +1,106 @@
+name: Validate
+
+on:
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  RESOURCE_GROUP: rg-incidentiq-dev
+  API_CONTAINER_APP_NAME: ca-incidentiq-api-dev
+  WORKER_CONTAINER_APP_NAME: ca-incidentiq-worker-dev
+  BOOTSTRAP_IMAGE: mcr.microsoft.com/azuredocs/containerapps-helloworld:latest
+
+concurrency:
+  group: incidentiq-validate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Restore dependencies
+        run: dotnet restore ./IncidentIQ.slnx
+
+      - name: Build
+        run: dotnet build ./IncidentIQ.slnx --no-restore --configuration Release
+
+      - name: Run tests
+        run: dotnet test ./IncidentIQ.slnx --no-build --configuration Release
+
+  what-if:
+    name: Infrastructure What-If
+    runs-on: ubuntu-latest
+    needs: test
+
+    # The OIDC federated credential and Azure secrets are scoped to this
+    # GitHub environment, so Azure-authenticated jobs must target it.
+    environment: development
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Validate Bicep
+        run: |
+          az bicep build --file infra/main.bicep --stdout > /dev/null
+          az bicep build --file infra/bootstrap/main.bicep --stdout > /dev/null
+          az bicep build-params --file infra/environments/dev.bicepparam --stdout > /dev/null
+
+      - name: Login to Azure with OIDC
+        uses: azure/login@v3
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Resolve currently deployed images
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          current_image() {
+            local app_name="$1"
+
+            az resource show \
+              --resource-group "$RESOURCE_GROUP" \
+              --resource-type "Microsoft.App/containerApps" \
+              --api-version "2026-01-01" \
+              --name "$app_name" \
+              --query "properties.template.containers[0].image" \
+              --output tsv 2>/dev/null || true
+          }
+
+          API_IMAGE="$(current_image "$API_CONTAINER_APP_NAME")"
+          WORKER_IMAGE="$(current_image "$WORKER_CONTAINER_APP_NAME")"
+
+          # On the first deployment the Container Apps do not exist yet. Use a
+          # public bootstrap image so What-If can still preview their creation.
+          API_IMAGE="${API_IMAGE:-$BOOTSTRAP_IMAGE}"
+          WORKER_IMAGE="${WORKER_IMAGE:-$BOOTSTRAP_IMAGE}"
+
+          echo "API_IMAGE=$API_IMAGE" >> "$GITHUB_ENV"
+          echo "WORKER_IMAGE=$WORKER_IMAGE" >> "$GITHUB_ENV"
+
+      - name: Preview development infrastructure changes
+        run: |
+          az deployment group what-if \
+            --resource-group "$RESOURCE_GROUP" \
+            --parameters infra/environments/dev.bicepparam \
+            apiImage="$API_IMAGE" \
+            workerImage="$WORKER_IMAGE"

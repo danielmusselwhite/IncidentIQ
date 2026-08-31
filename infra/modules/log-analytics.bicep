@@ -1,3 +1,4 @@
+// Shared Log Analytics workspace for Container Apps and Application Insights.
 targetScope = 'resourceGroup'
 
 param location string

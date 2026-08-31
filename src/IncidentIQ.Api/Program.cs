@@ -41,6 +41,8 @@ builder.Services.AddInfrastructureDependencies(builder.Configuration);
 builder.Services.AddApplicationDependencies();
 
 // CORS
+var frontendOrigin = builder.Configuration["Frontend:Origin"]; // Translated from 'Frontend__Origin' set via the bicep IaC
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("DevelopmentCors", policy =>
@@ -53,8 +55,11 @@ builder.Services.AddCors(options =>
 
     options.AddPolicy("ProductionCors", policy =>
     {
+        if (string.IsNullOrWhiteSpace(frontendOrigin))
+            throw new InvalidOperationException("Frontend__Origin must be configured in production.");
+
         policy
-            .WithOrigins("https://incidentiq.com")
+            .WithOrigins(frontendOrigin)
             .AllowAnyHeader()
             .AllowAnyMethod();
     });

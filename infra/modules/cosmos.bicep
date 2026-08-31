@@ -1,3 +1,4 @@
+// Cosmos DB account, application containers and workload data-plane RBAC.
 targetScope = 'resourceGroup'
 
 param location string
@@ -11,23 +12,14 @@ param runbooksContainerName string = 'Runbooks'
 param changeFeedLeasesContainerName string = 'ChangeFeedLeases'
 
 param apiPrincipalId string
+param workerPrincipalId string
 
 var cosmosAccountName = 'cosmos-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
 
-var cosmosDataContributorRoleId = '00000000-0000-0000-0000-000000000002' // Cosmos built in Data Contributor role definition ID
-
+// Built-in Cosmos DB Data Contributor role. The API persists application data;
+// the Worker reads the Change Feed/leases and reads/updates Incident state.
+var cosmosDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 var cosmosDataContributorRoleDefinitionId = '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDataContributorRoleId}'
-
-resource apiCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2026-03-15' = {
-  parent: cosmosAccount
-  name: guid(cosmosAccount.id, apiPrincipalId, cosmosDataContributorRoleId)
-
-  properties: {
-    principalId: apiPrincipalId
-    roleDefinitionId: cosmosDataContributorRoleDefinitionId
-    scope: cosmosAccount.id
-  }
-}
 
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2026-03-15' = {
   name: cosmosAccountName
@@ -50,6 +42,8 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2026-03-15' = {
       }
     ]
 
+    // Serverless keeps the development environment usage-based rather than
+    // provisioning dedicated throughput while the project is lightly used.
     capabilities: [
       {
         name: 'EnableServerless'
@@ -81,6 +75,8 @@ resource incidentsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
     resource: {
       id: incidentsContainerName
 
+      // Incident and outbox documents share incidentId so they can be written
+      // together in a single Cosmos transactional batch.
       partitionKey: {
         paths: [
           '/incidentId'
@@ -122,19 +118,18 @@ resource runbooksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true
-
         includedPaths: [
           {
             path: '/*'
           }
         ]
-
         excludedPaths: []
       }
     }
   }
 }
 
+// SDK-managed checkpoint/ownership state used by the Cosmos Change Feed Processor.
 resource changeFeedLeasesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2026-03-15' = {
   parent: database
   name: changeFeedLeasesContainerName
@@ -151,6 +146,28 @@ resource changeFeedLeasesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDat
         version: 2
       }
     }
+  }
+}
+
+resource apiCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2026-03-15' = {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, apiPrincipalId, cosmosDataContributorRoleId)
+
+  properties: {
+    principalId: apiPrincipalId
+    roleDefinitionId: cosmosDataContributorRoleDefinitionId
+    scope: cosmosAccount.id
+  }
+}
+
+resource workerCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2026-03-15' = {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, workerPrincipalId, cosmosDataContributorRoleId)
+
+  properties: {
+    principalId: workerPrincipalId
+    roleDefinitionId: cosmosDataContributorRoleDefinitionId
+    scope: cosmosAccount.id
   }
 }
 
