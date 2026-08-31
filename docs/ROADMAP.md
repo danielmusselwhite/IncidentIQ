@@ -166,13 +166,13 @@ Deploy the complete working application to Azure.
 * [x] Configure frontend → API connectivity.
 
 ### 9G — CI/CD & Deployment
-* [ ] Add API/Worker container build and publish workflow.
-* [ ] Build and push images to ACR.
-* [ ] Deploy API, Worker and React frontend.
+* [x] Add API/Worker container build and publish workflow.
+* [x] Build and push images to ACR.
+* [x] Deploy API, Worker and React frontend.
 
 ### 9H — Azure Verification
-* [ ] Verify the complete asynchronous workflow in Azure.
-* [ ] Verify retry and failure behaviour.
+* [x] Verify the complete asynchronous workflow in Azure.
+* [x] Verify retry and failure behaviour.
 
 ## Stage 10 — Azure AI
 

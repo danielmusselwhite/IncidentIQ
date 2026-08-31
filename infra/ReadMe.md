@@ -53,6 +53,8 @@ AcrPush
 
 This lets GitHub Actions provision the development environment, create workload RBAC assignments, and push application images to ACR without storing an Azure client secret.
 
+Bootstrap is run manually using the documented Azure CLI command when the deployment identity, OIDC federation, or bootstrap-level RBAC changes.
+
 ## Development Environment
 
 `main.bicep` is the composition root for the application environment and receives environment-specific values from `environments/dev.bicepparam`.
@@ -98,7 +100,7 @@ See [Design Decisions & Trade-offs](../docs/DESIGN-DECISIONS.md) for the reasoni
 
 Defined in `modules/service-bus.bicep`.
 
-`analyse-incident` carries durable analysis commands and is configured for bounded redelivery, dead-lettering, TTL, and duplicate detection. The queue's `maxDeliveryCount` and the Worker application's `ServiceBus__MaxDeliveryCount` setting are sourced from the same Bicep parameter to keep the retry behaviour aligned.
+`analyse-incident` carries durable analysis commands and is configured for bounded redelivery, dead-lettering, TTL, and duplicate detection. The queue's `maxDeliveryCount` and the Worker application's `ServiceBus__MaxDeliveryCount` setting are sourced from the same Bicep parameter to keep retry behaviour aligned.
 
 ## Container Hosting
 
@@ -129,6 +131,14 @@ ACR stores the API and Worker images.
 - Anonymous pull is disabled.
 - API and Worker managed identities receive `AcrPull` on the registry.
 - The GitHub deployment identity receives `AcrPush` at the development resource-group scope through bootstrap RBAC.
+- Container images are tagged as `<VersionPrefix>-<short-git-sha>` for human-readable versioning and source traceability.
+
+Example:
+
+```text
+incidentiq-api:1.0.0-a83bf21
+incidentiq-worker:1.0.0-a83bf21
+```
 
 ## Frontend Hosting
 
@@ -170,7 +180,7 @@ Pull request → main
 → Bicep validation
 → Azure What-If
 
-Push → main / manual deployment
+Push → main / manual trigger
 → tests
 → Bicep validation + What-If
 → provision/update Azure infrastructure
@@ -180,7 +190,7 @@ Push → main / manual deployment
 → deploy frontend to Static Web Apps
 ```
 
-Normal application-environment deployments should be performed through the repository workflows. Bootstrap infrastructure remains a separate, intentionally infrequent operation.
+Normal application-environment deployments should be performed through the repository workflows. Bootstrap infrastructure remains a separate, intentionally infrequent manual operation.
 
 ## Local Infrastructure
 
@@ -225,5 +235,5 @@ For startup commands and local URLs, see the [Development Guide](../docs/DEVELOP
 - Use OIDC rather than GitHub client secrets.
 - Use Managed Identity and least-privilege RBAC where practical.
 - Keep bootstrap resources separate from disposable application resources.
-- Use immutable Git SHA tags for deployed container images.
+- Tag deployed container images as `<VersionPrefix>-<short-git-sha>` for human-readable versioning and source traceability.
 - Use local emulators for normal development where practical.

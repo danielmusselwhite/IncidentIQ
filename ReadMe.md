@@ -130,6 +130,4 @@ See [tests/ReadMe.md](tests/ReadMe.md) for the testing strategy and end-to-end r
 
 ## Roadmap
 
-The current work is in **Stage 8 — Reliability & Messaging**. The transactional outbox and Change Feed relay are implemented; admin retry/requeue and additional reliability/duplicate-message tests remain.
-
 See the full [Development Roadmap](docs/ROADMAP.md).
