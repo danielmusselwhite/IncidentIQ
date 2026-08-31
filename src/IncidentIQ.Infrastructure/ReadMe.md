@@ -12,12 +12,13 @@ Current responsibilities include:
 
 - Cosmos DB client configuration.
 - Incident persistence.
+- Atomic Incident + analysis outbox persistence.
 - Runbook persistence.
 - Local Cosmos initialization.
 - Azure Service Bus client configuration.
-- Sending `AnalyseIncident` commands.
+- Sending `AnalyseIncidentCommand` messages.
 - Azure authentication through `DefaultAzureCredential` where configured.
-- Dependency injection registration for infrastructure services.
+- Dependency injection registration for Infrastructure services.
 
 ---
 
@@ -25,6 +26,7 @@ Current responsibilities include:
 
 ```text
 IncidentIQ.Infrastructure/
+
 ├── Messaging/
 │   ├── AzureServiceBusIncidentAnalysisQueue.cs
 │   └── ServiceBusOptions.cs
@@ -34,8 +36,9 @@ IncidentIQ.Infrastructure/
 │       ├── CosmosOptions.cs
 │       ├── CosmosInitializer.cs
 │       ├── CosmosIncidentRepository.cs
+│       ├── CosmosIncidentSubmissionStore.cs
 │       ├── CosmosRunbookRepository.cs
-│       └── persistence documents
+│       └── Documents/
 │
 └── DependencyInjection.cs
 ```
@@ -50,38 +53,61 @@ Current Cosmos persistence includes:
 
 ```text
 IncidentIQ Database
+
 ├── Incidents
-└── Runbooks
+├── Runbooks
+└── ChangeFeedLeases
 ```
 
-Both containers currently use:
+The `Runbooks` container uses: `Partition key: /id`
 
-```text
-Partition key: /id
-```
+The `ChangeFeedLeases` container uses: `Partition key: /id`
 
-Repository implementations map between Domain entities and Cosmos persistence documents.
+The `Incidents` container uses: `Partition key: /incidentId`
+
+The `Incidents` container stores both Incident documents and analysis outbox documents.
+
+Both document types share the same `incidentId`, which allows an Incident update/create and its associated outbox message to be persisted atomically using a Cosmos transactional batch.
+
+Repository and persistence implementations map between Domain/Application models and Cosmos persistence documents.
 
 The local `CosmosInitializer` creates development containers when running against the local emulator.
 
-Azure infrastructure is provisioned through Bicep instead.
+Azure infrastructure is provisioned separately through `Bicep`.
 
----
+## Transactional Outbox
+
+Incident creation and retry operations must persist both:
+
+```text
+Incident state
++
+AnalyseIncident outbox request
+```
+
+These are written atomically through `CosmosIncidentSubmissionStore`.
+
+This avoids the dual-write failure case where an Incident could be saved successfully but the corresponding Service Bus message failed to publish.
+
+The outbox document is later read through the Cosmos Change Feed by the Worker and published to Azure Service Bus.
 
 ## Service Bus
 
-Infrastructure provides the implementation of:
+Infrastructure provides the implementation of: `IIncidentAnalysisQueue`
+
+using `Azure Service Bus`.
+
+The Infrastructure implementation serialises and sends an `AnalyseIncidentCommand` to: `analyse-incident`
+
+The API does not publish directly to Service Bus. Instead:
 
 ```text
-IIncidentAnalysisQueue
-```
-
-using Azure Service Bus.
-
-The API creates an `AnalyseIncidentCommand`, while Infrastructure serialises and sends it to:
-
-```text
-analyse-incident
+API/Application
+→ persist Incident + Outbox atomically
+→ Cosmos Change Feed
+→ IncidentOutboxWorker
+→ IIncidentAnalysisQueue
+→ Azure Service Bus
 ```
 
 The Application layer therefore does not need to know that Azure Service Bus is being used.

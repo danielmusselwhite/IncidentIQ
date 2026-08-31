@@ -1,70 +1,36 @@
 # IncidentIQ Development Guide
 
-This guide explains how to run IncidentIQ in its two supported development modes:
+IncidentIQ supports two development modes:
 
-1. **Fully local** using Docker, Cosmos DB Emulator, and Service Bus Emulator.
-2. **Locally against Azure** using the deployed development resources.
+1. **Fully local** — Docker Compose, Cosmos DB Emulator, and Service Bus Emulator.
+2. **Azure-connected** — API and Worker run locally against the Azure development environment.
+
+For Azure resource creation, teardown, and secret refresh instructions, see [IncidentIQ Azure Dev Environment Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
 
 ---
 
-# Option 1 — Run Fully Locally
+## Option 1 — Fully Local
 
 This is the normal day-to-day development mode.
 
-It uses:
-
-- React frontend
-- ASP.NET Core API
-- .NET Worker
-- Cosmos DB Emulator
-- Service Bus Emulator
-
-```text
-React
-  ↓
-IncidentIQ.Api
-  ↓
-Cosmos DB Emulator
-  ↓
-Service Bus Emulator
-  ↓
-IncidentIQ.Worker
-  ↓
-Cosmos DB Emulator
-```
-
-## Prerequisites
-
-Install:
+### Prerequisites
 
 - Docker Desktop
 - .NET 10 SDK
 - Node.js / npm
 
----
+### 1. Configure `.env`
 
-## 1. Configure `.env`
-
-Create a `.env` file in the repository root if one does not already exist.
-
-Example:
+Create a `.env` file in the repository root:
 
 ```env
 COSMOS_EMULATOR_KEY=<COSMOS_EMULATOR_KEY>
 SERVICEBUS_SQL_PASSWORD=<LOCAL_SQL_PASSWORD>
 ```
 
-The `.env` file is used by Docker Compose and should remain outside source control.
+`.env` is used by Docker Compose and must remain outside source control.
 
-Ensure it is ignored by Git:
-
-```gitignore
-.env
-```
-
----
-
-## 2. Start the Backend
+### 2. Start the Backend
 
 From the repository root:
 
@@ -72,35 +38,23 @@ From the repository root:
 docker compose up --build
 ```
 
-This starts:
+This starts the API, Worker, Cosmos DB Emulator, Service Bus Emulator, and the SQL Server dependency used by the Service Bus Emulator.
 
-```text
-IncidentIQ.Api
-IncidentIQ.Worker
-Cosmos DB Emulator
-Service Bus Emulator
-Service Bus SQL Server
-```
-
-The Cosmos Emulator uses persistent Docker volumes, so local data is retained between normal container restarts.
-
-The Service Bus Emulator recreates its configured queues from:
+The Service Bus Emulator queue is defined in:
 
 ```text
 infra/local/servicebus/Config.json
 ```
 
-The current queue is:
+Current queue:
 
 ```text
 analyse-incident
 ```
 
----
+### 3. Start the Frontend
 
-## 3. Start the Frontend
-
-Open another terminal:
+In another terminal:
 
 ```powershell
 cd src\IncidentIQ.Web
@@ -114,285 +68,155 @@ The frontend normally runs at:
 http://localhost:5173
 ```
 
-The frontend API URL is configured through:
+and uses `VITE_API_BASE_URL` to locate the API.
 
-```env
-VITE_API_BASE_URL=https://localhost:7156
-```
-
----
-
-## 4. Open the Application
-
-Typical local URLs:
-
-```text
-Frontend: http://localhost:5173
-API:      https://localhost:7156
-Swagger:  https://localhost:7156/swagger
-```
-
----
-
-## Expected Local Flow
-
-Submitting an incident should result in:
+### 4. Local Runtime Flow
 
 ```text
 React
   ↓
 POST /api/incidents
   ↓
-API stores Incident as Queued
+API / Application
   ↓
-Cosmos DB Emulator
-  ↓
-AnalyseIncident command
-  ↓
-Service Bus Emulator
-  ↓
-Worker receives command
-  ↓
-Incident becomes Processing
-  ↓
-Incident becomes Completed
-  ↓
-Cosmos DB Emulator
+Cosmos transactional batch
+  ├── Incident (Queued)
+  └── AnalyseIncident Outbox
+          ↓
+     Cosmos Change Feed
+          ↓
+   IncidentOutboxWorker
+          ↓
+ Service Bus Emulator
+          ↓
+ AnalyseIncidentWorker
+          ↓
+   Cosmos Incident update
+          ↓
+Queued → Processing → Completed / Failed
 ```
 
-The frontend currently requires a manual refresh to see asynchronous status changes.
+The Incident Detail page polls the API while processing is active, so status changes appear automatically.
 
-Automatic processing-status polling will be added later.
+### 5. Local Cosmos Data Explorer
 
----
+The Cosmos vNext emulator Data Explorer is normally available at:
 
-## Stop the Local Environment
+```text
+http://localhost:1234
+```
 
-Stop the running containers with:
+Useful containers include:
+
+```text
+IncidentIQ
+├── Incidents
+├── Runbooks
+└── ChangeFeedLeases
+```
+
+`Incidents` contains both Incident and analysis-outbox documents. `ChangeFeedLeases` is SDK-managed state used by the Cosmos Change Feed Processor.
+
+### Stop the Environment
+
+Stop containers while retaining normal persisted volumes:
 
 ```powershell
 docker compose down
 ```
 
-This does not normally delete the persistent Cosmos data volume.
-
-To remove volumes as well:
+Remove containers and persisted volumes:
 
 ```powershell
 docker compose down -v
 ```
 
-Only use `-v` when you intentionally want to remove local persisted emulator data.
+Use `-v` only when you intentionally want to reset local emulator data, such as after a Cosmos partition-key change.
 
 ---
 
-# Option 2 — Run Locally Against Azure
+## Option 2 — Run Locally Against Azure
 
-Use this mode when you want to test the application against the real Azure development resources.
+Use this mode to verify real Azure Cosmos DB, Service Bus, authentication/RBAC, and telemetry behaviour.
 
-It uses:
+### 1. Ensure the Dev Environment Exists
 
-- React frontend running locally
-- ASP.NET Core API running locally
-- .NET Worker running locally
-- Azure Cosmos DB
-- Azure Service Bus
-- Application Insights
-
-```text
-React
-  ↓
-Local IncidentIQ.Api
-  ↓
-Azure Cosmos DB
-  ↓
-Azure Service Bus
-  ↓
-Local IncidentIQ.Worker
-  ↓
-Azure Cosmos DB
-```
-
----
-
-## 1. Ensure the Azure Dev Environment Exists
-
-The Azure development resource group must be deployed first:
+The development environment is:
 
 ```text
 rg-incidentiq-dev
 ```
 
-For deployment, teardown, recreation, and configuration instructions see:
+See [IncidentIQ Azure Dev Environment Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md) for deployment and recreation steps.
 
-```text
-docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md
-```
-
----
-
-## 2. Login to Azure
+### 2. Login
 
 ```powershell
 az login
 ```
 
-This allows `DefaultAzureCredential` to use your local Azure developer identity where Managed Identity / Entra authentication is supported.
+`DefaultAzureCredential` can then use your local Azure identity where supported.
 
----
+### 3. Configure Local Settings
 
-## 3. Configure API User-Secrets
+The API and Worker use separate .NET user-secrets stores.
 
-The API has its own .NET user-secrets store.
-
-Typical configuration includes:
-
-```json
-{
-  "Cosmos:Endpoint": "https://<COSMOS_ACCOUNT>.documents.azure.com:443/",
-  "Cosmos:Key": "<COSMOS_KEY>",
-  "Cosmos:DatabaseName": "IncidentIQ",
-  "Cosmos:IncidentsContainerName": "Incidents",
-  "Cosmos:RunbooksContainerName": "Runbooks",
-  "ServiceBus:FullyQualifiedNamespace": "<SERVICE_BUS_NAMESPACE>.servicebus.windows.net",
-  "ServiceBus:AnalyseIncidentQueueName": "analyse-incident",
-  "APPLICATIONINSIGHTS_CONNECTION_STRING": "<APP_INSIGHTS_CONNECTION_STRING>"
-}
-```
-
-Set individual values using:
-
-```powershell
-dotnet user-secrets set "Cosmos:Endpoint" "<COSMOS_ENDPOINT>" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "Cosmos:Key" "<COSMOS_KEY>" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "Cosmos:DatabaseName" "IncidentIQ" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "Cosmos:IncidentsContainerName" "Incidents" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "Cosmos:RunbooksContainerName" "Runbooks" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "ServiceBus:FullyQualifiedNamespace" "<SERVICE_BUS_NAMESPACE>.servicebus.windows.net" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "ServiceBus:AnalyseIncidentQueueName" "analyse-incident" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "APPLICATIONINSIGHTS_CONNECTION_STRING" "<APP_INSIGHTS_CONNECTION_STRING>" `
-    --project src\IncidentIQ.Api
-```
-
-If local execution uses a Service Bus connection string rather than `DefaultAzureCredential`, also configure:
-
-```powershell
-dotnet user-secrets set "ServiceBus:ConnectionString" "<SERVICE_BUS_CONNECTION_STRING>" `
-    --project src\IncidentIQ.Api
-```
-
----
-
-## 4. Configure Worker User-Secrets
-
-The Worker has a separate user-secrets store.
-
-It requires Cosmos and Service Bus configuration because it:
+Common Cosmos settings include:
 
 ```text
-consumes AnalyseIncident commands
-        ↓
-loads Incidents from Cosmos
-        ↓
-updates Incident status
+Cosmos:Endpoint
+Cosmos:Key
+Cosmos:DatabaseName
+Cosmos:IncidentsContainerName
+Cosmos:RunbooksContainerName
+Cosmos:ChangeFeedLeasesContainerName
 ```
 
-Typical configuration:
+The Worker additionally requires Service Bus configuration:
 
-```json
-{
-  "Cosmos:Endpoint": "https://<COSMOS_ACCOUNT>.documents.azure.com:443/",
-  "Cosmos:Key": "<COSMOS_KEY>",
-  "Cosmos:DatabaseName": "IncidentIQ",
-  "Cosmos:IncidentsContainerName": "Incidents",
-  "Cosmos:RunbooksContainerName": "Runbooks",
-  "ServiceBus:FullyQualifiedNamespace": "<SERVICE_BUS_NAMESPACE>.servicebus.windows.net",
-  "ServiceBus:AnalyseIncidentQueueName": "analyse-incident"
-}
+```text
+ServiceBus:FullyQualifiedNamespace
+ServiceBus:AnalyseIncidentQueueName
+ServiceBus:MaxDeliveryCount
 ```
 
-Set values using:
+If SAS authentication is being used instead of `DefaultAzureCredential`:
 
-```powershell
-dotnet user-secrets set "Cosmos:Endpoint" "<COSMOS_ENDPOINT>" `
-    --project src\IncidentIQ.Worker
-
-dotnet user-secrets set "Cosmos:Key" "<COSMOS_KEY>" `
-    --project src\IncidentIQ.Worker
-
-dotnet user-secrets set "Cosmos:DatabaseName" "IncidentIQ" `
-    --project src\IncidentIQ.Worker
-
-dotnet user-secrets set "Cosmos:IncidentsContainerName" "Incidents" `
-    --project src\IncidentIQ.Worker
-
-dotnet user-secrets set "Cosmos:RunbooksContainerName" "Runbooks" `
-    --project src\IncidentIQ.Worker
-
-dotnet user-secrets set "ServiceBus:FullyQualifiedNamespace" "<SERVICE_BUS_NAMESPACE>.servicebus.windows.net" `
-    --project src\IncidentIQ.Worker
-
-dotnet user-secrets set "ServiceBus:AnalyseIncidentQueueName" "analyse-incident" `
-    --project src\IncidentIQ.Worker
+```text
+ServiceBus:ConnectionString
 ```
 
-If required:
+The API can additionally use:
 
-```powershell
-dotnet user-secrets set "ServiceBus:ConnectionString" "<SERVICE_BUS_CONNECTION_STRING>" `
-    --project src\IncidentIQ.Worker
+```text
+APPLICATIONINSIGHTS_CONNECTION_STRING
 ```
 
----
+For exact Azure CLI commands and values that need refreshing after redeployment, see the [Azure Dev Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
 
-## 5. Start the API
-
-From the repository root:
+### 4. Start the API
 
 ```powershell
 dotnet run --project src\IncidentIQ.Api
 ```
 
-The API will now use the Azure development resources configured through user-secrets.
-
----
-
-## 6. Start the Worker
-
-Open another terminal:
+### 5. Start the Worker
 
 ```powershell
 dotnet run --project src\IncidentIQ.Worker
 ```
 
-The Worker should connect to:
+The Worker runs both:
 
 ```text
-Azure Service Bus
-└── analyse-incident
+IncidentOutboxWorker
+└── Cosmos Change Feed → Service Bus
+
+AnalyseIncidentWorker
+└── Service Bus → Incident processing
 ```
 
-and update incidents in Azure Cosmos DB.
-
----
-
-## 7. Start the Frontend
-
-Open another terminal:
+### 6. Start the Frontend
 
 ```powershell
 cd src\IncidentIQ.Web
@@ -400,7 +224,7 @@ npm install
 npm run dev
 ```
 
-Then open:
+Open:
 
 ```text
 http://localhost:5173
@@ -408,53 +232,10 @@ http://localhost:5173
 
 ---
 
-# Getting Azure Configuration Values
+## Which Mode Should I Use?
 
-For exact commands used to retrieve:
+Use **Docker Compose** for normal feature development and local end-to-end testing.
 
-- Cosmos endpoint
-- Cosmos key
-- Service Bus namespace
-- Service Bus connection string
-- Application Insights connection string
+Use **Azure-connected local execution** when verifying real Azure integration, RBAC, Cosmos behaviour, Service Bus behaviour, or telemetry.
 
-see:
-
-```text
-docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md
-```
-
-That document also explains which values need to be refreshed after `rg-incidentiq-dev` is recreated.
-
----
-
-# Choosing a Development Mode
-
-Use **Docker Compose** for normal development:
-
-```text
-Fast
-Self-contained
-No Azure dependency
-No ongoing Azure resource cost
-```
-
-Use **local execution against Azure** when you need to verify:
-
-```text
-Real Cosmos behaviour
-Real Service Bus behaviour
-Azure authentication / RBAC
-Application Insights telemetry
-Azure integration
-```
-
-The intended workflow is therefore:
-
-```text
-Everyday development
-→ Docker Compose
-
-Azure integration verification
-→ dotnet run against rg-incidentiq-dev
-```
+For automated and manual reliability testing, see [tests/ReadMe.md](../tests/ReadMe.md).

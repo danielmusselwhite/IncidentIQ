@@ -34,7 +34,7 @@ internal sealed class CosmosIncidentRepository : IIncidentRepository
 
         var response = await _container.CreateItemAsync(
             document,
-            new PartitionKey(document.Id),
+            new PartitionKey(document.IncidentId),
             cancellationToken: cancellationToken);
 
         return response.Resource.ToDomain();
@@ -60,7 +60,8 @@ internal sealed class CosmosIncidentRepository : IIncidentRepository
     public async Task<IReadOnlyCollection<Incident>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var query = _container.GetItemQueryIterator<IncidentDocument>(
-            new QueryDefinition("SELECT * FROM c ORDER BY c.CreatedAt DESC"));
+            new QueryDefinition(
+                "SELECT * FROM c WHERE c.documentType = 'Incident' ORDER BY c.CreatedAt DESC")); // only get incidents, not outbox documents (used to store outbox events that ensure eventual consistency)
 
         var incidents = new List<Incident>();
 
@@ -80,7 +81,7 @@ internal sealed class CosmosIncidentRepository : IIncidentRepository
         var response = await _container.ReplaceItemAsync(
             document,
             document.Id,
-            new PartitionKey(document.Id),
+            new PartitionKey(document.IncidentId),
             cancellationToken: cancellationToken);
 
         return response.Resource.ToDomain();

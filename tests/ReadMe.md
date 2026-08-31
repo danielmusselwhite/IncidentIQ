@@ -1,10 +1,8 @@
 # IncidentIQ Tests
 
-The `tests` folder contains automated tests for the IncidentIQ backend.
+The `tests` folder contains the automated backend tests for IncidentIQ.
 
-The goal is to keep business behaviour testable without requiring live Azure resources while still verifying the API through realistic ASP.NET Core integration tests.
-
----
+The test strategy keeps business behaviour fast and isolated while using local emulators for transport-level end-to-end verification.
 
 ## Test Projects
 
@@ -15,76 +13,60 @@ tests/
 └── IncidentIQ.Worker.Tests/
 ```
 
----
-
 ## Application Tests
 
-`IncidentIQ.Application.Tests` focuses on application use cases and validation.
+`IncidentIQ.Application.Tests` focuses on use cases, validation, and domain/application behaviour.
 
 Current areas include:
 
-- Incident creation.
-- Incident validation.
-- Incident analysis handling.
+- Incident creation and validation.
+- Transactional-outbox submission orchestration through `IIncidentSubmissionStore`.
+- Incident analysis lifecycle and attempt metadata.
+- Completed-state idempotency.
+- Final failure handling.
 - Runbook create/read/update/delete behaviour.
 
-Dependencies such as repositories and queues are normally mocked so tests remain isolated.
+External dependencies are mocked so these tests do not require Cosmos DB, Service Bus, or Azure.
 
-Example:
+For example:
 
 ```text
 CreateIncidentHandler
-├── valid command creates incident
-├── valid command queues analysis
-└── invalid command does neither
+├── valid command creates Incident
+├── valid command creates AnalyseIncidentCommand
+├── both are passed to IIncidentSubmissionStore
+└── invalid command performs no persistence
 ```
-
----
 
 ## API Tests
 
-`IncidentIQ.Api.Tests` uses ASP.NET Core `WebApplicationFactory` to start the API in memory.
+`IncidentIQ.Api.Tests` uses ASP.NET Core `WebApplicationFactory`.
 
-External dependencies are replaced with test implementations such as:
+External dependencies are replaced by in-memory implementations such as:
 
 ```text
 InMemoryIncidentRepository
+InMemoryIncidentSubmissionStore
 InMemoryRunbookRepository
-InMemoryIncidentAnalysisQueue
 ```
 
-This allows tests to verify:
+API tests verify HTTP behaviour including:
 
-- HTTP status codes.
-- Request/response models.
-- Problem Details validation errors.
-- Routing.
-- Incident creation.
+- Status codes and routing.
+- Request/response contracts.
+- Problem Details validation responses.
+- Incident creation and retrieval.
+- Durable analysis-request creation at the Application boundary.
+- Correlation IDs.
 - Runbook CRUD.
-- Analysis-command queueing.
-- Correlation ID behaviour.
 
-without connecting to Cosmos DB or Service Bus.
-
----
+The API tests intentionally do **not** assert that the API directly publishes to Service Bus. Incident submission now persists the analysis request through the outbox boundary.
 
 ## Worker Tests
 
-`IncidentIQ.Worker.Tests` is reserved for Worker-specific behaviour as the background-processing pipeline grows.
+`IncidentIQ.Worker.Tests` is for Worker-specific behaviour such as message handling, retries, failure handling, and outbox relay behaviour.
 
-Low-level Azure Service Bus SDK behaviour is not intended to be heavily mocked.
-
-The preferred split is:
-
-```text
-Application tests
-→ business workflow
-
-Docker/local integration
-→ real Service Bus transport behaviour
-```
-
----
+Low-level Azure SDK behaviour should not be heavily mocked when an emulator-backed integration test gives a more useful result.
 
 ## Running Tests
 
@@ -94,34 +76,66 @@ From the repository root:
 dotnet test
 ```
 
-This runs all test projects in the solution.
+To run one project:
 
----
+```powershell
+dotnet test tests\IncidentIQ.Application.Tests
+dotnet test tests\IncidentIQ.Api.Tests
+dotnet test tests\IncidentIQ.Worker.Tests
+```
 
-## Testing Approach
-
-IncidentIQ uses several levels of testing:
+## Test Boundaries
 
 ```text
 Domain / Application unit tests
         ↓
 API integration tests
         ↓
-Local Docker end-to-end testing
+Worker / reliability tests
+        ↓
+Local Docker end-to-end verification
 ```
 
-The Docker environment can additionally verify the real local asynchronous path:
+### Local End-to-End Flow
 
 ```text
 API
  ↓
 Cosmos Emulator
- ↓
+ ├── Incident
+ └── Outbox
+      ↓
+ Change Feed
+      ↓
+ Outbox Worker
+      ↓
 Service Bus Emulator
- ↓
-Worker
- ↓
+      ↓
+Analysis Worker
+      ↓
 Cosmos status update
 ```
 
-As reliability and AI functionality are introduced, additional tests will cover retries, duplicate messages, failure handling, retrieval, and analysis behaviour.
+### Important Outbox Reliability Check
+
+A useful manual test is:
+
+```text
+Stop Worker
+    ↓
+Submit Incident
+    ↓
+Incident + Outbox are persisted
+    ↓
+Incident remains Queued
+    ↓
+Start Worker
+    ↓
+Change Feed relay resumes
+    ↓
+Incident reaches Completed
+```
+
+This verifies that a temporarily unavailable Worker/Service Bus publishing path does not lose the analysis request.
+
+Additional Stage 8 tests should cover duplicate delivery, retry exhaustion, DLQ behaviour, and deliberate admin requeue.

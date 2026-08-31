@@ -1,45 +1,26 @@
 # IncidentIQ.Api
 
-`IncidentIQ.Api` is the ASP.NET Core Web API for IncidentIQ.
+`IncidentIQ.Api` is the ASP.NET Core HTTP API used by the React frontend.
 
-It provides the HTTP interface used by the React frontend and delegates application behaviour to the `IncidentIQ.Application` layer.
-
-The API does not contain persistence or business logic directly. Instead, it acts as the entry point for HTTP requests and translates them into application commands and queries.
-
----
+It is intentionally thin: controllers handle HTTP concerns and delegate use-case behaviour to `IncidentIQ.Application`.
 
 ## Responsibilities
 
-Current responsibilities include:
+Current API responsibilities include:
 
-- Incident CRUD/read endpoints.
+- Incident create/read endpoints.
 - Runbook CRUD endpoints.
-- Request validation through the Application layer.
-- ASP.NET Core Problem Details error responses.
-- Correlation ID generation and propagation.
-- Queueing incident analysis work through the Application abstraction.
+- Mapping HTTP contracts to Application commands.
+- Problem Details error responses.
+- Correlation ID creation/propagation.
 - Health checks.
-- Swagger / OpenAPI during development.
-- CORS configuration.
+- Swagger/OpenAPI during development.
+- CORS.
 - Initial Application Insights / OpenTelemetry integration.
 
----
+The API does not directly contain Cosmos persistence logic or incident-analysis Worker logic.
 
-## High-Level Flow
-
-```text
-React Frontend
-      ↓
-ASP.NET Core Controller
-      ↓
-Application Handler
-      ↓
-Application Abstraction
-      ↓
-Infrastructure Implementation
-```
-
-For incident creation:
+## Incident Creation Flow
 
 ```text
 POST /api/incidents
@@ -48,47 +29,18 @@ IncidentsController
       ↓
 CreateIncidentHandler
       ↓
-Cosmos persistence
+IIncidentSubmissionStore
       ↓
-AnalyseIncident command
-      ↓
-Service Bus
+Infrastructure persists:
+├── Incident
+└── AnalyseIncident Outbox
 ```
 
----
-
-## Structure
-
-```text
-IncidentIQ.Api/
-├── Contracts/
-│   ├── Incidents/
-│   └── Runbooks/
-│
-├── Controllers/
-├── ExceptionHandling/
-├── Properties/
-├── Program.cs
-└── appsettings.json
-```
-
-### Contracts
-
-Contains API request and response models used at the HTTP boundary.
-
-### Controllers
-
-Accept HTTP requests and delegate work to Application handlers.
-
-### ExceptionHandling
-
-Contains the global exception handler used to convert application/domain errors into consistent Problem Details responses.
-
----
+The API no longer publishes the analysis command directly to Service Bus. That happens asynchronously through the Cosmos Change Feed and `IncidentOutboxWorker`.
 
 ## Current Endpoints
 
-Incident endpoints include:
+Incident endpoints:
 
 ```text
 POST /api/incidents
@@ -96,7 +48,7 @@ GET  /api/incidents
 GET  /api/incidents/{id}
 ```
 
-Runbook endpoints include:
+Runbook endpoints:
 
 ```text
 POST   /api/runbooks
@@ -112,32 +64,40 @@ Health:
 GET /api/health
 ```
 
----
+## Structure
+
+```text
+IncidentIQ.Api/
+├── Contracts/
+│   ├── Incidents/
+│   └── Runbooks/
+├── Controllers/
+├── ExceptionHandling/
+├── Properties/
+├── Program.cs
+└── appsettings.json
+```
+
+- **Contracts** define HTTP request/response shapes.
+- **Controllers** translate HTTP requests into Application calls.
+- **ExceptionHandling** converts application/domain errors into consistent Problem Details responses.
+
+## Correlation IDs
+
+Incident creation creates or propagates a correlation ID which is stored in the analysis command and later added to Worker logging scope.
+
+This allows the same workflow to be traced across the HTTP request, persisted outbox record, Service Bus command, and Worker processing.
 
 ## Configuration
 
-The API receives configuration through ASP.NET Core configuration providers.
+Configuration comes from normal ASP.NET Core providers such as appsettings, environment variables, and user-secrets.
 
-Local Docker development uses environment variables.
-
-Direct local execution can use .NET user-secrets for Azure resources.
-
-Important configuration areas currently include:
-
-```text
-Cosmos
-ServiceBus
-APPLICATIONINSIGHTS_CONNECTION_STRING
-```
-
----
+For local/Azure configuration instructions, see the [Development Guide](../../docs/DEVELOPMENT.md).
 
 ## Design Approach
 
-The API intentionally remains thin:
-
-- Controllers handle HTTP concerns.
-- Application handlers contain use-case orchestration.
-- Domain objects contain business rules.
-- Infrastructure handles Cosmos DB and Azure Service Bus.
-- Azure-specific implementation details stay outside the API project.
+- Controllers handle HTTP concerns only.
+- Application handlers orchestrate use cases.
+- Domain objects own business rules.
+- Infrastructure owns Cosmos DB and Service Bus implementations.
+- Asynchronous processing remains outside the HTTP request.

@@ -24,15 +24,14 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     {
         _factory = factory;
 
-        // Clear shared in-memory state before each test.
         _factory.IncidentRepository.Clear();
-        _factory.AnalysisQueue.Clear();
+        _factory.IncidentSubmissionStore.Clear();
 
         _client = factory.CreateHttpsClient();
     }
 
     [Fact]
-    public async Task Create_WithValidRequest_ReturnsCreatedAndQueuesAnalysis()
+    public async Task Create_WithValidRequest_ReturnsCreatedAndPersistsAnalysisRequest()
     {
         var request = new CreateIncidentRequest(
             "Payments API timeout",
@@ -42,16 +41,11 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             IncidentSeverity.High,
             "Database timeout errors");
 
-        var response = await _client.PostAsJsonAsync(
-            "/api/incidents",
-            request);
+        var response = await _client.PostAsJsonAsync("/api/incidents", request);
 
-        Assert.Equal(
-            HttpStatusCode.Created,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var incident = await response.Content
-            .ReadFromJsonAsync<IncidentResponse>(JsonOptions);
+        var incident = await response.Content.ReadFromJsonAsync<IncidentResponse>(JsonOptions);
 
         Assert.NotNull(incident);
         Assert.NotEmpty(incident.Id);
@@ -62,44 +56,26 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         Assert.Equal(request.Severity, incident.Severity);
         Assert.Equal(IncidentStatus.Queued, incident.Status);
 
-        // The Location header should point to the newly created incident.
         Assert.NotNull(response.Headers.Location);
-        Assert.Contains(
-            incident.Id,
-            response.Headers.Location.ToString());
+        Assert.Contains(incident.Id, response.Headers.Location.ToString());
 
-        // The API should return the correlation ID used for the
-        // asynchronous analysis workflow.
-        Assert.True(
-            response.Headers.Contains("X-Correlation-ID"));
+        Assert.True(response.Headers.Contains("X-Correlation-ID"));
 
-        var correlationId = response.Headers
-            .GetValues("X-Correlation-ID")
-            .Single();
+        var correlationId = response.Headers.GetValues("X-Correlation-ID").Single();
 
-        Assert.False(
-            string.IsNullOrWhiteSpace(correlationId));
+        Assert.False(string.IsNullOrWhiteSpace(correlationId));
 
-        // Creating an incident should also queue exactly one
-        // asynchronous analysis command.
-        var analyseCommand = Assert.Single(
-            _factory.AnalysisQueue.Commands);
+        // Creating an incident should atomically persist its analysis request alongside it.
+        var analyseCommand = Assert.Single(_factory.IncidentSubmissionStore.Commands);
 
-        Assert.Equal(
-            incident.Id,
-            analyseCommand.IncidentId);
-
-        Assert.Equal(
-            correlationId,
-            analyseCommand.CorrelationId);
-
-        Assert.NotEqual(
-            Guid.Empty,
-            analyseCommand.CommandId);
+        Assert.Equal(incident.Id, analyseCommand.IncidentId);
+        Assert.Equal(correlationId, analyseCommand.CorrelationId);
+        Assert.NotEqual(Guid.Empty, analyseCommand.CommandId);
+        Assert.Equal(incident.CreatedAt, analyseCommand.QueuedAtUtc);
     }
 
     [Fact]
-    public async Task Create_WithInvalidRequest_ReturnsBadRequestAndDoesNotQueueAnalysis()
+    public async Task Create_WithInvalidRequest_ReturnsBadRequestAndDoesNotPersistAnalysisRequest()
     {
         var request = new CreateIncidentRequest(
             "",
@@ -109,30 +85,18 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             IncidentSeverity.High,
             null);
 
-        var response = await _client.PostAsJsonAsync(
-            "/api/incidents",
-            request);
+        var response = await _client.PostAsJsonAsync("/api/incidents", request);
 
-        Assert.Equal(
-            HttpStatusCode.BadRequest,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
 
-        var json = JsonDocument.Parse(
-            await response.Content.ReadAsStringAsync());
-
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
         var root = json.RootElement;
 
-        Assert.Equal(
-            "Validation failed",
-            root.GetProperty("title").GetString());
+        Assert.Equal("Validation failed", root.GetProperty("title").GetString());
+        Assert.True(root.GetProperty("errors").TryGetProperty("Title", out _));
 
-        Assert.True(
-            root.GetProperty("errors")
-                .TryGetProperty("Title", out _));
-
-        // Invalid incidents should never reach Service Bus.
-        Assert.Empty(
-            _factory.AnalysisQueue.Commands);
+        Assert.Empty(_factory.IncidentSubmissionStore.Commands);
+        Assert.Empty(await _factory.IncidentRepository.GetAllAsync());
     }
 
     [Fact]
@@ -140,18 +104,13 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     {
         var incident = CreateIncident();
 
-        await _factory.IncidentRepository.CreateAsync(
-            incident);
+        await _factory.IncidentRepository.CreateAsync(incident);
 
-        var response = await _client.GetAsync(
-            $"/api/incidents/{incident.Id}");
+        var response = await _client.GetAsync($"/api/incidents/{incident.Id}");
 
-        Assert.Equal(
-            HttpStatusCode.OK,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var result = await response.Content
-            .ReadFromJsonAsync<IncidentResponse>(JsonOptions);
+        var result = await response.Content.ReadFromJsonAsync<IncidentResponse>(JsonOptions);
 
         Assert.NotNull(result);
         Assert.Equal(incident.Id, result.Id);
@@ -161,45 +120,114 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     [Fact]
     public async Task GetById_WhenIncidentDoesNotExist_ReturnsNotFound()
     {
-        var response = await _client.GetAsync(
-            "/api/incidents/missing-id");
+        var response = await _client.GetAsync("/api/incidents/missing-id");
 
-        Assert.Equal(
-            HttpStatusCode.NotFound,
-            response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
 
-        var json = JsonDocument.Parse(
-            await response.Content.ReadAsStringAsync());
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
-        Assert.Equal(
-            "Incident not found",
-            json.RootElement
-                .GetProperty("title")
-                .GetString());
+        Assert.Equal("Incident not found", json.RootElement.GetProperty("title").GetString());
     }
 
     [Fact]
     public async Task GetAll_WhenIncidentsExist_ReturnsIncidents()
     {
-        await _factory.IncidentRepository.CreateAsync(
-            CreateIncident());
+        await _factory.IncidentRepository.CreateAsync(CreateIncident());
+        await _factory.IncidentRepository.CreateAsync(CreateIncident());
 
-        await _factory.IncidentRepository.CreateAsync(
-            CreateIncident());
+        var response = await _client.GetAsync("/api/incidents");
 
-        var response = await _client.GetAsync(
-            "/api/incidents");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        Assert.Equal(
-            HttpStatusCode.OK,
-            response.StatusCode);
-
-        var incidents = await response.Content
-            .ReadFromJsonAsync<IncidentResponse[]>(JsonOptions);
+        var incidents = await response.Content.ReadFromJsonAsync<IncidentResponse[]>(JsonOptions);
 
         Assert.NotNull(incidents);
         Assert.Equal(2, incidents.Length);
     }
+
+    #region Retry Tests
+
+    [Fact]
+    public async Task Retry_WhenIncidentIsFailed_ReturnsAcceptedAndPersistsNewAnalysisRequest()
+    {
+        // Arrange
+        var incident = CreateFailedIncident();
+
+        await _factory.IncidentRepository.CreateAsync(incident);
+
+        // Act
+        var response = await _client.PostAsync($"/api/incidents/{incident.Id}/retry", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+
+        var retriedIncidentResponse = await response.Content.ReadFromJsonAsync<IncidentResponse>(JsonOptions);
+        var retriedIncident = await _factory.IncidentRepository.GetByIdAsync(incident.Id);
+
+        Assert.NotNull(retriedIncident);
+        Assert.Equal(incident.Id, retriedIncident.Id);
+        Assert.Equal(IncidentStatus.Queued, retriedIncident.Status);
+        Assert.Equal(0, retriedIncident.AttemptCount);
+        Assert.Null(retriedIncident.LastAttemptAt);
+        Assert.Null(retriedIncident.ProcessingStartedAt);
+        Assert.Null(retriedIncident.CompletedAt);
+        Assert.Null(retriedIncident.FailureReason);
+        Assert.Null(retriedIncident.FailedAt);
+
+        Assert.True(response.Headers.Contains("X-Correlation-ID"));
+
+        var correlationId = response.Headers.GetValues("X-Correlation-ID").Single();
+
+        Assert.False(string.IsNullOrWhiteSpace(correlationId));
+
+        var analyseCommand = Assert.Single(_factory.IncidentSubmissionStore.Commands);
+
+        Assert.Equal(incident.Id, analyseCommand.IncidentId);
+        Assert.Equal(correlationId, analyseCommand.CorrelationId);
+        Assert.NotEqual(Guid.Empty, analyseCommand.CommandId);
+
+        Assert.NotNull(response.Headers.Location);
+        Assert.Contains(incident.Id, response.Headers.Location.ToString());
+    }
+
+    [Fact]
+    public async Task Retry_WhenIncidentDoesNotExist_ReturnsNotFoundAndDoesNotPersistAnalysisRequest()
+    {
+        // Act
+        var response = await _client.PostAsync("/api/incidents/missing-id/retry", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal("Incident not found", json.RootElement.GetProperty("title").GetString());
+
+        Assert.Empty(_factory.IncidentSubmissionStore.Commands);
+    }
+
+    [Fact]
+    public async Task Retry_WhenIncidentIsNotFailed_ReturnsConflictAndDoesNotPersistAnalysisRequest()
+    {
+        // Arrange
+        var incident = CreateIncident();
+
+        await _factory.IncidentRepository.CreateAsync(incident);
+
+        // Act
+        var response = await _client.PostAsync($"/api/incidents/{incident.Id}/retry", null);
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.Equal("Incident not retryable", json.RootElement.GetProperty("title").GetString());
+
+        Assert.Empty(_factory.IncidentSubmissionStore.Commands);
+    }
+
+    #endregion
 
     private static Incident CreateIncident()
     {
@@ -210,5 +238,15 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             "Production",
             IncidentSeverity.High,
             "Database timeout errors");
+    }
+    
+    private static Incident CreateFailedIncident()
+    {
+        var incident = CreateIncident();
+
+        incident.StartProcessingAttempt();
+        incident.MarkFailed("Analysis failed.");
+
+        return incident;
     }
 }

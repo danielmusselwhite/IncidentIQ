@@ -21,7 +21,7 @@ public sealed class CosmosInitializer
         _client = client;
         _options = options.Value;
     }
-    
+
     /// <summary>
     /// Initializes the Cosmos DB database and containers if they do not already exist.
     /// </summary>
@@ -35,12 +35,18 @@ public sealed class CosmosInitializer
 
         await databaseResponse.Database.CreateContainerIfNotExistsAsync(
             _options.IncidentsContainerName,
-            "/id",
+            "/incidentId",
             cancellationToken: cancellationToken);
 
         await databaseResponse.Database.CreateContainerIfNotExistsAsync(
             new ContainerProperties(
                 _options.RunbooksContainerName,
+                "/id"),
+            cancellationToken: cancellationToken);
+
+        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
+            new ContainerProperties(
+                _options.ChangeFeedLeasesContainerName,
                 "/id"),
             cancellationToken: cancellationToken);
     }

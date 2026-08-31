@@ -9,13 +9,13 @@ namespace IncidentIQ.Application.Tests.Incidents.Create;
 
 public sealed class CreateIncidentHandlerTests
 {
-    private readonly Mock<IIncidentRepository> _repository = new();
-    private readonly Mock<IIncidentAnalysisQueue> _analysisQueue = new();
+    private readonly Mock<IIncidentSubmissionStore> _store = new();
     private readonly CreateIncidentValidator _validator = new();
 
     [Fact]
-    public async Task HandleAsync_WithValidCommand_CreatesIncidentAndQueuesAnalysis()
+    public async Task HandleAsync_WithValidCommand_CreatesIncidentAndPersistsAnalysisRequest()
     {
+        // Arrange
         const string correlationId = "test-correlation-id";
 
         var command = new CreateIncidentCommand(
@@ -26,21 +26,19 @@ public sealed class CreateIncidentHandlerTests
             IncidentSeverity.High,
             "Database timeout errors");
 
-        _repository
-            .Setup(repository => repository.CreateAsync(
+        _store
+            .Setup(store => store.CreateAsync(
                 It.IsAny<Incident>(),
+                It.IsAny<AnalyseIncidentCommand>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync((Incident incident, CancellationToken _) => incident);
+            .ReturnsAsync((Incident incident, AnalyseIncidentCommand _, CancellationToken _) => incident);
 
-        var handler = new CreateIncidentHandler(
-            _repository.Object,
-            _analysisQueue.Object,
-            _validator);
+        var handler = new CreateIncidentHandler(_store.Object, _validator);
 
-        var result = await handler.HandleAsync(
-            command,
-            correlationId);
+        // Act
+        var result = await handler.HandleAsync(command, correlationId);
 
+        // Assert
         Assert.Equal(command.Title, result.Title);
         Assert.Equal(command.Description, result.Description);
         Assert.Equal(command.Service, result.Service);
@@ -49,21 +47,14 @@ public sealed class CreateIncidentHandlerTests
         Assert.Equal(command.Symptoms, result.Symptoms);
         Assert.Equal(IncidentStatus.Queued, result.Status);
 
-        // The incident should be persisted before analysis is requested.
-        _repository.Verify(
-            repository => repository.CreateAsync(
-                It.IsAny<Incident>(),
-                It.IsAny<CancellationToken>()),
-            Times.Once);
-
-        // Creating an incident should queue one analysis command
-        // containing the newly created incident ID and correlation ID.
-        _analysisQueue.Verify(
-            queue => queue.EnqueueAsync(
+        _store.Verify(
+            store => store.CreateAsync(
+                It.Is<Incident>(incident => incident.Id == result.Id),
                 It.Is<AnalyseIncidentCommand>(analyseCommand =>
                     analyseCommand.IncidentId == result.Id &&
                     analyseCommand.CorrelationId == correlationId &&
-                    analyseCommand.CommandId != Guid.Empty),
+                    analyseCommand.CommandId != Guid.Empty &&
+                    analyseCommand.QueuedAtUtc == result.CreatedAt),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -71,6 +62,7 @@ public sealed class CreateIncidentHandlerTests
     [Fact]
     public async Task HandleAsync_WithInvalidCommand_ThrowsValidationException()
     {
+        // Arrange
         const string correlationId = "test-correlation-id";
 
         var command = new CreateIncidentCommand(
@@ -81,26 +73,15 @@ public sealed class CreateIncidentHandlerTests
             IncidentSeverity.High,
             null);
 
-        var handler = new CreateIncidentHandler(
-            _repository.Object,
-            _analysisQueue.Object,
-            _validator);
+        var handler = new CreateIncidentHandler(_store.Object, _validator);
 
-        await Assert.ThrowsAsync<ValidationException>(
-            () => handler.HandleAsync(
-                command,
-                correlationId));
+        // Act + Assert
+        await Assert.ThrowsAsync<ValidationException>(() => handler.HandleAsync(command, correlationId));
 
-        // Invalid commands should not be persisted.
-        _repository.Verify(
-            repository => repository.CreateAsync(
+        // Invalid commands should never persist the Incident or its analysis request.
+        _store.Verify(
+            store => store.CreateAsync(
                 It.IsAny<Incident>(),
-                It.IsAny<CancellationToken>()),
-            Times.Never);
-
-        // Invalid commands should never result in an analysis request.
-        _analysisQueue.Verify(
-            queue => queue.EnqueueAsync(
                 It.IsAny<AnalyseIncidentCommand>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);

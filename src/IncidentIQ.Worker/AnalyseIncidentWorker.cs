@@ -7,35 +7,24 @@ using System.Text.Json;
 namespace IncidentIQ.Worker;
 
 /// <summary>
-/// Background worker responsible for consuming <see cref="AnalyseIncidentCommand"/>
-/// messages from the Service Bus analysis queue.
-/// 
-/// The worker acts as the transport boundary between Azure Service Bus and the
-/// application layer. It is responsible for receiving and validating messages,
-/// establishing logging context, invoking the analysis handler, and completing
-/// successfully processed messages.
+/// Background worker responsible for consuming <see cref="AnalyseIncidentCommand"/> messages from the Service Bus analysis queue.
+///
+/// The worker acts as the transport boundary between Azure Service Bus and the application layer. It is responsible for receiving and validating messages, establishing logging context, invoking the analysis handler, and settling processed messages.
 /// </summary>
 public sealed class AnalyseIncidentWorker : BackgroundService
 {
     private readonly ServiceBusProcessor _processor;
     private readonly ILogger<AnalyseIncidentWorker> _logger;
     private readonly AnalyseIncidentHandler _analyseIncidentHandler;
+    private readonly int _maxDeliveryCount;
 
     /// <summary>
     /// Creates the Service Bus processor used to consume incident analysis commands.
     /// </summary>
-    /// <param name="serviceBusClient">
-    /// Shared Service Bus client used to create the queue processor.
-    /// </param>
-    /// <param name="analyseIncidentHandler">
-    /// Application handler containing the actual incident analysis workflow.
-    /// </param>
-    /// <param name="options">
-    /// Service Bus configuration, including the analysis queue name.
-    /// </param>
-    /// <param name="logger">
-    /// Logger used for worker lifecycle and message-processing diagnostics.
-    /// </param>
+    /// <param name="serviceBusClient">Shared Service Bus client used to create the queue processor.</param>
+    /// <param name="analyseIncidentHandler">Application handler containing the incident analysis workflow.</param>
+    /// <param name="options">Service Bus configuration, including queue and delivery settings.</param>
+    /// <param name="logger">Logger used for worker lifecycle and message-processing diagnostics.</param>
     public AnalyseIncidentWorker(
         ServiceBusClient serviceBusClient,
         AnalyseIncidentHandler analyseIncidentHandler,
@@ -45,173 +34,151 @@ public sealed class AnalyseIncidentWorker : BackgroundService
         _logger = logger;
         _analyseIncidentHandler = analyseIncidentHandler;
 
+        var serviceBusOptions = options.Value;
+        _maxDeliveryCount = serviceBusOptions.MaxDeliveryCount;
+
         _processor = serviceBusClient.CreateProcessor(
-            options.Value.AnalyseIncidentQueueName,
+            serviceBusOptions.AnalyseIncidentQueueName,
             new ServiceBusProcessorOptions
             {
-                // Messages are completed explicitly only after the application
-                // handler finishes successfully. If processing fails before then,
-                // Service Bus can retry the message according to the queue policy.
+                // Messages are explicitly completed only after successful processing.
                 AutoCompleteMessages = false,
 
-                // Process one analysis command at a time while the pipeline is
-                // being developed. This can be increased later once processing
-                // behaviour and resource usage are well understood.
+                // Keep processing sequential while the pipeline is being developed.
                 MaxConcurrentCalls = 1,
 
-                // Automatically renew the message lock during longer-running work.
-                // This prevents Service Bus from making the same message available
-                // to another consumer while this worker is still processing it.
+                // Renew the lock during potentially long-running analysis.
                 MaxAutoLockRenewalDuration = TimeSpan.FromMinutes(5)
             });
 
-        // Register the callbacks used by the Service Bus processor.
         _processor.ProcessMessageAsync += ProcessMessageAsync;
         _processor.ProcessErrorAsync += ProcessErrorAsync;
     }
 
     /// <summary>
-    /// Starts the Service Bus processor and keeps the background service alive
-    /// until the host requests shutdown.
+    /// Starts the Service Bus processor and keeps the background service alive until the host requests shutdown.
     /// </summary>
-    /// <param name="stoppingToken">
-    /// Cancellation token triggered when the Worker host is shutting down.
-    /// </param>
-    protected override async Task ExecuteAsync(
-        CancellationToken stoppingToken)
+    /// <param name="stoppingToken">Cancellation token triggered when the Worker host is shutting down.</param>
+    protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        _logger.LogInformation(
-            "Starting AnalyseIncident Service Bus processor.");
+        _logger.LogInformation("Starting AnalyseIncident Service Bus processor.");
 
         await _processor.StartProcessingAsync(stoppingToken);
 
         try
         {
-            // The Service Bus SDK performs message processing through the
-            // registered callbacks, so the background service only needs to
-            // remain alive until cancellation is requested.
-            await Task.Delay(
-                Timeout.Infinite,
-                stoppingToken);
+            // The Service Bus SDK processes messages through the registered callbacks, so the worker only needs to remain alive.
+            await Task.Delay(Timeout.Infinite, stoppingToken);
         }
-        catch (OperationCanceledException)
-            when (stoppingToken.IsCancellationRequested)
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
         {
-            // Cancellation is expected during a normal Worker shutdown.
+            // Cancellation is expected during normal Worker shutdown.
         }
     }
 
     /// <summary>
-    /// Stops message consumption and disposes the Service Bus processor when
-    /// the Worker host shuts down.
+    /// Stops message consumption and disposes the Service Bus processor when the Worker host shuts down.
     /// </summary>
-    /// <param name="cancellationToken">
-    /// Cancellation token controlling the shutdown operation.
-    /// </param>
-    public override async Task StopAsync(
-        CancellationToken cancellationToken)
+    /// <param name="cancellationToken">Cancellation token controlling the shutdown operation.</param>
+    public override async Task StopAsync(CancellationToken cancellationToken)
     {
-        _logger.LogInformation(
-            "Stopping AnalyseIncident Service Bus processor.");
+        _logger.LogInformation("Stopping AnalyseIncident Service Bus processor.");
 
         await _processor.StopProcessingAsync(cancellationToken);
         await _processor.DisposeAsync();
-
         await base.StopAsync(cancellationToken);
     }
 
     /// <summary>
-    /// Handles a single Service Bus message containing an
-    /// <see cref="AnalyseIncidentCommand"/>.
+    /// Handles a single Service Bus message containing an <see cref="AnalyseIncidentCommand"/>.
     /// </summary>
-    /// <param name="args">
-    /// Service Bus processing context containing the message and settlement operations.
-    /// </param>
-    private async Task ProcessMessageAsync(
-        ProcessMessageEventArgs args)
+    /// <param name="args">Service Bus processing context containing the message and settlement operations.</param>
+    private async Task ProcessMessageAsync(ProcessMessageEventArgs args)
     {
         AnalyseIncidentCommand? command;
 
         try
         {
-            // Convert the transport-level JSON message into the application
-            // command understood by the analysis handler.
-            command = JsonSerializer.Deserialize<AnalyseIncidentCommand>(
-                args.Message.Body);
+            // Convert the transport-level JSON message into the application command.
+            command = JsonSerializer.Deserialize<AnalyseIncidentCommand>(args.Message.Body);
         }
         catch (JsonException exception)
         {
-            _logger.LogError(
-                exception,
-                "Unable to deserialize Service Bus message {MessageId}.",
-                args.Message.MessageId);
+            _logger.LogError(exception, "Unable to deserialize Service Bus message {MessageId}.", args.Message.MessageId);
 
-            // Invalid messages cannot succeed through retries, so move them
-            // directly to the dead-letter queue rather than repeatedly
-            // attempting to process them.
+            // Invalid messages cannot succeed through retries, so dead-letter them immediately.
             await args.DeadLetterMessageAsync(
                 args.Message,
                 "InvalidMessage",
-                "Message could not be deserialized as AnalyseIncidentCommand.");
+                "Message could not be deserialized as AnalyseIncidentCommand.",
+                args.CancellationToken);
 
             return;
         }
 
         if (command is null)
         {
-            // A valid JSON payload that produces no command is also considered
-            // permanently invalid and should not be retried.
+            // A valid JSON payload that produces no command is permanently invalid.
             await args.DeadLetterMessageAsync(
                 args.Message,
                 "InvalidMessage",
-                "AnalyseIncidentCommand was null.");
+                "AnalyseIncidentCommand was null.",
+                args.CancellationToken);
 
             return;
         }
 
-        // Attach workflow identifiers to all log messages produced while this
-        // command is processed. This allows API, Service Bus and Worker activity
-        // for the same incident to be correlated during troubleshooting.
-        using var scope = _logger.BeginScope(
-            new Dictionary<string, object>
+        // Attach workflow identifiers so related API, Service Bus and Worker activity can be correlated.
+        using var scope = _logger.BeginScope(new Dictionary<string, object>
+        {
+            ["CorrelationId"] = command.CorrelationId,
+            ["IncidentId"] = command.IncidentId,
+            ["CommandId"] = command.CommandId
+        });
+
+        _logger.LogInformation("Received AnalyseIncident command for incident {IncidentId}.", command.IncidentId);
+
+        try
+        {
+            // Delegate business workflow to the Application layer.
+            await _analyseIncidentHandler.HandleAsync(command, args.CancellationToken);
+        }
+        catch (OperationCanceledException) when (args.CancellationToken.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception exception)
+        {
+            // Final delivery failures are persisted and dead-lettered; earlier failures are left for Service Bus to retry.
+            if (args.Message.DeliveryCount >= _maxDeliveryCount)
             {
-                ["CorrelationId"] = command.CorrelationId,
-                ["IncidentId"] = command.IncidentId,
-                ["CommandId"] = command.CommandId
-            });
+                await HandleFinalFailureAsync(args, command, exception);
+                return;
+            }
+
+            _logger.LogWarning(
+                exception,
+                "AnalyseIncident attempt {DeliveryCount} failed for Incident {IncidentId}. Message will be retried.",
+                args.Message.DeliveryCount,
+                command.IncidentId);
+
+            throw;
+        }
+
+        // Only settle the Service Bus message after processing succeeds. If the handler throws, the message remains uncompleted and can be retried by Service Bus.
+        await args.CompleteMessageAsync(args.Message, args.CancellationToken);
 
         _logger.LogInformation(
-            "Received AnalyseIncident command for incident {IncidentId}.",
+            "Completed AnalyseIncident command {CommandId} for Incident {IncidentId}.",
+            command.CommandId,
             command.IncidentId);
-
-        // Delegate the business workflow to the Application layer. The Worker
-        // should remain focused on transport concerns rather than containing
-        // incident-processing logic itself.
-        await _analyseIncidentHandler.HandleAsync(
-            command,
-            args.CancellationToken);
-
-        // Only settle the Service Bus message after processing succeeds.
-        // If the handler throws, the message remains uncompleted and can be
-        // retried by Service Bus.
-        await args.CompleteMessageAsync(
-            args.Message,
-            args.CancellationToken);
-
-        _logger.LogInformation(
-            "Completed AnalyseIncident command {CommandId}.",
-            command.CommandId);
     }
 
     /// <summary>
-    /// Handles errors raised by the Service Bus processor infrastructure,
-    /// such as connection, authentication or message-pump failures.
+    /// Handles errors raised by the Service Bus processor infrastructure, such as connection, authentication, or message-pump failures.
     /// </summary>
-    /// <param name="args">
-    /// Information describing the processor error and where it occurred.
-    /// </param>
-    private Task ProcessErrorAsync(
-        ProcessErrorEventArgs args)
+    /// <param name="args">Information describing the processor error and where it occurred.</param>
+    private Task ProcessErrorAsync(ProcessErrorEventArgs args)
     {
         _logger.LogError(
             args.Exception,
@@ -220,5 +187,34 @@ public sealed class AnalyseIncidentWorker : BackgroundService
             args.EntityPath);
 
         return Task.CompletedTask;
+    }
+
+    /// <summary>
+    /// Handles the final failure of an AnalyseIncident command after all permitted delivery attempts have been exhausted.
+    /// </summary>
+    /// <param name="args">The message processing event arguments.</param>
+    /// <param name="command">The AnalyseIncident command that failed.</param>
+    /// <param name="exception">The exception that caused the final failure.</param>
+    private async Task HandleFinalFailureAsync(
+        ProcessMessageEventArgs args,
+        AnalyseIncidentCommand command,
+        Exception exception)
+    {
+        _logger.LogError(
+            exception,
+            "AnalyseIncident command {CommandId} exhausted {DeliveryCount} delivery attempts for Incident {IncidentId}.",
+            command.CommandId,
+            args.Message.DeliveryCount,
+            command.IncidentId);
+
+        // Persist the terminal application state before settling the Service Bus message.
+        await _analyseIncidentHandler.MarkFailedAsync(command, exception.Message, args.CancellationToken);
+
+        // Keep the failed command in the DLQ for later inspection and administrative requeue.
+        await args.DeadLetterMessageAsync(
+            args.Message,
+            "AnalysisFailed",
+            $"Incident analysis failed after {args.Message.DeliveryCount} delivery attempts.",
+            args.CancellationToken);
     }
 }

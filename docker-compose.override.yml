@@ -9,6 +9,7 @@ services:
       - Cosmos__DatabaseName=IncidentIQ
       - Cosmos__IncidentsContainerName=Incidents
       - Cosmos__RunbooksContainerName=Runbooks
+      - Cosmos__ChangeFeedLeasesContainerName=ChangeFeedLeases
       - SSL_CERT_FILE=/cosmos-certs/ca-bundle.crt
     ports:
       - "7155:8080"

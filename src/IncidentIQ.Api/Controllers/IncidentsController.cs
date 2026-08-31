@@ -1,4 +1,6 @@
 ﻿using IncidentIQ.Api.Contracts.Incidents;
+using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Retry;
 using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
 using IncidentIQ.Application.Incidents.GetById;
@@ -11,9 +13,9 @@ namespace IncidentIQ.Api.Controllers;
 [Route("api/[controller]")]
 public sealed class IncidentsController(CreateIncidentHandler createIncidentHandler,
     GetAllIncidentsHandler getAllIncidentsHandler,
-    GetIncidentByIdHandler getIncidentByIdHandler) : ControllerBase
+    GetIncidentByIdHandler getIncidentByIdHandler,
+    RetryAnalyseIncidentHandler retryIncidentAnalysisHandler) : ControllerBase
 {
-
     /// <summary>
     /// Creates a new incident.
     /// </summary>
@@ -70,14 +72,12 @@ public sealed class IncidentsController(CreateIncidentHandler createIncidentHand
 
 
     /// <summary>
-    /// Retrieves an incident by its unique identifier.
+    /// Retrieves all incidents.s
     /// </summary>
-    /// <param name="id">The unique identifier of the incident.</param>
     /// <returns>The incident with the specified unique identifier.</returns>
     [HttpGet]
     [ProducesResponseType<IReadOnlyCollection<IncidentResponse>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyCollection<IncidentResponse>>> GetAll(
-    CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyCollection<IncidentResponse>>> GetAll(    CancellationToken cancellationToken)
     {
         var incidents = await getAllIncidentsHandler.HandleAsync(cancellationToken);
 
@@ -87,5 +87,31 @@ public sealed class IncidentsController(CreateIncidentHandler createIncidentHand
             .ToArray();
 
         return Ok(response);
+    }
+
+
+    [HttpPost("{id}/retry")]
+    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    public async Task<ActionResult<IncidentResponse>> Retry(string id, CancellationToken cancellationToken)
+    {
+        // generate correlationId for logging and tracing
+        var correlationId = Activity.Current?.TraceId.ToString() ?? HttpContext.TraceIdentifier;
+
+        //!IMPORTANT add correlationId to response headers for client-side tracing
+        Response.Headers["X-Correlation-ID"] = correlationId;
+
+        // create the retry command with the incident id and correlation id
+        var retryCommand = new RetryAnalyseIncidentCommand(id, correlationId);
+
+        // retry the incient
+        var retriedIncident = await retryIncidentAnalysisHandler.HandleAsync(retryCommand, cancellationToken);
+
+        // return the retried incident as the response body
+        return AcceptedAtAction(
+            nameof(GetById),
+            new { id = retriedIncident.Id },
+            IncidentResponse.FromDomain(retriedIncident));
     }
 }

@@ -67,6 +67,19 @@ public sealed class GlobalExceptionHandler(
             await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
             return true;
         }
+        else  if (exception is IncidentNotRetryableException notRetryableException)
+        {
+            var problemDetails = new ProblemDetails
+            {
+                Status = StatusCodes.Status409Conflict,
+                Title = "Incident not retryable",
+                Detail = notRetryableException.Message
+            };
+            problemDetails.Extensions["traceId"] = httpContext.TraceIdentifier;
+            httpContext.Response.StatusCode = StatusCodes.Status409Conflict;
+            await httpContext.Response.WriteAsJsonAsync(problemDetails, cancellationToken);
+            return true;
+        }
 
         logger.LogError(exception, "Unhandled exception while processing request.");
 

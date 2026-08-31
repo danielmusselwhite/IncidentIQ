@@ -1,4 +1,6 @@
 ﻿using FluentValidation;
+using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Retry;
 using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
 using IncidentIQ.Application.Incidents.GetById;
@@ -28,6 +30,7 @@ public static class DependencyInjection
         services.AddScoped<DeleteRunbookHandler>();
 
         services.AddTransient<AnalyseIncidentHandler>();
+        services.AddTransient<RetryAnalyseIncidentHandler>();
 
         return services;
     }

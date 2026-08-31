@@ -8,9 +8,9 @@ param tags object
 param databaseName string = 'IncidentIQ'
 param incidentsContainerName string = 'Incidents'
 param runbooksContainerName string = 'Runbooks'
+param changeFeedLeasesContainerName string = 'ChangeFeedLeases'
 
 param apiPrincipalId string
-
 
 var cosmosAccountName = 'cosmos-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
 
@@ -83,7 +83,7 @@ resource incidentsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
 
       partitionKey: {
         paths: [
-          '/id'
+          '/incidentId'
         ]
         kind: 'Hash'
         version: 2
@@ -135,8 +135,28 @@ resource runbooksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
   }
 }
 
+resource changeFeedLeasesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2026-03-15' = {
+  parent: database
+  name: changeFeedLeasesContainerName
+
+  properties: {
+    resource: {
+      id: changeFeedLeasesContainerName
+
+      partitionKey: {
+        paths: [
+          '/id'
+        ]
+        kind: 'Hash'
+        version: 2
+      }
+    }
+  }
+}
+
 output accountName string = cosmosAccount.name
 output endpoint string = cosmosAccount.properties.documentEndpoint
 output databaseName string = database.name
 output incidentsContainerName string = incidentsContainer.name
 output runbooksContainerName string = runbooksContainer.name
+output changeFeedLeasesContainerName string = changeFeedLeasesContainer.name
