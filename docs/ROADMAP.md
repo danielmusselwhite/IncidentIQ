@@ -186,9 +186,9 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Create Azure AI resource/deployment Bicep.
 * [x] Configure Worker Managed Identity/RBAC for Azure AI.
 * [x] Pass Azure AI configuration into the Worker Container App.
-* [ ] Implement `AzureIncidentAnalyzer`.
-* [ ] Generate structured summary, likely causes and recommended actions.
-* [ ] Validate and map Azure AI responses into `IncidentAnalysisResult`.
+* [x] Implement `AzureIncidentAnalyzer`.
+* [x] Generate structured summary, likely causes and recommended actions.
+* [x] Validate and map Azure AI responses into `IncidentAnalysisResult`.
 * [ ] Handle AI timeout, throttling and transient failure scenarios.
 * [ ] Add AI latency and failure telemetry.
 * [ ] Expose persisted analysis through the API.

@@ -33,7 +33,13 @@ Cosmos Incidents container
           ↓
    AnalyseIncidentHandler
           ↓
- CosmosIncidentRepository
+  AzureIncidentAnalyzer
+          ↓
+      Azure OpenAI
+          ↓
+ IncidentAnalysisResult
+          ↓
+CosmosIncidentAnalysisStore
           ↓
 Queued → Processing → Completed / Failed
 ```
@@ -62,7 +68,7 @@ It:
 - Consumes the `analyse-incident` queue.
 - Deserializes `AnalyseIncidentCommand`.
 - Adds correlation, incident, and command IDs to logging scope.
-- Invokes `AnalyseIncidentHandler`.
+- Invokes `AnalyseIncidentHandler`, which calls `AzureIncidentAnalyzer` and atomically persists the completed Incident and structured analysis.
 - Completes messages only after successful processing.
 - Allows transient failures to be redelivered.
 - Dead-letters permanently invalid messages immediately.
@@ -104,7 +110,7 @@ IncidentIQ.Worker/
 └── Properties/
 ```
 
-`Program.cs` registers Application and Infrastructure dependencies plus both hosted Worker services.
+`Program.cs` registers Application, shared Infrastructure, Worker-only Azure AI dependencies, and both hosted Worker services.
 
 ## Local Development
 
@@ -120,8 +126,8 @@ or directly against configured Azure resources:
 dotnet run --project src\IncidentIQ.Worker
 ```
 
-See the [Development Guide](../../docs/DEVELOPMENT.md) for configuration.
+See the [Development Guide](../../docs/DEVELOPMENT.md) for configuration. The current analyzer uses real Azure AI; there is no local Azure OpenAI emulator.
 
 ## Planned Work
 
-Later stages will replace the temporary analysis step with Azure AI/RAG processing and add richer telemetry, completion events, operational tooling, and KEDA-based scaling.
+Later work will add RAG/vector retrieval, richer AI telemetry, completion events, operational tooling, and KEDA-based scaling.

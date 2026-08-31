@@ -13,10 +13,12 @@ Current responsibilities include:
 - Cosmos DB client configuration.
 - Incident persistence.
 - Atomic Incident + analysis outbox persistence.
+- Atomic completed Incident + structured analysis persistence.
 - Runbook persistence.
 - Local Cosmos initialization.
 - Azure Service Bus client configuration.
 - Sending `AnalyseIncidentCommand` messages.
+- Azure OpenAI incident analysis using structured outputs.
 - Azure authentication through `DefaultAzureCredential` where configured.
 - Dependency injection registration for Infrastructure services.
 
@@ -27,6 +29,12 @@ Current responsibilities include:
 ```text
 IncidentIQ.Infrastructure/
 
+├── AzureAI/
+│   ├── AzureAIOptions.cs
+│   ├── AzureIncidentAnalyzer.cs
+│   ├── AzureIncidentAnalysisResponse.cs
+│   └── AzureIncidentAnalysisSchema.cs
+│
 ├── Messaging/
 │   ├── AzureServiceBusIncidentAnalysisQueue.cs
 │   └── ServiceBusOptions.cs
@@ -37,6 +45,7 @@ IncidentIQ.Infrastructure/
 │       ├── CosmosInitializer.cs
 │       ├── CosmosIncidentRepository.cs
 │       ├── CosmosIncidentSubmissionStore.cs
+│       ├── CosmosIncidentAnalysisStore.cs
 │       ├── CosmosRunbookRepository.cs
 │       └── Documents/
 │
@@ -65,9 +74,9 @@ The `ChangeFeedLeases` container uses: `Partition key: /id`
 
 The `Incidents` container uses: `Partition key: /incidentId`
 
-The `Incidents` container stores both Incident documents and analysis outbox documents.
+The `Incidents` container stores Incident, analysis-outbox, and structured analysis documents.
 
-Both document types share the same `incidentId`, which allows an Incident update/create and its associated outbox message to be persisted atomically using a Cosmos transactional batch.
+These document types share the same `incidentId`. This allows Incident submission/retry + outbox persistence, and completed Incident + analysis persistence, to use Cosmos transactional batches within one logical partition.
 
 Repository and persistence implementations map between Domain/Application models and Cosmos persistence documents.
 
@@ -111,6 +120,12 @@ API/Application
 ```
 
 The Application layer therefore does not need to know that Azure Service Bus is being used.
+
+## Azure AI
+
+`AzureIncidentAnalyzer` implements `IIncidentAnalyzer` using Azure OpenAI. It sends the Incident as chat input, requires a strict structured-output schema, validates the returned data, and maps it to `IncidentAnalysisResult`.
+
+Azure AI dependencies are registered separately through `AddAzureAIDependencies`, so only the Worker requires Azure AI configuration.
 
 ---
 

@@ -1,11 +1,15 @@
 using IncidentIQ.Application;
 using IncidentIQ.Infrastructure;
+using IncidentIQ.Infrastructure.AzureAI;
 using IncidentIQ.Worker;
 
 var builder = Host.CreateApplicationBuilder(args);
 
 // Register infrastructure services.
 builder.Services.AddInfrastructureDependencies(builder.Configuration);
+
+// Register Azure AI services.
+builder.Services.AddAzureAIDependencies(builder.Configuration);
 
 // Register application services and handlers.
 builder.Services.AddApplicationDependencies();
