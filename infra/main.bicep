@@ -126,7 +126,7 @@ module containerAppsEnvironment './modules/container-apps-environment.bicep' = {
 module frontend './modules/frontend.bicep' = {
   name: 'frontend'
   params: {
-    location: location
+    location: 'westeurope' // Static Web Apps don't have uksouth so we use westeurope as the location
     projectName: projectName
     environmentName: environmentName
     tags: tags

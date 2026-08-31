@@ -1,7 +1,7 @@
 // Azure Static Web Apps resource used to host the React/Vite frontend.
 targetScope = 'resourceGroup'
 
-param location string
+param location string = 'westeurope'  // Static Web Apps don't have uksouth so we use westeurope as the location
 param projectName string
 param environmentName string
 param tags object
