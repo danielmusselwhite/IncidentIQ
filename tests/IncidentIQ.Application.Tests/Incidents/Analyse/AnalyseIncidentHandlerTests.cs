@@ -1,6 +1,6 @@
-﻿using IncidentIQ.Application.Common.Abstractions;
+﻿using IncidentIQ.Application.Analyse;
+using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Common.Exceptions;
-using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
 using Moq;
 
@@ -9,6 +9,8 @@ namespace IncidentIQ.Application.Tests.Incidents.Analyse;
 public sealed class AnalyseIncidentHandlerTests
 {
     private readonly Mock<IIncidentRepository> _repository = new();
+    private readonly Mock<IIncidentAnalyzer> _incidentAnalyzer = new();
+    private readonly Mock<IIncidentAnalysisStore> _incidentAnalysisStore = new();
 
     [Fact]
     public async Task HandleAsync_WhenIncidentExists_MarksIncidentCompleted()
@@ -16,12 +18,26 @@ public sealed class AnalyseIncidentHandlerTests
         // Arrange
         var incident = CreateIncident();
         var command = CreateAnalyseIncidentCommand(incident.Id);
+        var analysisResult = CreateAnalysisResult();
 
         _repository
             .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(incident);
 
-        var handler = new AnalyseIncidentHandler(_repository.Object);
+        _incidentAnalyzer
+            .Setup(analyzer => analyzer.AnalyzeIncidentAsync(
+                It.IsAny<IncidentAnalysisInput>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(analysisResult);
+
+        _incidentAnalysisStore
+            .Setup(store => store.StoreCompletedAnalysisAsync(
+                It.IsAny<Incident>(),
+                It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var handler = CreateHandler();
 
         // Act
         await handler.HandleAsync(command);
@@ -33,10 +49,18 @@ public sealed class AnalyseIncidentHandlerTests
         Assert.NotNull(incident.ProcessingStartedAt);
         Assert.NotNull(incident.CompletedAt);
 
-        // The incident is persisted once when processing starts and again when processing completes.
+        // Processing is persisted separately before the AI request.
         _repository.Verify(
             repository => repository.UpdateAsync(incident, It.IsAny<CancellationToken>()),
-            Times.Exactly(2));
+            Times.Once);
+
+        // Completed + analysis are persisted together by the analysis store.
+        _incidentAnalysisStore.Verify(
+            store => store.StoreCompletedAnalysisAsync(
+                incident,
+                analysisResult,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact]
@@ -49,13 +73,26 @@ public sealed class AnalyseIncidentHandlerTests
             .Setup(repository => repository.GetByIdAsync(command.IncidentId, It.IsAny<CancellationToken>()))
             .ReturnsAsync((Incident?)null);
 
-        var handler = new AnalyseIncidentHandler(_repository.Object);
+        var handler = CreateHandler();
 
         // Act + Assert
         await Assert.ThrowsAsync<IncidentNotFoundException>(() => handler.HandleAsync(command));
 
         _repository.Verify(
             repository => repository.UpdateAsync(It.IsAny<Incident>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _incidentAnalyzer.Verify(
+            analyzer => analyzer.AnalyzeIncidentAsync(
+                It.IsAny<IncidentAnalysisInput>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _incidentAnalysisStore.Verify(
+            store => store.StoreCompletedAnalysisAsync(
+                It.IsAny<Incident>(),
+                It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -66,13 +103,14 @@ public sealed class AnalyseIncidentHandlerTests
         var incident = CreateIncident();
         incident.StartProcessingAttempt();
         incident.MarkCompleted();
+
         var command = CreateAnalyseIncidentCommand(incident.Id);
 
         _repository
             .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(incident);
 
-        var handler = new AnalyseIncidentHandler(_repository.Object);
+        var handler = CreateHandler();
 
         // Act
         await handler.HandleAsync(command);
@@ -84,6 +122,19 @@ public sealed class AnalyseIncidentHandlerTests
         _repository.Verify(
             repository => repository.UpdateAsync(It.IsAny<Incident>(), It.IsAny<CancellationToken>()),
             Times.Never);
+
+        _incidentAnalyzer.Verify(
+            analyzer => analyzer.AnalyzeIncidentAsync(
+                It.IsAny<IncidentAnalysisInput>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+
+        _incidentAnalysisStore.Verify(
+            store => store.StoreCompletedAnalysisAsync(
+                It.IsAny<Incident>(),
+                It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -92,15 +143,30 @@ public sealed class AnalyseIncidentHandlerTests
         // Arrange
         var incident = CreateIncident();
         incident.StartProcessingAttempt();
+
         Assert.Equal(1, incident.AttemptCount);
 
         var command = CreateAnalyseIncidentCommand(incident.Id);
+        var analysisResult = CreateAnalysisResult();
 
         _repository
             .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(incident);
 
-        var handler = new AnalyseIncidentHandler(_repository.Object);
+        _incidentAnalyzer
+            .Setup(analyzer => analyzer.AnalyzeIncidentAsync(
+                It.IsAny<IncidentAnalysisInput>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(analysisResult);
+
+        _incidentAnalysisStore
+            .Setup(store => store.StoreCompletedAnalysisAsync(
+                It.IsAny<Incident>(),
+                It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var handler = CreateHandler();
 
         // Act
         await handler.HandleAsync(command);
@@ -113,7 +179,96 @@ public sealed class AnalyseIncidentHandlerTests
 
         _repository.Verify(
             repository => repository.UpdateAsync(incident, It.IsAny<CancellationToken>()),
-            Times.Exactly(2));
+            Times.Once);
+
+        _incidentAnalysisStore.Verify(
+            store => store.StoreCompletedAnalysisAsync(
+                incident,
+                analysisResult,
+                It.IsAny<CancellationToken>()),
+            Times.Once);
+    }
+
+    [Fact]
+    public async Task HandleAsync_PassesIncidentDataToAnalyzer()
+    {
+        // Arrange
+        var incident = CreateIncident();
+        var command = CreateAnalyseIncidentCommand(incident.Id);
+        var analysisResult = CreateAnalysisResult();
+
+        IncidentAnalysisInput? capturedInput = null;
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(incident);
+
+        _incidentAnalyzer
+            .Setup(analyzer => analyzer.AnalyzeIncidentAsync(
+                It.IsAny<IncidentAnalysisInput>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<IncidentAnalysisInput, CancellationToken>(
+                (input, _) => capturedInput = input)
+            .ReturnsAsync(analysisResult);
+
+        _incidentAnalysisStore
+            .Setup(store => store.StoreCompletedAnalysisAsync(
+                It.IsAny<Incident>(),
+                It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+
+        var handler = CreateHandler();
+
+        // Act
+        await handler.HandleAsync(command);
+
+        // Assert
+        Assert.NotNull(capturedInput);
+        Assert.Equal(incident.Title, capturedInput.Title);
+        Assert.Equal(incident.Description, capturedInput.Description);
+        Assert.Equal(incident.Service, capturedInput.Service);
+        Assert.Equal(incident.Environment, capturedInput.Environment);
+        Assert.Equal(incident.Severity, capturedInput.Severity);
+        Assert.Equal(incident.Symptoms, capturedInput.Symptoms);
+    }
+
+    [Fact]
+    public async Task HandleAsync_WhenAnalyzerThrows_DoesNotStoreCompletedAnalysis()
+    {
+        // Arrange
+        var incident = CreateIncident();
+        var command = CreateAnalyseIncidentCommand(incident.Id);
+
+        _repository
+            .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(incident);
+
+        _incidentAnalyzer
+            .Setup(analyzer => analyzer.AnalyzeIncidentAsync(
+                It.IsAny<IncidentAnalysisInput>(),
+                It.IsAny<CancellationToken>()))
+            .ThrowsAsync(new InvalidOperationException("AI unavailable"));
+
+        var handler = CreateHandler();
+
+        // Act + Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(
+            () => handler.HandleAsync(command));
+
+        Assert.Equal(IncidentStatus.Processing, incident.Status);
+        Assert.Equal(1, incident.AttemptCount);
+
+        _repository.Verify(
+            repository => repository.UpdateAsync(incident, It.IsAny<CancellationToken>()),
+            Times.Once);
+
+        _incidentAnalysisStore.Verify(
+            store => store.StoreCompletedAnalysisAsync(
+                It.IsAny<Incident>(),
+                It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact]
@@ -122,13 +277,14 @@ public sealed class AnalyseIncidentHandlerTests
         // Arrange
         var incident = CreateIncident();
         incident.StartProcessingAttempt();
+
         var command = CreateAnalyseIncidentCommand(incident.Id);
 
         _repository
             .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(incident);
 
-        var handler = new AnalyseIncidentHandler(_repository.Object);
+        var handler = CreateHandler();
 
         // Act
         await handler.MarkFailedAsync(command, "AI service unavailable");
@@ -150,13 +306,14 @@ public sealed class AnalyseIncidentHandlerTests
         var incident = CreateIncident();
         incident.StartProcessingAttempt();
         incident.MarkCompleted();
+
         var command = CreateAnalyseIncidentCommand(incident.Id);
 
         _repository
             .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(incident);
 
-        var handler = new AnalyseIncidentHandler(_repository.Object);
+        var handler = CreateHandler();
 
         // Act
         await handler.MarkFailedAsync(command, "Late failure");
@@ -176,13 +333,14 @@ public sealed class AnalyseIncidentHandlerTests
         var incident = CreateIncident();
         incident.StartProcessingAttempt();
         incident.MarkFailed("Initial failure");
+
         var command = CreateAnalyseIncidentCommand(incident.Id);
 
         _repository
             .Setup(repository => repository.GetByIdAsync(incident.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(incident);
 
-        var handler = new AnalyseIncidentHandler(_repository.Object);
+        var handler = CreateHandler();
 
         // Act
         await handler.MarkFailedAsync(command, "Duplicate failure");
@@ -196,6 +354,14 @@ public sealed class AnalyseIncidentHandlerTests
             Times.Never);
     }
 
+    private AnalyseIncidentHandler CreateHandler()
+    {
+        return new AnalyseIncidentHandler(
+            _repository.Object,
+            _incidentAnalyzer.Object,
+            _incidentAnalysisStore.Object);
+    }
+
     private static Incident CreateIncident()
     {
         return Incident.Create(
@@ -205,6 +371,25 @@ public sealed class AnalyseIncidentHandlerTests
             "Production",
             IncidentSeverity.High,
             "Database timeout errors");
+    }
+
+    private static IncidentAnalysisResult CreateAnalysisResult()
+    {
+        return new IncidentAnalysisResult(
+            Summary: "The Payments API is experiencing database-related timeouts.",
+            LikelyCauses:
+            [
+                new LikelyCause(
+                    "Database connection or query timeout",
+                    0.9)
+            ],
+            RecommendedActions:
+            [
+                new RecommendedAction(
+                    "Inspect database latency and active connections.")
+            ],
+            Model: "test-model",
+            AnalysedAtUtc: DateTimeOffset.UtcNow);
     }
 
     private static AnalyseIncidentCommand CreateAnalyseIncidentCommand(string incidentId)

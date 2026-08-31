@@ -26,6 +26,10 @@ param maxDeliveryCount int = 5
 
 param applicationInsightsConnectionString string
 
+param azureAiEndpoint string
+param azureAiDeploymentName string
+param azureAiModelName string
+
 var containerAppName = 'ca-${projectName}-worker-${environmentName}'
 
 resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
@@ -104,6 +108,18 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: applicationInsightsConnectionString
+            }
+            {
+              name: 'AzureAI__Endpoint'
+              value: azureAiEndpoint
+            }
+            {
+              name: 'AzureAI__DeploymentName'
+              value: azureAiDeploymentName
+            }
+            {
+              name: 'AzureAI__ModelName'
+              value: azureAiModelName
             }
           ]
 

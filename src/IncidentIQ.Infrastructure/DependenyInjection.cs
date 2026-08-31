@@ -64,6 +64,7 @@ public static class DependencyInjection
         services.AddScoped<IIncidentRepository, CosmosIncidentRepository>();
         services.AddScoped<IRunbookRepository, CosmosRunbookRepository>();
         services.AddScoped<IIncidentSubmissionStore, CosmosIncidentSubmissionStore>();
+        services.AddScoped<IIncidentAnalysisStore, CosmosIncidentAnalysisStore>();
         #endregion
 
         #region Add Service ...

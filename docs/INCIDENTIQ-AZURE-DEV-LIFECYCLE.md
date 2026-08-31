@@ -193,6 +193,7 @@ az provider register --namespace Microsoft.App --wait
 az provider register --namespace Microsoft.ContainerRegistry --wait
 az provider register --namespace Microsoft.Web --wait
 az provider register --namespace Microsoft.ManagedIdentity --wait
+az provider register --namespace Microsoft.CognitiveServices --wait
 ```
 
 These registrations are subscription-level and normally only need to be completed once.

@@ -1,6 +1,6 @@
 ﻿using Azure.Messaging.ServiceBus;
 using IncidentIQ.Application.Common.Abstractions;
-using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Analyse;
 using System.Text.Json;
 
 namespace IncidentIQ.Infrastructure.Messaging;

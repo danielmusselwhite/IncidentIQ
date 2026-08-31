@@ -1,10 +1,10 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
-using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Analyse;
 using IncidentIQ.Domain.Incidents;
-using IncidentIQ.Application.Incidents.Analyse.Retry;
+using IncidentIQ.Application.Analyse.Retry;
 using IncidentIQ.Application.Common.Exceptions;
 
-namespace IncidentIQ.Application.Incidents.Analyse.Retry;
+namespace IncidentIQ.Application.Analyse.Retry;
 
 public sealed class RetryAnalyseIncidentHandler(IIncidentRepository incidentRepository, IIncidentSubmissionStore incidentSubmissionStore)
 {

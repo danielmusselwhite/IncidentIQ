@@ -22,6 +22,14 @@ param tags object = {
   managedBy: 'Bicep'
 }
 
+// Azure AI configuration for the incident analysis model.
+param azureAiLocation string = location
+param azureAiModelName string = 'gpt-5-mini'
+param azureAiModelVersion string = '2025-08-07'
+param azureAiDeploymentName string = 'incident-analysis'
+param azureAiDeploymentSkuName string = 'GlobalStandard'
+param azureAiDeploymentCapacity int = 10
+
 // Workload identities used by the API and Worker Container Apps.
 module apiIdentity './modules/api-identity.bicep' = {
   name: 'apiIdentity'
@@ -162,6 +170,25 @@ module apiContainerApp './modules/api-container-app.bicep' = {
   }
 }
 
+// Azure AI module for the incident analysis model.
+module azureAi './modules/azure-ai.bicep' = {
+  name: 'azureAi'
+  params: {
+    location: azureAiLocation
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+
+    workerPrincipalId: workerIdentity.outputs.principalId
+
+    modelName: azureAiModelName
+    modelVersion: azureAiModelVersion
+    deploymentName: azureAiDeploymentName
+    deploymentSkuName: azureAiDeploymentSkuName
+    deploymentCapacity: azureAiDeploymentCapacity
+  }
+}
+
 // Background Worker. It has no ingress and hosts both the Change Feed outbox
 // relay and Service Bus analysis consumer.
 module workerContainerApp './modules/worker-container-app.bicep' = {
@@ -191,6 +218,10 @@ module workerContainerApp './modules/worker-container-app.bicep' = {
     maxDeliveryCount: serviceBusMaxDeliveryCount
 
     applicationInsightsConnectionString: applicationInsights.outputs.connectionString
+    
+    azureAiEndpoint: azureAi.outputs.endpoint
+    azureAiDeploymentName: azureAi.outputs.deploymentName
+    azureAiModelName: azureAi.outputs.modelName
   }
 }
 

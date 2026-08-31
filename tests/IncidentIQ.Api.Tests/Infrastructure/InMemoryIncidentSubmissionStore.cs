@@ -1,5 +1,5 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
-using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Analyse;
 using IncidentIQ.Domain.Incidents;
 using System.Collections.Concurrent;
 

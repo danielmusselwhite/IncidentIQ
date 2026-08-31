@@ -1,5 +1,5 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
-using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Analyse;
 using System.Collections.Concurrent;
 
 namespace IncidentIQ.Api.Tests.Fakes;
