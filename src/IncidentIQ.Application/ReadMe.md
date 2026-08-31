@@ -151,4 +151,4 @@ tests/IncidentIQ.Application.Tests
 
 Mocks are used for Application abstractions so use-case behaviour can be tested without Azure resources.
 
-See [tests/README.md](../../tests/README.md) for the wider testing strategy.
+See [tests/ReadMe.md](../../tests/ReadMe.md) for the wider testing strategy.

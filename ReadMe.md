@@ -97,8 +97,8 @@ Reliability features include Service Bus retries, DLQ handling, processing-attem
 | [Development Guide](docs/DEVELOPMENT.md) | Run IncidentIQ locally or against Azure development resources |
 | [Design Decisions & Trade-offs](docs/DESIGN-DECISIONS.md) | Reliability, messaging, idempotency, DLQ, and outbox decisions |
 | [Azure Dev Lifecycle](docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md) | Create, tear down, recreate, and reconfigure the Azure dev environment |
-| [Infrastructure](infra/README.md) | Bicep structure, Azure resources, identities, and resource ownership |
-| [Testing](tests/README.md) | Test projects, test boundaries, and local end-to-end verification |
+| [Infrastructure](infra/ReadMe.md) | Bicep structure, Azure resources, identities, and resource ownership |
+| [Testing](tests/ReadMe.md) | Test projects, test boundaries, and local end-to-end verification |
 | [Roadmap](docs/ROADMAP.md) | Current development progress and planned stages |
 
 Each main project also has its own README for implementation-specific responsibilities.
@@ -126,7 +126,7 @@ Run the backend test suite from the repository root:
 dotnet test
 ```
 
-See [tests/README.md](tests/ReadMe.md) for the testing strategy and end-to-end reliability checks.
+See [tests/ReadMe.md](tests/ReadMe.md) for the testing strategy and end-to-end reliability checks.
 
 ## Roadmap
 

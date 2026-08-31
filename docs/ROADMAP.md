@@ -127,13 +127,13 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 * [x] Add processing attempt/failure metadata.
 * [x] Handle Cosmos + Service Bus dual-write consistency.
 
-  * [x] Done via outbox pattern to ensure eventual consistency between Cosmos DB and Service Bus.
+  * [x] Done via outbox pattern to ensure eventual consistency between Cosmos DB and Service Bus.
 
 * [ ] Add admin retry/requeue functionality.
 
-  * [ ] Only the backend logic and API endpoint
+  * [ ] Only the backend logic and API endpoint
 
-  * [ ] Will later in stage 16 include the front-end side on  the admin operations page
+  * [ ] Will later in stage 16 include the front-end side on  the admin operations page
 
 * [ ] Add reliability and duplicate-message tests.
 
@@ -147,7 +147,7 @@ Deploy the complete working application to Azure.
 * [ ] Create API Container App Bicep module.
 * [ ] Create Worker Container App Bicep module.
 
-  * [ ] When deploying worker to ACA make sure application setting matches the bicep queue setting for `MaxDeliveryCount`.
+  * [ ] When deploying worker to ACA make sure application setting matches the bicep queue setting for `MaxDeliveryCount`.
 
 * [ ] Create frontend hosting infrastructure.
 * [ ] Deploy ACR, Container Apps and frontend hosting through Bicep.

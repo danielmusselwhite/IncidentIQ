@@ -238,4 +238,4 @@ Use **Docker Compose** for normal feature development and local end-to-end testi
 
 Use **Azure-connected local execution** when verifying real Azure integration, RBAC, Cosmos behaviour, Service Bus behaviour, or telemetry.
 
-For automated and manual reliability testing, see [tests/README.md](../tests/README.md).
+For automated and manual reliability testing, see [tests/ReadMe.md](../tests/ReadMe.md).

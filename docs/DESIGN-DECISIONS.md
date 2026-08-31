@@ -2,7 +2,7 @@
 
 This document records the main reliability and messaging decisions in IncidentIQ and explains **why** they were chosen.
 
-For runtime setup see [DEVELOPMENT.md](DEVELOPMENT.md). For test coverage and manual verification see [tests/README.md](../tests/README.md).
+For runtime setup see [DEVELOPMENT.md](DEVELOPMENT.md). For test coverage and manual verification see [tests/ReadMe.md](../tests/ReadMe.md).
 
 ## 1. Asynchronous Incident Processing
 
