@@ -22,6 +22,8 @@ param cosmosChangeFeedLeasesContainerName string
 
 param applicationInsightsConnectionString string
 
+param frontendOrigin string // the origin URL of the frontend application, used for CORS configuration in production.
+
 var containerAppName = 'ca-${projectName}-api-${environmentName}'
 
 resource apiContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
@@ -100,6 +102,10 @@ resource apiContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: applicationInsightsConnectionString
+            }
+            {
+              name: 'Frontend__Origin'
+              value: frontendOrigin
             }
           ]
 

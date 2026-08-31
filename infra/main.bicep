@@ -121,6 +121,18 @@ module containerAppsEnvironment './modules/container-apps-environment.bicep' = {
   }
 }
 
+// Static hosting for the React/Vite frontend. The built frontend is uploaded by
+// GitHub Actions after Bicep has provisioned the Static Web App resource.
+module frontend './modules/frontend.bicep' = {
+  name: 'frontend'
+  params: {
+    location: location
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+  }
+}
+
 // Public HTTP API. It uses its managed identity for Cosmos and ACR access.
 module apiContainerApp './modules/api-container-app.bicep' = {
   name: 'apiContainerApp'
@@ -145,6 +157,8 @@ module apiContainerApp './modules/api-container-app.bicep' = {
     cosmosChangeFeedLeasesContainerName: cosmos.outputs.changeFeedLeasesContainerName
 
     applicationInsightsConnectionString: applicationInsights.outputs.connectionString
+
+    frontendOrigin: frontend.outputs.url
   }
 }
 
@@ -177,18 +191,6 @@ module workerContainerApp './modules/worker-container-app.bicep' = {
     maxDeliveryCount: serviceBusMaxDeliveryCount
 
     applicationInsightsConnectionString: applicationInsights.outputs.connectionString
-  }
-}
-
-// Static hosting for the React/Vite frontend. The built frontend is uploaded by
-// GitHub Actions after Bicep has provisioned the Static Web App resource.
-module frontend './modules/frontend.bicep' = {
-  name: 'frontend'
-  params: {
-    location: location
-    projectName: projectName
-    environmentName: environmentName
-    tags: tags
   }
 }
 
