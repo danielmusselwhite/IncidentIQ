@@ -24,19 +24,6 @@ module apiIdentity './modules/api-identity.bicep' = {
   }
 }
 
-// Cosmos DB resources.
-// The API identity is passed in so the module can configure the required access.
-module cosmos './modules/cosmos.bicep' = {
-  name: 'cosmos'
-  params: {
-    location: location
-    projectName: projectName
-    environmentName: environmentName
-    tags: tags
-    apiPrincipalId: apiIdentity.outputs.principalId
-  }
-}
-
 // Log Analytics workspace used for application logging and monitoring.
 module logAnalytics './modules/log-analytics.bicep' = {
   name: 'logAnalytics'
@@ -81,9 +68,24 @@ module serviceBus './modules/service-bus.bicep' = {
     location: location
     projectName: projectName
     environmentName: environmentName
-    apiPrincipalId: apiIdentity.outputs.principalId
     workerPrincipalId: workerIdentity.outputs.principalId
     tags: tags
+  }
+}
+
+
+
+// Cosmos DB resources.
+// The API identity is passed in so the module can configure the required access.
+module cosmos './modules/cosmos.bicep' = {
+  name: 'cosmos'
+  params: {
+    location: location
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+    apiPrincipalId: apiIdentity.outputs.principalId
+    workerPrincipalId: workerIdentity.outputs.principalId
   }
 }
 

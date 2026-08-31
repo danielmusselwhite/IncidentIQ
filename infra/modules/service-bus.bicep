@@ -1,11 +1,12 @@
-// Create the Service Bus namespace and queue, and assign the API and Worker identities the appropriate RBAC roles to send and receive messages.
+// Service Bus resources.
+// The Worker identity is granted permissions to send analysis commands
+// and receive them for processing.
 targetScope = 'resourceGroup'
 
 param location string
 param projectName string
 param environmentName string
 param tags object
-param apiPrincipalId string
 param workerPrincipalId string
 
 param analyseIncidentQueueName string = 'analyse-incident'
@@ -64,18 +65,18 @@ resource analyseIncidentQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01
   }
 }
 
-// Assign the API identity the Built-In Service Bus Data Sender role for this queue, so it can send messages to it.
+// Assign the Worker identity the Built-In Service Bus Data Sender role for this queue, so it can send messages to it.
 var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
   '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
 )
-resource apiSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
-  name: guid(analyseIncidentQueue.id, apiPrincipalId, serviceBusDataSenderRoleDefinitionId)
+resource workerSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(analyseIncidentQueue.id, workerPrincipalId, serviceBusDataSenderRoleDefinitionId)
 
   scope: analyseIncidentQueue
 
   properties: {
-    principalId: apiPrincipalId
+    principalId: workerPrincipalId
     principalType: 'ServicePrincipal'
     roleDefinitionId: serviceBusDataSenderRoleDefinitionId
   }

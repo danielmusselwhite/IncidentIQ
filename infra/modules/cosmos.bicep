@@ -1,3 +1,6 @@
+// Cosmos DB resources.
+// The API and Worker identities are granted the required Cosmos DB access.
+
 targetScope = 'resourceGroup'
 
 param location string
@@ -11,6 +14,7 @@ param runbooksContainerName string = 'Runbooks'
 param changeFeedLeasesContainerName string = 'ChangeFeedLeases'
 
 param apiPrincipalId string
+param workerPrincipalId string
 
 var cosmosAccountName = 'cosmos-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
 
@@ -24,6 +28,17 @@ resource apiCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleA
 
   properties: {
     principalId: apiPrincipalId
+    roleDefinitionId: cosmosDataContributorRoleDefinitionId
+    scope: cosmosAccount.id
+  }
+}
+
+resource workerCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRoleAssignments@2026-03-15' = {
+  parent: cosmosAccount
+  name: guid(cosmosAccount.id, workerPrincipalId, cosmosDataContributorRoleId)
+
+  properties: {
+    principalId: workerPrincipalId
     roleDefinitionId: cosmosDataContributorRoleDefinitionId
     scope: cosmosAccount.id
   }

@@ -312,6 +312,7 @@ Provision Event Grid and Functions before integrating them.
 - [ ] Atm we just have basic state-based idempotency by disallowing work on incidents that are already marked as completed. Could strengthen this by implementing more robust idempotency mechanisms, such as request tokens, distributed locks, or optimistic concurrecy/ eTags.
 
 - [x] Add architecture and create-incident message-flow diagrams. 
+- [ ] See about integrating with repo eg github so it can analyse for potentially breaking changes. (Eg if payments fail it may notice that a commit changed the payment service just before these related incidents started rolling in)
 
 ## Stage 20 — Optional AI-200 Experiments
 
