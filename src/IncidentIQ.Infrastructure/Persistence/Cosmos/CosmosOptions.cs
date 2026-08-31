@@ -1,7 +1,15 @@
 ﻿namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
 
+/// <summary>
+/// Configuration options for connecting to a Cosmos DB instance.
+/// Set in the application configuration (e.g., appsettings.json or environment variables).
+/// In prod, the environment variables are set via the Bicep templates used for infrastructure deployment.
+/// </summary>
 public sealed class CosmosOptions
 {
+    /// <summary>
+    /// The section name in the application configuration for Cosmos DB options.
+    /// </summary>
     public const string SectionName = "Cosmos";
 
     public required string Endpoint { get; init; }

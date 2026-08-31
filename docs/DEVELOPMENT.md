@@ -2,16 +2,16 @@
 
 IncidentIQ supports two development modes:
 
-1. **Fully local** — Docker Compose, Cosmos DB Emulator, and Service Bus Emulator.
+1. **Local infrastructure** — Docker Compose with the Cosmos DB and Service Bus emulators. The Stage 10 analyzer still requires real Azure AI because there is no local Azure OpenAI emulator.
 2. **Azure-connected** — API and Worker run locally against the Azure development environment.
 
 For Azure resource creation, teardown, and secret refresh instructions, see [IncidentIQ Azure Dev Environment Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
 
 ---
 
-## Option 1 — Fully Local
+## Option 1 — Local Infrastructure
 
-This is the normal day-to-day development mode.
+This remains useful for normal API/frontend and emulator development. The Worker now requires Azure AI settings, so use the Azure-connected mode below for end-to-end Stage 10 AI analysis.
 
 ### Prerequisites
 
@@ -91,7 +91,9 @@ Cosmos transactional batch
           ↓
  AnalyseIncidentWorker
           ↓
-   Cosmos Incident update
+      Azure AI
+          ↓
+ Cosmos Incident + analysis update
           ↓
 Queued → Processing → Completed / Failed
 ```
@@ -115,7 +117,7 @@ IncidentIQ
 └── ChangeFeedLeases
 ```
 
-`Incidents` contains both Incident and analysis-outbox documents. `ChangeFeedLeases` is SDK-managed state used by the Cosmos Change Feed Processor.
+`Incidents` contains Incident, analysis-outbox, and structured analysis documents. `ChangeFeedLeases` is SDK-managed state used by the Cosmos Change Feed Processor.
 
 ### Stop the Environment
 
@@ -137,7 +139,7 @@ Use `-v` only when you intentionally want to reset local emulator data, such as 
 
 ## Option 2 — Run Locally Against Azure
 
-Use this mode to verify real Azure Cosmos DB, Service Bus, authentication/RBAC, and telemetry behaviour.
+Use this mode to verify real Azure Cosmos DB, Service Bus, Azure AI, authentication/RBAC, and telemetry behaviour.
 
 ### 1. Ensure the Dev Environment Exists
 
@@ -180,6 +182,16 @@ ServiceBus:AnalyseIncidentQueueName
 ServiceBus:MaxDeliveryCount
 ```
 
+and Azure AI configuration:
+
+```text
+AzureAI:Endpoint
+AzureAI:DeploymentName
+AzureAI:ModelName
+```
+
+To call Azure AI locally, the signed-in Azure identity must have the `Cognitive Services OpenAI User` role on the Azure OpenAI account.
+
 If SAS authentication is being used instead of `DefaultAzureCredential`:
 
 ```text
@@ -213,7 +225,7 @@ IncidentOutboxWorker
 └── Cosmos Change Feed → Service Bus
 
 AnalyseIncidentWorker
-└── Service Bus → Incident processing
+└── Service Bus → Azure AI → analysis persistence
 ```
 
 ### 6. Start the Frontend
@@ -234,8 +246,8 @@ http://localhost:5173
 
 ## Which Mode Should I Use?
 
-Use **Docker Compose** for normal feature development and local end-to-end testing.
+Use **Docker Compose** for normal feature development and emulator-based testing.
 
-Use **Azure-connected local execution** when verifying real Azure integration, RBAC, Cosmos behaviour, Service Bus behaviour, or telemetry.
+Use **Azure-connected local execution** when verifying real Azure integration, RBAC, Cosmos behaviour, Service Bus behaviour, Azure AI, or telemetry.
 
 For automated and manual reliability testing, see [tests/ReadMe.md](../tests/ReadMe.md).

@@ -60,11 +60,15 @@ StartProcessingAttempt
       ↓
 persist Processing state
       ↓
-analysis workflow
+IIncidentAnalyzer
+      ↓
+IncidentAnalysisResult
       ↓
 MarkCompleted
       ↓
-persist Completed state
+IIncidentAnalysisStore
+      ↓
+persist Completed Incident + analysis atomically
 ```
 
 If processing ultimately exhausts retries, `MarkFailedAsync` persists the terminal `Failed` state.
@@ -90,6 +94,8 @@ Important Application abstractions currently include:
 ```text
 IIncidentRepository
 IIncidentSubmissionStore
+IIncidentAnalyzer
+IIncidentAnalysisStore
 IRunbookRepository
 IIncidentAnalysisQueue
 ```
@@ -102,6 +108,12 @@ IIncidentRepository
 
 IIncidentSubmissionStore
 └── CosmosIncidentSubmissionStore
+
+IIncidentAnalyzer
+└── AzureIncidentAnalyzer
+
+IIncidentAnalysisStore
+└── CosmosIncidentAnalysisStore
 
 IRunbookRepository
 └── CosmosRunbookRepository
@@ -132,11 +144,11 @@ The API converts validation failures into Problem Details responses.
 IncidentIQ.Application/
 ├── Common/
 │   └── Abstractions/
+├── Analyse/
 ├── Incidents/
 │   ├── Create/
 │   ├── GetById/
-│   ├── GetAll/
-│   └── Analyse/
+│   └── GetAll/
 ├── Runbooks/
 └── DependencyInjection.cs
 ```

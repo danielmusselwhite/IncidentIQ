@@ -24,7 +24,9 @@ public static class DependencyInjection
             .ValidateDataAnnotations()
             .ValidateOnStart();
 
-        #region Add Cosmos Client as a singleton service. The client is thread-safe and intended to be reused throughout the application.
+        #region Cosmos
+
+        // CosmosClient is thread-safe and intended to be reused for the lifetime of the application.
         services.AddSingleton(sp =>
         {
             var options = sp.GetRequiredService<IOptions<CosmosOptions>>().Value;
@@ -52,11 +54,9 @@ public static class DependencyInjection
             }
 
             // Azure uses Microsoft Entra authentication.
-            var credential = new DefaultAzureCredential();
-
             return new CosmosClient(
                 options.Endpoint,
-                credential,
+                new DefaultAzureCredential(),
                 clientOptions);
         });
 
@@ -64,17 +64,18 @@ public static class DependencyInjection
         services.AddScoped<IIncidentRepository, CosmosIncidentRepository>();
         services.AddScoped<IRunbookRepository, CosmosRunbookRepository>();
         services.AddScoped<IIncidentSubmissionStore, CosmosIncidentSubmissionStore>();
+        services.AddScoped<IIncidentAnalysisStore, CosmosIncidentAnalysisStore>();
+
         #endregion
 
-        #region Add Service ...
-        services.Configure<ServiceBusOptions>(configuration.GetSection(ServiceBusOptions.SectionName));
+        #region Service Bus
 
-        // register the client
+        services.Configure<ServiceBusOptions>(
+            configuration.GetSection(ServiceBusOptions.SectionName));
+
         services.AddSingleton(sp =>
         {
-            var options = sp
-                .GetRequiredService<IOptions<ServiceBusOptions>>()
-                .Value;
+            var options = sp.GetRequiredService<IOptions<ServiceBusOptions>>().Value;
 
             if (!string.IsNullOrWhiteSpace(options.ConnectionString))
             {
@@ -86,23 +87,17 @@ public static class DependencyInjection
                 new DefaultAzureCredential());
         });
 
-        // then the queue-specific sender
         services.AddSingleton(sp =>
         {
             var client = sp.GetRequiredService<ServiceBusClient>();
+            var options = sp.GetRequiredService<IOptions<ServiceBusOptions>>().Value;
 
-            var options = sp
-                .GetRequiredService<IOptions<ServiceBusOptions>>()
-                .Value;
-
-            return client.CreateSender(
-                options.AnalyseIncidentQueueName);
+            return client.CreateSender(options.AnalyseIncidentQueueName);
         });
 
-        // then the enqueue service
         services.AddSingleton<IIncidentAnalysisQueue, AzureServiceBusIncidentAnalysisQueue>();
-        #endregion
 
+        #endregion
 
         return services;
     }

@@ -20,7 +20,7 @@ rg-incidentiq-bootstrap
 
 `rg-incidentiq-bootstrap` contains the GitHub deployment identity and OIDC federation. Keeping it means the GitHub `development` environment identity values do not need to change.
 
-Deleting `rg-incidentiq-dev` removes the disposable development resources such as Azure Container Registry, Container Apps, Static Web Apps, Cosmos DB, Service Bus, monitoring resources, and workload identities.
+Deleting `rg-incidentiq-dev` removes the disposable development resources such as Azure Container Registry, Container Apps, Static Web Apps, Cosmos DB, Service Bus, Azure OpenAI, monitoring resources, and workload identities.
 
 ### Recreate the Dev Environment
 
@@ -55,6 +55,7 @@ Values derived from recreated resources may change, especially:
 
 ```text
 Cosmos:Key
+AzureAI:Endpoint
 APPLICATIONINSIGHTS_CONNECTION_STRING
 ServiceBus:ConnectionString    (only when SAS authentication is used)
 ```
@@ -83,7 +84,15 @@ ServiceBus:AnalyseIncidentQueueName = analyse-incident
 ServiceBus:MaxDeliveryCount
 ```
 
-When no Service Bus connection string is configured, the application uses `DefaultAzureCredential` and the local/Azure identity must have the required RBAC permissions.
+Worker Azure AI configuration:
+
+```text
+AzureAI:Endpoint
+AzureAI:DeploymentName = incident-analysis
+AzureAI:ModelName = gpt-5-mini
+```
+
+When connection strings/API keys are not configured, the application uses `DefaultAzureCredential` and the local/Azure identity must have the required RBAC permissions.
 
 ## Retrieve Azure Configuration Values
 
@@ -133,6 +142,15 @@ Use the returned namespace as:
 <namespace-name>.servicebus.windows.net
 ```
 
+### Azure AI Endpoint
+
+```powershell
+az cognitiveservices account list `
+    --resource-group "rg-incidentiq-dev" `
+    --query "[?kind=='OpenAI'].properties.endpoint | [0]" `
+    --output tsv
+```
+
 ### Service Bus Connection String
 
 Only required when using SAS authentication instead of `DefaultAzureCredential`:
@@ -158,10 +176,19 @@ dotnet user-secrets set "APPLICATIONINSIGHTS_CONNECTION_STRING" "<APP_INSIGHTS_C
     --project src\IncidentIQ.Api
 ```
 
-Example Worker value:
+Example Worker values:
 
 ```powershell
 dotnet user-secrets set "Cosmos:Key" "<COSMOS_KEY>" `
+    --project src\IncidentIQ.Worker
+
+dotnet user-secrets set "AzureAI:Endpoint" "<AZURE_AI_ENDPOINT>" `
+    --project src\IncidentIQ.Worker
+
+dotnet user-secrets set "AzureAI:DeploymentName" "incident-analysis" `
+    --project src\IncidentIQ.Worker
+
+dotnet user-secrets set "AzureAI:ModelName" "gpt-5-mini" `
     --project src\IncidentIQ.Worker
 ```
 
@@ -193,6 +220,7 @@ az provider register --namespace Microsoft.App --wait
 az provider register --namespace Microsoft.ContainerRegistry --wait
 az provider register --namespace Microsoft.Web --wait
 az provider register --namespace Microsoft.ManagedIdentity --wait
+az provider register --namespace Microsoft.CognitiveServices --wait
 ```
 
 These registrations are subscription-level and normally only need to be completed once.
@@ -276,6 +304,8 @@ rg-incidentiq-dev
 ├── Azure Service Bus
 │   └── analyse-incident
 │       └── $DeadLetterQueue
+├── Azure OpenAI
+│   └── incident-analysis deployment
 ├── API Managed Identity
 ├── Worker Managed Identity
 ├── Application Insights

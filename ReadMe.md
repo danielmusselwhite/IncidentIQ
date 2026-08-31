@@ -2,7 +2,7 @@
 
 IncidentIQ is an AI-powered incident analysis platform for engineers. Users submit technical incidents through a React frontend, and the backend processes them asynchronously through Cosmos DB, Azure Service Bus, and a .NET Worker.
 
-The project is being built incrementally as a practical Azure/AI engineering project. The current system implements incident and Runbook management, asynchronous incident processing, reliability handling, and a transactional outbox. Later stages add Azure AI, vector retrieval, RAG, scaling, security, and operations tooling.
+The project is being built incrementally as a practical Azure/AI engineering project. The current system implements incident and Runbook management, asynchronous incident processing, reliability handling, a transactional outbox, and the Stage 10 Azure AI analysis pipeline. Later stages add vector retrieval, RAG, scaling, security, and operations tooling.
 
 ## Architecture
 
@@ -30,6 +30,8 @@ Cosmos transactional batch
      Service Bus
           ↓
   Analysis Worker
+          ↓
+      Azure AI
           ↓
     Cosmos update
           ↓
@@ -107,7 +109,7 @@ Each main project also has its own README for implementation-specific responsibi
 
 ### Docker-Compose
 
-**For normal local development**, as the project has enabled Container, and Container Orchestration Support within **Visual Studio** you should be able to select in the **Debug Target** dropdown the appropriate service (e.g., `docker-compose`) then click **debug** to run the application within the containerized environment along with debugging support.
+**For normal local development**, as the project has enabled Container, and Container Orchestration Support within **Visual Studio** you should be able to select in the **Debug Target** dropdown the appropriate service (e.g., `docker-compose`) then click **debug** to run the application within the containerized environment along with debugging support. The Stage 10 Worker requires Azure AI configuration; see the [Development Guide](docs/DEVELOPMENT.md) for the Azure-connected AI workflow.
 
 After doing so you can then find:
 - API: https://localhost:7156/swagger

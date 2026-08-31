@@ -1,6 +1,6 @@
 using IncidentIQ.Application.Common.Abstractions;
-using IncidentIQ.Application.Incidents.Analyse;
-using IncidentIQ.Application.Incidents.Analyse.Retry;
+using IncidentIQ.Application.Analyse;
+using IncidentIQ.Application.Analyse.Retry;
 using IncidentIQ.Domain.Incidents;
 using IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 using Microsoft.Azure.Cosmos;

@@ -22,6 +22,7 @@ infra/
 │   ├── api-container-app.bicep
 │   ├── api-identity.bicep
 │   ├── application-insights.bicep
+│   ├── azure-ai.bicep
 │   ├── container-apps-environment.bicep
 │   ├── cosmos.bicep
 │   ├── frontend.bicep
@@ -76,6 +77,8 @@ rg-incidentiq-dev
 ├── Azure Service Bus
 │   └── analyse-incident
 │       └── $DeadLetterQueue
+├── Azure OpenAI
+│   └── incident-analysis deployment
 ├── API Managed Identity
 ├── Worker Managed Identity
 ├── Application Insights
@@ -88,7 +91,7 @@ Defined in `modules/cosmos.bicep`.
 
 | Container | Partition key | Purpose |
 |---|---|---|
-| `Incidents` | `/incidentId` | Incident documents and `AnalyseIncident` outbox documents |
+| `Incidents` | `/incidentId` | Incident, `AnalyseIncident` outbox, and structured analysis documents |
 | `Runbooks` | `/id` | Editable operational Runbooks |
 | `ChangeFeedLeases` | `/id` | SDK-managed Change Feed Processor checkpoints/ownership |
 
@@ -101,6 +104,12 @@ See [Design Decisions & Trade-offs](../docs/DESIGN-DECISIONS.md) for the reasoni
 Defined in `modules/service-bus.bicep`.
 
 `analyse-incident` carries durable analysis commands and is configured for bounded redelivery, dead-lettering, TTL, and duplicate detection. The queue's `maxDeliveryCount` and the Worker application's `ServiceBus__MaxDeliveryCount` setting are sourced from the same Bicep parameter to keep retry behaviour aligned.
+
+## Azure AI
+
+Defined in `modules/azure-ai.bicep`.
+
+The development environment provisions an Azure OpenAI account and the `incident-analysis` model deployment. The Worker receives the Azure AI endpoint, deployment name, and model name through Container App environment configuration and authenticates with its managed identity.
 
 ## Container Hosting
 
@@ -118,7 +127,8 @@ Worker Container App
 ├── one replica kept running during Stage 9
 ├── Worker managed identity
 ├── Cosmos + ACR access
-└── Service Bus sender + receiver access
+├── Service Bus sender + receiver access
+└── Azure OpenAI access
 ```
 
 The Worker remains at one replica until queue/KEDA scaling is introduced later.
@@ -161,10 +171,11 @@ IncidentOutboxWorker
 
 AnalyseIncidentWorker
 → Service Bus Data Receiver
-→ Cosmos read/update
+→ Azure OpenAI
+→ Cosmos analysis persistence
 ```
 
-It therefore requires Cosmos DB Data Contributor plus queue-scoped Service Bus Data Sender and Data Receiver roles.
+It therefore requires Cosmos DB Data Contributor, queue-scoped Service Bus Data Sender/Data Receiver, and Cognitive Services OpenAI User access.
 
 ## Monitoring
 
@@ -217,6 +228,7 @@ For startup commands and local URLs, see the [Development Guide](../docs/DEVELOP
 | Deployment RBAC | `bootstrap/deployment-role.bicep` |
 | Cosmos DB / containers / Cosmos RBAC | `modules/cosmos.bicep` |
 | Service Bus / queue / messaging RBAC | `modules/service-bus.bicep` |
+| Azure OpenAI / model deployment / Worker AI RBAC | `modules/azure-ai.bicep` |
 | Azure Container Registry / workload pull RBAC | `modules/acr.bicep` |
 | Container Apps Environment | `modules/container-apps-environment.bicep` |
 | API Container App | `modules/api-container-app.bicep` |

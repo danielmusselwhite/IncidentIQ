@@ -176,21 +176,26 @@ Deploy the complete working application to Azure.
 
 ## Stage 10 — Azure AI
 
-Provision Azure AI infrastructure before integrating AI functionality.
+Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 
-* [ ] Create Azure AI resource/deployment Bicep modules.
-* [ ] Deploy Azure AI resources to the development environment.
-
-* [ ] Configure Managed Identity/RBAC where supported.
-* [ ] Add Azure AI application integration.
-
-* [ ] Generate structured incident analysis.
-* [ ] Validate structured AI responses.
-
-* [ ] Handle AI timeout, throttling and failure scenarios.
-* [ ] Add AI request latency/failure telemetry.
-
-* [ ] Display likely causes and recommended actions.
+* [x] Define structured incident analysis contracts.
+* [x] Add `IIncidentAnalyzer` abstraction.
+* [x] Add structured analysis persistence model.
+* [x] Persist completed Incident + analysis atomically in Cosmos.
+* [x] Update analysis handler and tests for the new AI flow.
+* [x] Create Azure AI resource/deployment Bicep.
+* [x] Configure Worker Managed Identity/RBAC for Azure AI.
+* [x] Pass Azure AI configuration into the Worker Container App.
+* [x] Implement `AzureIncidentAnalyzer`.
+* [x] Generate structured summary, likely causes and recommended actions.
+* [x] Validate and map Azure AI responses into `IncidentAnalysisResult`.
+* [ ] Handle AI timeout, throttling and transient failure scenarios.
+* [ ] Add AI latency and failure telemetry.
+* [ ] Expose persisted analysis through the API.
+* [ ] Display AI-generated analysis in the React frontend.
+* [ ] Deploy Stage 10 changes to Azure.
+* [ ] Verify the full `Queued → Processing → AI analysis → Completed` flow.
+* [ ] Verify AI failure/retry behaviour in Azure.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
 

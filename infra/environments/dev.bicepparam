@@ -10,3 +10,10 @@ param tags = {
   environment: 'dev'
   managedBy: 'Bicep'
 }
+
+param azureAiLocation = 'uksouth'
+param azureAiModelName = 'gpt-5-mini'
+param azureAiModelVersion = '2025-08-07'
+param azureAiDeploymentName = 'incident-analysis'
+param azureAiDeploymentSkuName = 'GlobalStandard'
+param azureAiDeploymentCapacity = 10

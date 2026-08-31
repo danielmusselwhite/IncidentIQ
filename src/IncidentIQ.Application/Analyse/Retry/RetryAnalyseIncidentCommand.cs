@@ -1,4 +1,4 @@
-﻿namespace IncidentIQ.Application.Incidents.Analyse.Retry;
+﻿namespace IncidentIQ.Application.Analyse.Retry;
 
 /// <summary>
 /// Represents a request to retry analysis for a failed Incident.
