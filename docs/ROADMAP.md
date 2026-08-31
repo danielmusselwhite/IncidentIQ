@@ -141,7 +141,9 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 
 Deploy the complete working application to Azure.
 
-* [ ] Create ACR Bicep module.
+* [x] Modify RBAC to be in-line with the outbox pattern we just implemented.
+
+* [x] Create ACR Bicep module.
 * [ ] Create Container Apps Environment Bicep module.
 
 * [ ] Create API Container App Bicep module.

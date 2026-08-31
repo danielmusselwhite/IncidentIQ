@@ -89,6 +89,20 @@ module cosmos './modules/cosmos.bicep' = {
   }
 }
 
+// ACR resources.
+// Used to upload container images for the application which will later be deployed to the ACA.
+module acr './modules/acr.bicep' = {
+  name: 'acr'
+  params: {
+    location: location
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+    apiPrincipalId: apiIdentity.outputs.principalId
+    workerPrincipalId: workerIdentity.outputs.principalId
+  }
+}
+
 // Resource names and connection details exposed to the deployment pipeline
 // or other infrastructure that consumes these outputs.
 output cosmosAccountName string = cosmos.outputs.accountName
@@ -106,3 +120,6 @@ output serviceBusFullyQualifiedNamespace string = serviceBus.outputs.fullyQualif
 output analyseIncidentQueueName string = serviceBus.outputs.analyseIncidentQueueName
 output workerIdentityName string = workerIdentity.outputs.name
 output workerIdentityClientId string = workerIdentity.outputs.clientId
+output acrId string = acr.outputs.acrId
+output acrName string = acr.outputs.acrName
+output acrLoginServer string = acr.outputs.acrLoginServer
