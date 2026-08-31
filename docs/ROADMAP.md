@@ -137,31 +137,42 @@ Provision the Azure messaging infrastructure before integrating it into the appl
 
 * [x] Add reliability and duplicate-message tests.
 
-## Stage 9 — Application Deployment
+## Stage 9 — Azure Deployment
 
 Deploy the complete working application to Azure.
 
-* [x] Modify RBAC to be in-line with the outbox pattern we just implemented.
+### 9A — RBAC
+* [x] Align Azure RBAC with the transactional outbox architecture.
 
+### 9B — Azure Container Registry
 * [x] Create ACR Bicep module.
-* [ ] Create Container Apps Environment Bicep module.
+* [x] Configure managed identity image pull access.
 
-* [ ] Create API Container App Bicep module.
-* [ ] Create Worker Container App Bicep module.
+### 9C — Container Apps Environment
+* [x] Create Container Apps Environment Bicep module.
+* [x] Connect it to the existing Log Analytics workspace.
 
-  * [ ] When deploying worker to ACA make sure application setting matches the bicep queue setting for `MaxDeliveryCount`.
+### 9D — API Container App
+* [x] Create API Container App Bicep module.
+* [x] Configure ingress, managed identity and Cosmos settings.
 
-* [ ] Create frontend hosting infrastructure.
-* [ ] Deploy ACR, Container Apps and frontend hosting through Bicep.
+### 9E — Worker Container App
+* [x] Create Worker Container App Bicep module.
+* [x] Configure managed identity, Cosmos and Service Bus settings.
+* [x] Ensure `MaxDeliveryCount` matches the Service Bus queue configuration.
 
+### 9F — Frontend Hosting
+* [x] Create frontend hosting infrastructure.
+* [x] Configure frontend → API connectivity.
+
+### 9G — CI/CD & Deployment
 * [ ] Add API/Worker container build and publish workflow.
-* [ ] Build and push API/Worker images to ACR.
+* [ ] Build and push images to ACR.
+* [ ] Deploy API, Worker and React frontend.
 
-* [ ] Deploy API and Worker containers.
-* [ ] Deploy the React frontend.
-
-* [ ] Configure frontend → API connectivity.
+### 9H — Azure Verification
 * [ ] Verify the complete asynchronous workflow in Azure.
+* [ ] Verify retry and failure behaviour.
 
 ## Stage 10 — Azure AI
 

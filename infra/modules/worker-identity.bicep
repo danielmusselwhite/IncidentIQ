@@ -1,3 +1,4 @@
+// User-assigned managed identity used by the Worker Container App.
 targetScope = 'resourceGroup'
 
 param location string
