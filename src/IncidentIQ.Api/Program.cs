@@ -41,7 +41,7 @@ builder.Services.AddInfrastructureDependencies(builder.Configuration);
 builder.Services.AddApplicationDependencies();
 
 // CORS
-var frontendOrigin = builder.Configuration["Frontend:Origin"]; // Translated from 'Frontend__Origin' set via the bicep IaC
+var frontendOrigin = builder.Configuration["Frontend:Origin"];
 
 builder.Services.AddCors(options =>
 {
@@ -53,16 +53,20 @@ builder.Services.AddCors(options =>
             .AllowAnyMethod();
     });
 
-    options.AddPolicy("ProductionCors", policy =>
+    if (!builder.Environment.IsDevelopment() &&
+        !builder.Environment.IsEnvironment("Testing"))
     {
         if (string.IsNullOrWhiteSpace(frontendOrigin))
-            throw new InvalidOperationException("Frontend__Origin must be configured in production.");
+            throw new InvalidOperationException("Frontend:Origin must be configured in production.");
 
-        policy
-            .WithOrigins(frontendOrigin)
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
+        options.AddPolicy("ProductionCors", policy =>
+        {
+            policy
+                .WithOrigins(frontendOrigin)
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
+    }
 });
 
 var app = builder.Build();
@@ -78,6 +82,10 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 
     app.UseCors("DevelopmentCors");
+}
+else if (app.Environment.IsEnvironment("Testing"))
+{
+    // No specific CORS policy for testing environment.
 }
 else
 {
@@ -104,7 +112,7 @@ app.MapHealthChecks("/api/health");
 app.Run();
 
 // Add a partial Program class to allow for integration testing 
-// Required to allow WebbApplicationFactory<Program> to boot the application in integration tests in memory
+// Required to allow WebApplicationFactory<Program> to boot the application in integration tests in memory
 public partial class Program
 {
 }
