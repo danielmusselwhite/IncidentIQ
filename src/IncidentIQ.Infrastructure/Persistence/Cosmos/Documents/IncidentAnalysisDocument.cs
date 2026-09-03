@@ -6,7 +6,7 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 
 /// <summary>
 /// Cosmos persistence representation of a generated incident analysis.
-/// Stored in the Incidents container using the owning Incident ID as the partition key.
+/// Stored in the Incidents container using the owning incident ID as the partition key.
 /// </summary>
 internal sealed class IncidentAnalysisDocument
 {
@@ -29,19 +29,40 @@ internal sealed class IncidentAnalysisDocument
 
     public required DateTimeOffset AnalysedAtUtc { get; init; }
 
-    internal static IncidentAnalysisDocument FromDomain(
-        IncidentAnalysisResult analysis,
-        Incident incident)
+    /// <summary>
+    /// Creates the stable Cosmos document ID used for an incident analysis.
+    /// The document ID is different from the partition key: the document ID is
+    /// "analysis-{incidentId}", while the partition key remains the raw incident ID.
+    /// </summary>
+    internal static string CreateId(string incidentId) => $"analysis-{incidentId}";
+
+    /// <summary>
+    /// Maps the provider-independent Application result into its Cosmos representation.
+    /// </summary>
+    internal static IncidentAnalysisDocument FromApplication(IncidentAnalysisResult analysis, Incident incident)
     {
         return new IncidentAnalysisDocument
         {
-            Id = $"analysis-{incident.Id}",
+            Id = CreateId(incident.Id),
             IncidentId = incident.Id,
             Summary = analysis.Summary,
-            LikelyCauses = analysis.LikelyCauses.Select(LikelyCauseDocument.FromDomain).ToList(),
-            RecommendedActions = analysis.RecommendedActions.Select(RecommendedActionDocument.FromDomain).ToList(),
+            LikelyCauses = analysis.LikelyCauses.Select(LikelyCauseDocument.FromApplication).ToList(),
+            RecommendedActions = analysis.RecommendedActions.Select(RecommendedActionDocument.FromApplication).ToList(),
             Model = analysis.Model,
             AnalysedAtUtc = analysis.AnalysedAtUtc
         };
+    }
+
+    /// <summary>
+    /// Maps the Cosmos document back into the provider-independent Application result.
+    /// </summary>
+    internal IncidentAnalysisResult ToApplication()
+    {
+        return new IncidentAnalysisResult(
+            Summary,
+            LikelyCauses.Select(cause => cause.ToApplication()).ToList(),
+            RecommendedActions.Select(action => action.ToApplication()).ToList(),
+            Model,
+            AnalysedAtUtc);
     }
 }

@@ -3,6 +3,7 @@ using IncidentIQ.Application.Analyse;
 using IncidentIQ.Application.Analyse.Retry;
 using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
+using IncidentIQ.Application.Incidents.GetAnalysisById;
 using IncidentIQ.Application.Incidents.GetById;
 using IncidentIQ.Application.Runbooks.Create;
 using IncidentIQ.Application.Runbooks.Delete;
@@ -22,6 +23,7 @@ public static class DependencyInjection
         services.AddScoped<CreateIncidentHandler>();
         services.AddScoped<GetAllIncidentsHandler>();
         services.AddScoped<GetIncidentByIdHandler>();
+        services.AddScoped<GetIncidentAnalysisByIdHandler>();
 
         services.AddScoped<CreateRunbookHandler>();
         services.AddScoped<GetRunbookByIdHandler>();
@@ -29,7 +31,6 @@ public static class DependencyInjection
         services.AddScoped<UpdateRunbookHandler>();
         services.AddScoped<DeleteRunbookHandler>();
 
-        services.AddTransient<AnalyseIncidentHandler>();
         services.AddTransient<RetryAnalyseIncidentHandler>();
 
         return services;

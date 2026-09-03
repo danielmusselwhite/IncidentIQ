@@ -1,8 +1,8 @@
-﻿using IncidentIQ.Api.Contracts.Incidents;
-using IncidentIQ.Application.Analyse;
+using IncidentIQ.Api.Contracts.Incidents;
 using IncidentIQ.Application.Analyse.Retry;
 using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
+using IncidentIQ.Application.Incidents.GetAnalysisById;
 using IncidentIQ.Application.Incidents.GetById;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
@@ -11,25 +11,24 @@ namespace IncidentIQ.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public sealed class IncidentsController(CreateIncidentHandler createIncidentHandler,
+public sealed class IncidentsController(
+    CreateIncidentHandler createIncidentHandler,
     GetAllIncidentsHandler getAllIncidentsHandler,
     GetIncidentByIdHandler getIncidentByIdHandler,
-    RetryAnalyseIncidentHandler retryIncidentAnalysisHandler) : ControllerBase
+    RetryAnalyseIncidentHandler retryIncidentAnalysisHandler,
+    GetIncidentAnalysisByIdHandler getIncidentAnalysisByIdHandler) : ControllerBase
 {
     /// <summary>
     /// Creates a new incident.
     /// </summary>
-    /// <param name="request">The request containing the details of the incident to create.</param>
-    /// <param name="cancellationToken">A cancellation token.</param>
+    /// <param name="request">The request containing the incident details.</param>
+    /// <param name="cancellationToken">A token used to cancel the operation.</param>
     /// <returns>The created incident.</returns>
     [HttpPost]
     [ProducesResponseType<IncidentResponse>(StatusCodes.Status201Created)]
     [ProducesResponseType<ValidationProblemDetails>(StatusCodes.Status400BadRequest)]
-    public async Task<ActionResult<IncidentResponse>> Create(
-        CreateIncidentRequest request,
-        CancellationToken cancellationToken)
+    public async Task<ActionResult<IncidentResponse>> Create(CreateIncidentRequest request, CancellationToken cancellationToken)
     {
-        // convert to application command
         var command = new CreateIncidentCommand(
             request.Title,
             request.Description,
@@ -38,7 +37,7 @@ public sealed class IncidentsController(CreateIncidentHandler createIncidentHand
             request.Severity,
             request.Symptoms);
 
-        // generate correlationId for logging and tracing
+        // Reuse the current trace ID where possible so the request can be followed across the async workflow.
         var correlationId = Activity.Current?.TraceId.ToString() ?? HttpContext.TraceIdentifier;
 
         //!IMPORTANT add correlationId to response headers for client-side tracing
@@ -52,32 +51,30 @@ public sealed class IncidentsController(CreateIncidentHandler createIncidentHand
         return CreatedAtAction(nameof(GetById), new { id = incident.Id }, response);
     }
 
-
     /// <summary>
     /// Retrieves an incident by its unique identifier.
     /// </summary>
     /// <param name="id">The unique identifier of the incident.</param>
+    /// <param name="cancellationToken">A token used to cancel the operation.</param>
     /// <returns>The incident with the specified unique identifier.</returns>
     [HttpGet("{id}")]
     [ProducesResponseType<IncidentResponse>(StatusCodes.Status200OK)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
-    public async Task<ActionResult<IncidentResponse>> GetById(
-    string id,
-    CancellationToken cancellationToken)
+    public async Task<ActionResult<IncidentResponse>> GetById(string id, CancellationToken cancellationToken)
     {
         var incident = await getIncidentByIdHandler.HandleAsync(id, cancellationToken);
 
         return Ok(IncidentResponse.FromDomain(incident));
     }
 
-
     /// <summary>
-    /// Retrieves all incidents.s
+    /// Retrieves all incidents.
     /// </summary>
-    /// <returns>The incident with the specified unique identifier.</returns>
+    /// <param name="cancellationToken">A token used to cancel the operation.</param>
+    /// <returns>A collection of all incidents.</returns>
     [HttpGet]
     [ProducesResponseType<IReadOnlyCollection<IncidentResponse>>(StatusCodes.Status200OK)]
-    public async Task<ActionResult<IReadOnlyCollection<IncidentResponse>>> GetAll(    CancellationToken cancellationToken)
+    public async Task<ActionResult<IReadOnlyCollection<IncidentResponse>>> GetAll(CancellationToken cancellationToken)
     {
         var incidents = await getAllIncidentsHandler.HandleAsync(cancellationToken);
 
@@ -89,9 +86,30 @@ public sealed class IncidentsController(CreateIncidentHandler createIncidentHand
         return Ok(response);
     }
 
+    /// <summary>
+    /// Retrieves the persisted AI analysis for an incident.
+    /// </summary>
+    /// <param name="id">The ID of the incident whose analysis should be returned.</param>
+    /// <param name="cancellationToken">A token used to cancel the operation.</param>
+    /// <returns>The generated analysis for the incident.</returns>
+    [HttpGet("{id}/analysis")]
+    [ProducesResponseType<IncidentAnalysisResponse>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
+    public async Task<ActionResult<IncidentAnalysisResponse>> GetAnalysisById(string id, CancellationToken cancellationToken)
+    {
+        var analysis = await getIncidentAnalysisByIdHandler.HandleAsync(id, cancellationToken);
 
+        return Ok(IncidentAnalysisResponse.FromApplication(analysis));
+    }
+
+    /// <summary>
+    /// Requeues a failed incident for analysis.
+    /// </summary>
+    /// <param name="id">The ID of the incident to retry.</param>
+    /// <param name="cancellationToken">A token used to cancel the operation.</param>
+    /// <returns>The retried incident.</returns>
     [HttpPost("{id}/retry")]
-    [ProducesResponseType(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
     public async Task<ActionResult<IncidentResponse>> Retry(string id, CancellationToken cancellationToken)

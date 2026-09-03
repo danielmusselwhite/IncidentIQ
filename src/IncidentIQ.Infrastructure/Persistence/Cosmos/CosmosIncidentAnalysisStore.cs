@@ -8,46 +8,28 @@ using Microsoft.Extensions.Options;
 namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
 
 /// <summary>
-/// Stores the completed Incident state and generated analysis atomically in the same Cosmos logical partition.
+/// Stores a completed incident and its generated analysis atomically in the same Cosmos logical partition.
 /// </summary>
 internal sealed class CosmosIncidentAnalysisStore : IIncidentAnalysisStore
 {
     private readonly Container _container;
 
-    /// <summary>
-    /// Initializes a new instance of the <see cref="CosmosIncidentAnalysisStore"/> class with the specified <see cref="CosmosClient"/> and <see cref="IOptions{CosmosOptions}"/>.
-    /// </summary>
-    /// <param name="cosmosClient">The Cosmos client used to interact with the Cosmos DB service.</param>
-    /// <param name="options">The options used to configure the Cosmos DB connection.</param>
-    public CosmosIncidentAnalysisStore(
-        CosmosClient cosmosClient,
-        IOptions<CosmosOptions> options)
+    public CosmosIncidentAnalysisStore(CosmosClient cosmosClient, IOptions<CosmosOptions> options)
     {
         var cosmosOptions = options.Value;
-
-        _container = cosmosClient.GetContainer(
-            cosmosOptions.DatabaseName,
-            cosmosOptions.IncidentsContainerName);
+        _container = cosmosClient.GetContainer(cosmosOptions.DatabaseName, cosmosOptions.IncidentsContainerName);
     }
-    
+
     /// <summary>
-    /// Stores the completed incident and its analysis atomically in the Cosmos DB container.
+    /// Atomically persists the completed Incident document and its IncidentAnalysis document.
     /// </summary>
-    /// <param name="incident">The incident to store.</param>
-    /// <param name="analysis">The analysis result to store.</param>
-    /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    /// <returns>A task that represents the asynchronous operation.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if the operation fails.</exception>
-    public async Task StoreCompletedAnalysisAsync(
-        Incident incident,
-        IncidentAnalysisResult analysis,
-        CancellationToken cancellationToken = default)
+    public async Task StoreCompletedAnalysisAsync(Incident incident, IncidentAnalysisResult analysis, CancellationToken cancellationToken = default)
     {
         // Convert the domain incident and analysis result into their respective Cosmos DB documents.
         var incidentDocument = IncidentDocument.FromDomain(incident);
-        var analysisDocument = IncidentAnalysisDocument.FromDomain(analysis, incident);
+        var analysisDocument = IncidentAnalysisDocument.FromApplication(analysis, incident);
 
-        // Both documents use incident.Id as /incidentId, so Cosmos can commit both operations atomically.
+        // Both documents use incident.Id as /incidentId, so Cosmos can commit them in one transactional batch.
         var partitionKey = new PartitionKey(incident.Id);
 
         // in one transaction, replace the incident document and upsert the analysis document
