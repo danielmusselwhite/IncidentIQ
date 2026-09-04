@@ -130,6 +130,10 @@ dotnet test
 
 See [tests/ReadMe.md](tests/ReadMe.md) for the testing strategy and end-to-end reliability checks.
 
+## TroubleShooting
+
+See [TroubleShooting Guide](docs/TROUBLESHOOTING.md) for common development issues and resolutions.
+
 ## Roadmap
 
 See the full [Development Roadmap](docs/ROADMAP.md).

@@ -190,7 +190,7 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Generate structured summary, likely causes and recommended actions.
 * [x] Validate and map Azure AI responses into `IncidentAnalysisResult`.
 * [x] Expose the AI analysis results through the API via a Get Analysis endpoint.
-* [ ] Call the API on Front-End and Display the AI analysis results
+* [x] Call the API on Front-End and Display the AI analysis results
 * [ ] Handle AI timeout, throttling and transient failure scenarios.
 * [ ] Add AI latency and failure telemetry.
 * [ ] Expose persisted analysis through the API.
