@@ -189,6 +189,8 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Implement `AzureIncidentAnalyzer`.
 * [x] Generate structured summary, likely causes and recommended actions.
 * [x] Validate and map Azure AI responses into `IncidentAnalysisResult`.
+* [x] Expose the AI analysis results through the API via a Get Analysis endpoint.
+* [x] Call the API on Front-End and Display the AI analysis results
 * [ ] Handle AI timeout, throttling and transient failure scenarios.
 * [ ] Add AI latency and failure telemetry.
 * [ ] Expose persisted analysis through the API.
@@ -196,6 +198,7 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [ ] Deploy Stage 10 changes to Azure.
 * [ ] Verify the full `Queued → Processing → AI analysis → Completed` flow.
 * [ ] Verify AI failure/retry behaviour in Azure.
+* [ ] Update all relevant documentation to reflect Azure AI integration + dummy AI for local development.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
 

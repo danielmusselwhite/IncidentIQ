@@ -2,6 +2,7 @@ import type {
     CreateIncidentRequest,
     Incident,
 } from "../types/incident";
+import type { IncidentAnalysis } from "../types/incidentAnalysis";
 import { ApiError, type ApiProblemDetails } from "./apiError";
 
 const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "https://localhost:7156"; // if the environment variable is not set, default to the local development URL
@@ -57,6 +58,24 @@ export async function getIncident(id: string): Promise<Incident> {
 
     return response.json();
 }
+
+
+
+/** Retrieves the analysis for a specific incident from the API.
+ * @param id The ID of the incident to retrieve the analysis for.
+ * @returns A promise that resolves to the incident analysis.
+ * @throws An error if the request fails.
+ */
+export async function getIncidentAnalysis(id: string): Promise<IncidentAnalysis> {
+    const response = await fetch(`${apiBaseUrl}/api/incidents/${id}/analysis`);
+
+    if (!response.ok) {
+        await throwApiError(response);
+    }
+
+    return response.json();
+}
+
 
 async function throwApiError(response: Response): Promise<never> {
     const problem = await response

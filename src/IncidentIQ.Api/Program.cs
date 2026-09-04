@@ -89,6 +89,7 @@ else if (app.Environment.IsEnvironment("Testing"))
 }
 else
 {
+    app.UseHttpsRedirection();
     app.UseCors("ProductionCors");
 }
 
@@ -101,8 +102,6 @@ if (app.Environment.IsDevelopment())
     var initializer = scope.ServiceProvider.GetRequiredService<CosmosInitializer>();
     await initializer.InitializeAsync();
 }
-
-app.UseHttpsRedirection();
 
 app.UseAuthorization();
 

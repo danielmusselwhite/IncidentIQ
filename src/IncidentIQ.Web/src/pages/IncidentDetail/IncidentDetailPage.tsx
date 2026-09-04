@@ -2,46 +2,43 @@ import { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 
 import { ApiError } from "../../api/apiError";
-import { getIncident } from "../../api/incidentsApi";
+import { getIncident, getIncidentAnalysis } from "../../api/incidentsApi";
 import type { Incident } from "../../types/incident";
+import type { IncidentAnalysis } from "../../types/incidentAnalysis";
 
 import "./IncidentDetailPage.css";
 
 const POLL_INTERVAL_MS = 2000;
 
 /**
- * Simple helper function to determine if an incident should be polled based on its status.
- * Only incidents with a status of "Queued" or "Processing" should be polled.
+ * Determines whether an incident should continue being polled.
+ * Queued and Processing are temporary states, while Completed and Failed are terminal.
  */
 function shouldPoll(status: Incident["status"]) {
     return status === "Queued" || status === "Processing";
 }
 
 /**
- * Displays the details of a single incident.
+ * Displays the details of a single incident and, once processing completes,
+ * its persisted AI-generated analysis.
  *
  * The incident ID is read from the URL, for example:
  * /incidents/123 -> id = "123"
- *
- * When the component loads, the incident is fetched from the API and the page
- * displays either a loading state, an error state, or the incident details.
  */
 export default function IncidentDetailPage() {
-    // useParams reads dynamic values from the current route.
-    // The generic tells TypeScript that this route may contain an "id" parameter.
     const { id } = useParams<{ id: string }>();
 
-    // React state used by this component.
-    // Updating any of these values causes React to re-render the component.
     const [incident, setIncident] = useState<Incident | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
+    const [analysis, setAnalysis] = useState<IncidentAnalysis | null>(null);
+    const [analysisError, setAnalysisError] = useState<string | null>(null);
+    const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+
     /**
-     * Loads the incident whenever the route's incident ID changes.
-     *
-     * useEffect is used because fetching data is a side effect: it interacts
-     * with something outside of rendering the component itself.
+     * Loads the incident when the route ID changes and continues polling while
+     * the asynchronous analysis workflow is still Queued or Processing.
      */
     useEffect(() => {
         if (!id) {
@@ -53,14 +50,11 @@ export default function IncidentDetailPage() {
         let isCancelled = false;
         let pollTimeout: number | undefined;
 
-        /**
-         * Loads the Incident and continues polling while the backend is
-         * asynchronously processing it.
-         *
-         * The initial request controls the page loading state. Later polling
-         * requests update the Incident silently so the page does not flicker
-         * between loading and loaded states.
-         */
+        // Reset route-specific state when moving between incidents.
+        setAnalysis(null);
+        setAnalysisError(null);
+        setError(null);
+
         async function loadIncident(isInitialLoad: boolean) {
             try {
                 if (isInitialLoad) {
@@ -76,17 +70,36 @@ export default function IncidentDetailPage() {
                 setIncident(loadedIncident);
                 setError(null);
 
-                /*
-                 * Queued and Processing are temporary states.
-                 *
-                 * Once the Incident reaches Completed or Failed there is no
-                 * reason to continue polling.
-                 */
                 if (shouldPoll(loadedIncident.status)) {
                     pollTimeout = window.setTimeout(
                         () => void loadIncident(false),
                         POLL_INTERVAL_MS,
                     );
+
+                    return;
+                }
+
+                if (loadedIncident.status === "Completed") {
+                    setIsAnalysisLoading(true);
+                    setAnalysisError(null);
+
+                    try {
+                        const loadedAnalysis = await getIncidentAnalysis(id!);
+
+                        if (isCancelled) {
+                            return;
+                        }
+
+                        setAnalysis(loadedAnalysis);
+                    } catch {
+                        if (!isCancelled) {
+                            setAnalysisError("Unable to load incident analysis.");
+                        }
+                    } finally {
+                        if (!isCancelled) {
+                            setIsAnalysisLoading(false);
+                        }
+                    }
                 }
             } catch (caughtError) {
                 if (isCancelled) {
@@ -100,8 +113,8 @@ export default function IncidentDetailPage() {
 
                 /*
                  * An initial failure prevents the page from loading.
-                 * A polling failure should not remove an Incident that the user
-                 * has already successfully loaded.
+                 * A polling failure keeps the already-loaded incident visible
+                 * and retries after the polling interval.
                  */
                 if (isInitialLoad) {
                     setError("Unable to load incident.");
@@ -120,9 +133,7 @@ export default function IncidentDetailPage() {
 
         void loadIncident(true);
 
-        /*
-         * Prevent a pending poll from running after the user navigates away.
-         */
+        // Prevent pending polling or API responses from updating state after navigation.
         return () => {
             isCancelled = true;
 
@@ -132,8 +143,6 @@ export default function IncidentDetailPage() {
         };
     }, [id]);
 
-    // Return early while the API request is still in progress.
-    // This prevents the main page from rendering before incident data exists.
     if (isLoading) {
         return (
             <main className="incident-detail">
@@ -142,26 +151,18 @@ export default function IncidentDetailPage() {
         );
     }
 
-    // If loading failed, or no incident was returned, show the error state
-    // instead of attempting to access properties on a null incident.
     if (error || !incident) {
         return (
             <main className="incident-detail">
                 <div className="incident-detail__error">
                     <h1>Unable to display incident</h1>
-
-                    {/* ?? uses the fallback only when error is null or undefined. */}
                     <p>{error ?? "Incident not found."}</p>
-
-                    {/* Link performs client-side navigation without reloading the page. */}
                     <Link to="/incidents">Back to incidents</Link>
                 </div>
             </main>
         );
     }
 
-    // At this point loading has completed successfully and TypeScript knows
-    // that incident cannot be null.
     return (
         <main className="incident-detail">
             <div className="incident-detail__toolbar">
@@ -171,13 +172,7 @@ export default function IncidentDetailPage() {
             <header className="incident-detail__header">
                 <div>
                     <div className="incident-detail__badges">
-                        {/*
-                         * The severity is included in the CSS class dynamically.
-                         * For example, "Critical" becomes "badge--critical".
-                         */}
-                        <span
-                            className={`badge badge--${incident.severity.toLowerCase()}`}
-                        >
+                        <span className={`badge badge--${incident.severity.toLowerCase()}`}>
                             {incident.severity}
                         </span>
 
@@ -199,10 +194,6 @@ export default function IncidentDetailPage() {
             <section className="incident-detail__card">
                 <h2>Incident Details</h2>
 
-                {/*
-                 * A description list (<dl>) is used because these values are
-                 * naturally represented as label/value pairs.
-                 */}
                 <dl className="incident-detail__metadata">
                     <div>
                         <dt>Service</dt>
@@ -233,19 +224,110 @@ export default function IncidentDetailPage() {
 
             <section className="incident-detail__card">
                 <h2>Symptoms</h2>
-
-                {/* Use a fallback message when no symptoms were supplied. */}
                 <p>{incident.symptoms || "No symptoms provided."}</p>
             </section>
 
             <section className="incident-detail__card incident-detail__analysis">
-                <h2>Analysis</h2>
+                <div className="incident-analysis__header">
+                    <div className="incident-analysis__icon" aria-hidden="true">
+                        AI
+                    </div>
 
-                <p>
-                    AI analysis has not been implemented yet. This section will
-                    display likely causes, recommended actions and supporting
-                    evidence once asynchronous analysis is added.
-                </p>
+                    <div>
+                        <span className="incident-analysis__eyebrow">AI Analysis</span>
+                        <h2>Incident Analysis</h2>
+                    </div>
+                </div>
+
+                {incident.status === "Queued" && (
+                    <div className="incident-analysis__status">
+                        <span className="incident-analysis__status-dot" />
+                        <div>
+                            <strong>Waiting for analysis</strong>
+                            <p>The incident has been queued and will be analysed shortly.</p>
+                        </div>
+                    </div>
+                )}
+
+                {incident.status === "Processing" && (
+                    <div className="incident-analysis__status">
+                        <span className="incident-analysis__status-dot incident-analysis__status-dot--processing" />
+                        <div>
+                            <strong>Analysis in progress</strong>
+                            <p>IncidentIQ is currently analysing the incident.</p>
+                        </div>
+                    </div>
+                )}
+
+                {incident.status === "Failed" && (
+                    <div className="incident-analysis__status incident-analysis__status--failed">
+                        <div>
+                            <strong>Analysis failed</strong>
+                            <p>The incident could not be analysed successfully.</p>
+                        </div>
+                    </div>
+                )}
+
+                {incident.status === "Completed" && isAnalysisLoading && (
+                    <div className="incident-analysis__status">
+                        <span className="incident-analysis__status-dot incident-analysis__status-dot--processing" />
+                        <div>
+                            <strong>Loading analysis</strong>
+                            <p>Retrieving the completed analysis result.</p>
+                        </div>
+                    </div>
+                )}
+
+                {incident.status === "Completed" && analysisError && (
+                    <div className="incident-analysis__status incident-analysis__status--failed">
+                        <div>
+                            <strong>Unable to load analysis</strong>
+                            <p>{analysisError}</p>
+                        </div>
+                    </div>
+                )}
+
+                {incident.status === "Completed" && analysis && (
+                    <div className="incident-analysis__content">
+                        <section className="analysis-section">
+                            <h3>Summary</h3>
+                            <p>{analysis.summary}</p>
+                        </section>
+
+                        <section className="analysis-section">
+                            <h3>Likely Causes</h3>
+
+                            <div className="analysis-causes">
+                                {analysis.likelyCauses.map((cause, index) => (
+                                    <div key={index} className="analysis-cause">
+                                        <div className="analysis-cause__header">
+                                            <strong>{cause.cause}</strong>
+
+                                            <span className="analysis-cause__confidence">
+                                                {Math.round(cause.confidence * 100)}%
+                                            </span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
+
+                        <section className="analysis-section">
+                            <h3>Recommended Actions</h3>
+
+                            <ol className="analysis-actions">
+                                {analysis.recommendedActions.map((action, index) => (
+                                    <li key={index}>{action.action}</li>
+                                ))}
+                            </ol>
+                        </section>
+
+                        <footer className="incident-analysis__meta">
+                            <span>Model: {analysis.model}</span>
+                            <span>Analysed {formatDate(analysis.analysedAtUtc)}</span>
+                        </footer>
+                    </div>
+                )}
             </section>
         </main>
     );
@@ -256,9 +338,6 @@ export default function IncidentDetailPage() {
  *
  * Example:
  * "2026-08-23T14:30:00Z" -> "23 Aug 2026, 15:30"
- *
- * @param value - Date string to format.
- * @returns The formatted date and time.
  */
 function formatDate(value: string) {
     return new Intl.DateTimeFormat("en-GB", {

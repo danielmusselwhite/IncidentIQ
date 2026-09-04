@@ -1,4 +1,4 @@
-﻿using Azure.Identity;
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Infrastructure.Messaging;
@@ -14,9 +14,7 @@ namespace IncidentIQ.Infrastructure;
 
 public static class DependencyInjection
 {
-    public static IServiceCollection AddInfrastructureDependencies(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    public static IServiceCollection AddInfrastructureDependencies(this IServiceCollection services, IConfiguration configuration)
     {
         services
             .AddOptions<CosmosOptions>()
@@ -44,20 +42,10 @@ public static class DependencyInjection
                 UseSystemTextJsonSerializerWithOptions = serializerOptions
             };
 
-            // Local Cosmos Emulator uses its development account key.
-            if (!string.IsNullOrWhiteSpace(options.Key))
-            {
-                return new CosmosClient(
-                    options.Endpoint,
-                    options.Key,
-                    clientOptions);
-            }
-
-            // Azure uses Microsoft Entra authentication.
-            return new CosmosClient(
-                options.Endpoint,
-                new DefaultAzureCredential(),
-                clientOptions);
+            // Local Cosmos Emulator uses its development account key; Azure uses Microsoft Entra authentication.
+            return !string.IsNullOrWhiteSpace(options.Key)
+                ? new CosmosClient(options.Endpoint, options.Key, clientOptions)
+                : new CosmosClient(options.Endpoint, new DefaultAzureCredential(), clientOptions);
         });
 
         services.AddSingleton<CosmosInitializer>();
@@ -65,26 +53,21 @@ public static class DependencyInjection
         services.AddScoped<IRunbookRepository, CosmosRunbookRepository>();
         services.AddScoped<IIncidentSubmissionStore, CosmosIncidentSubmissionStore>();
         services.AddScoped<IIncidentAnalysisStore, CosmosIncidentAnalysisStore>();
+        services.AddScoped<IIncidentAnalysisReader, CosmosIncidentAnalysisReader>();
 
         #endregion
 
         #region Service Bus
 
-        services.Configure<ServiceBusOptions>(
-            configuration.GetSection(ServiceBusOptions.SectionName));
+        services.Configure<ServiceBusOptions>(configuration.GetSection(ServiceBusOptions.SectionName));
 
         services.AddSingleton(sp =>
         {
             var options = sp.GetRequiredService<IOptions<ServiceBusOptions>>().Value;
 
-            if (!string.IsNullOrWhiteSpace(options.ConnectionString))
-            {
-                return new ServiceBusClient(options.ConnectionString);
-            }
-
-            return new ServiceBusClient(
-                options.FullyQualifiedNamespace,
-                new DefaultAzureCredential());
+            return !string.IsNullOrWhiteSpace(options.ConnectionString)
+                ? new ServiceBusClient(options.ConnectionString)
+                : new ServiceBusClient(options.FullyQualifiedNamespace, new DefaultAzureCredential());
         });
 
         services.AddSingleton(sp =>

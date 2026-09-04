@@ -1,6 +1,7 @@
 ﻿using Azure.Messaging.ServiceBus;
 using IncidentIQ.Application.Analyse;
 using IncidentIQ.Infrastructure.Messaging;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 using System.Text.Json;
 
@@ -9,30 +10,30 @@ namespace IncidentIQ.Worker;
 /// <summary>
 /// Background worker responsible for consuming <see cref="AnalyseIncidentCommand"/> messages from the Service Bus analysis queue.
 ///
-/// The worker acts as the transport boundary between Azure Service Bus and the application layer. It is responsible for receiving and validating messages, establishing logging context, invoking the analysis handler, and settling processed messages.
+/// The worker acts as the transport boundary between Azure Service Bus and the application layer. It receives and validates messages, establishes logging context, creates a dependency injection scope for each message, invokes the analysis handler, and settles processed messages.
 /// </summary>
 public sealed class AnalyseIncidentWorker : BackgroundService
 {
     private readonly ServiceBusProcessor _processor;
+    private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<AnalyseIncidentWorker> _logger;
-    private readonly AnalyseIncidentHandler _analyseIncidentHandler;
     private readonly int _maxDeliveryCount;
 
     /// <summary>
     /// Creates the Service Bus processor used to consume incident analysis commands.
     /// </summary>
     /// <param name="serviceBusClient">Shared Service Bus client used to create the queue processor.</param>
-    /// <param name="analyseIncidentHandler">Application handler containing the incident analysis workflow.</param>
+    /// <param name="scopeFactory">Creates a dependency injection scope for each processed message.</param>
     /// <param name="options">Service Bus configuration, including queue and delivery settings.</param>
-    /// <param name="logger">Logger used for worker lifecycle and message-processing diagnostics.</param>
+    /// <param name="logger">Logger used for Worker lifecycle and message-processing diagnostics.</param>
     public AnalyseIncidentWorker(
         ServiceBusClient serviceBusClient,
-        AnalyseIncidentHandler analyseIncidentHandler,
+        IServiceScopeFactory scopeFactory,
         IOptions<ServiceBusOptions> options,
         ILogger<AnalyseIncidentWorker> logger)
     {
+        _scopeFactory = scopeFactory;
         _logger = logger;
-        _analyseIncidentHandler = analyseIncidentHandler;
 
         var serviceBusOptions = options.Value;
         _maxDeliveryCount = serviceBusOptions.MaxDeliveryCount;
@@ -91,6 +92,7 @@ public sealed class AnalyseIncidentWorker : BackgroundService
 
     /// <summary>
     /// Handles a single Service Bus message containing an <see cref="AnalyseIncidentCommand"/>.
+    /// A new dependency injection scope is created for each message so scoped services are not retained for the lifetime of the background Worker.
     /// </summary>
     /// <param name="args">Service Bus processing context containing the message and settlement operations.</param>
     private async Task ProcessMessageAsync(ProcessMessageEventArgs args)
@@ -129,7 +131,7 @@ public sealed class AnalyseIncidentWorker : BackgroundService
         }
 
         // Attach workflow identifiers so related API, Service Bus and Worker activity can be correlated.
-        using var scope = _logger.BeginScope(new Dictionary<string, object>
+        using var loggingScope = _logger.BeginScope(new Dictionary<string, object>
         {
             ["CorrelationId"] = command.CorrelationId,
             ["IncidentId"] = command.IncidentId,
@@ -138,10 +140,15 @@ public sealed class AnalyseIncidentWorker : BackgroundService
 
         _logger.LogInformation("Received AnalyseIncident command for incident {IncidentId}.", command.IncidentId);
 
+        // BackgroundService is a singleton, while the analysis workflow uses scoped dependencies. 
+        // Creating one scope per message gives each message its own handler, repositories and analyzer.
+        await using var serviceScope = _scopeFactory.CreateAsyncScope();
+        var analyseIncidentHandler = serviceScope.ServiceProvider.GetRequiredService<AnalyseIncidentHandler>();
+
         try
         {
-            // Delegate business workflow to the Application layer.
-            await _analyseIncidentHandler.HandleAsync(command, args.CancellationToken);
+            // Delegate the business workflow to the Application layer.
+            await analyseIncidentHandler.HandleAsync(command, args.CancellationToken);
         }
         catch (OperationCanceledException) when (args.CancellationToken.IsCancellationRequested)
         {
@@ -152,7 +159,7 @@ public sealed class AnalyseIncidentWorker : BackgroundService
             // Final delivery failures are persisted and dead-lettered; earlier failures are left for Service Bus to retry.
             if (args.Message.DeliveryCount >= _maxDeliveryCount)
             {
-                await HandleFinalFailureAsync(args, command, exception);
+                await HandleFinalFailureAsync(args, command, exception, analyseIncidentHandler);
                 return;
             }
 
@@ -165,7 +172,7 @@ public sealed class AnalyseIncidentWorker : BackgroundService
             throw;
         }
 
-        // Only settle the Service Bus message after processing succeeds. If the handler throws, the message remains uncompleted and can be retried by Service Bus.
+        // Only settle the Service Bus message after processing succeeds.
         await args.CompleteMessageAsync(args.Message, args.CancellationToken);
 
         _logger.LogInformation(
@@ -195,10 +202,12 @@ public sealed class AnalyseIncidentWorker : BackgroundService
     /// <param name="args">The message processing event arguments.</param>
     /// <param name="command">The AnalyseIncident command that failed.</param>
     /// <param name="exception">The exception that caused the final failure.</param>
+    /// <param name="analyseIncidentHandler">The scoped handler being used for the current message.</param>
     private async Task HandleFinalFailureAsync(
         ProcessMessageEventArgs args,
         AnalyseIncidentCommand command,
-        Exception exception)
+        Exception exception,
+        AnalyseIncidentHandler analyseIncidentHandler)
     {
         _logger.LogError(
             exception,
@@ -208,7 +217,7 @@ public sealed class AnalyseIncidentWorker : BackgroundService
             command.IncidentId);
 
         // Persist the terminal application state before settling the Service Bus message.
-        await _analyseIncidentHandler.MarkFailedAsync(command, exception.Message, args.CancellationToken);
+        await analyseIncidentHandler.MarkFailedAsync(command, exception.Message, args.CancellationToken);
 
         // Keep the failed command in the DLQ for later inspection and administrative requeue.
         await args.DeadLetterMessageAsync(

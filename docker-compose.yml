@@ -51,10 +51,19 @@ services:
     ports:
       - "5173:5173"
     environment:
-      - VITE_API_BASE_URL=http://localhost:8082
+      - VITE_API_BASE_URL=http://localhost:7155
     volumes:
-      - ./src/IncidentIQ.Web:/app
-      - /app/node_modules
+      - type: bind
+        source: ./src/IncidentIQ.Web
+        target: /app
+      - type: volume
+        source: incidentiq-web-node-modules
+        target: /app/node_modules
+        volume:
+          nocopy: true
+    command: >
+      sh -c "npm ci &&
+             npm run dev -- --host 0.0.0.0"
     depends_on:
       - incidentiq.api
 
@@ -138,7 +147,7 @@ services:
       SQL_SERVER: servicebus-sql
       MSSQL_SA_PASSWORD: "${SERVICEBUS_SQL_PASSWORD}"
       ACCEPT_EULA: "Y"
-      SQL_WAIT_INTERVAL: "15"
+      SQL_WAIT_INTERVAL: "60"
       EMULATOR_HTTP_PORT: "5300"
     volumes:
       - ./infra/local/servicebus/Config.json:/ServiceBus_Emulator/ConfigFiles/Config.json:ro
@@ -150,3 +159,4 @@ volumes:
   cosmos-data:
   cosmos-certs:
   servicebus-sql-data:
+  incidentiq-web-node-modules:
