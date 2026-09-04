@@ -204,6 +204,144 @@ flowchart TD
     style Async fill:#f8fafc,stroke:#94a3b8,stroke-width:2px
 ```
 
+```mermaid
+sequenceDiagram
+    autonumber
+
+    actor User as Engineer
+
+    box rgb(224,242,254) Presentation Layer - IncidentIQ.Web
+        participant Web as React Web
+    end
+
+    box rgb(219,234,254) API Host - IncidentIQ.Api
+        participant API as IncidentsController
+    end
+
+    box rgb(220,252,231) Application Layer - IncidentIQ.Application
+        participant CreateHandler as CreateIncidentHandler
+        participant AnalyseHandler as AnalyseIncidentHandler
+    end
+
+    box rgb(243,232,255) Infrastructure Layer - IncidentIQ.Infrastructure
+        participant SubmissionStore as CosmosIncidentSubmissionStore
+        participant IncidentRepo as CosmosIncidentRepository
+        participant AnalysisStore as CosmosIncidentAnalysisStore
+        participant Analyzer as AzureIncidentAnalyzer
+    end
+
+    box rgb(236,253,245) Data Platform
+        participant Cosmos as Azure Cosmos DB
+    end
+
+    box rgb(219,234,254) Worker Host - IncidentIQ.Worker
+        participant OutboxWorker as IncidentOutboxWorker
+        participant AnalyseWorker as AnalyseIncidentWorker
+    end
+
+    box rgb(254,243,199) Messaging Platform
+        participant Bus as Azure Service Bus
+    end
+
+    box rgb(243,232,255) AI Platform
+        participant AI as Azure OpenAI
+    end
+
+    %% ---------------------------
+    %% Synchronous submission path
+    %% ---------------------------
+
+    User->>Web: Submit incident form
+
+    Web->>API: HTTP POST /api/incidents<br/>CreateIncidentRequest
+
+    Note over API,CreateHandler: API maps HTTP contract into an Application command
+
+    API->>CreateHandler: HandleAsync(CreateIncidentCommand)
+
+    Note over CreateHandler,SubmissionStore: Application depends on IIncidentSubmissionStore<br/>Infrastructure provides CosmosIncidentSubmissionStore
+
+    CreateHandler->>SubmissionStore: CreateAsync(Incident, AnalyseIncidentCommand)
+
+    SubmissionStore->>Cosmos: Transactional batch<br/>Incident + Outbox document containing AnalyseIncidentCommand
+
+    Cosmos-->>SubmissionStore: Persisted atomically
+    SubmissionStore-->>CreateHandler: Incident created
+    CreateHandler-->>API: Created Incident
+    API-->>Web: HTTP 201 Created<br/>IncidentResponse
+    Web-->>User: Show Queued incident
+
+    %% ---------------------------
+    %% Transactional outbox path
+    %% ---------------------------
+
+    Note over Cosmos,OutboxWorker: Asynchronous processing begins after the API request has completed
+
+    Cosmos-->>OutboxWorker: Change Feed notification<br/>Outbox document
+
+    OutboxWorker->>Bus: Service Bus message<br/>AnalyseIncidentCommand
+
+    Bus-->>AnalyseWorker: ServiceBusReceivedMessage<br/>payload = AnalyseIncidentCommand
+
+    Note over AnalyseWorker,AnalyseHandler: Worker deserializes the command<br/>and resolves a scoped AnalyseIncidentHandler
+
+    AnalyseWorker->>AnalyseHandler: HandleAsync(AnalyseIncidentCommand)
+
+    %% ---------------------------
+    %% Analysis path
+    %% ---------------------------
+
+    AnalyseHandler->>IncidentRepo: GetByIdAsync(incidentId)
+    IncidentRepo->>Cosmos: Point read Incident
+    Cosmos-->>IncidentRepo: Incident
+    IncidentRepo-->>AnalyseHandler: Incident
+
+    AnalyseHandler->>IncidentRepo: Persist Processing state
+    IncidentRepo->>Cosmos: Update Incident<br/>Status = Processing
+
+    Note over AnalyseHandler,Analyzer: Application depends on IIncidentAnalyzer<br/>Infrastructure provides AzureIncidentAnalyzer
+
+    AnalyseHandler->>Analyzer: AnalyzeIncidentAsync(IncidentAnalysisInput)
+
+    Analyzer->>AI: Chat request<br/>Structured Output schema
+    AI-->>Analyzer: Structured JSON analysis
+
+    Analyzer-->>AnalyseHandler: IncidentAnalysisResult
+
+    Note over AnalyseHandler,AnalysisStore: Completed state and analysis are persisted atomically
+
+    AnalyseHandler->>AnalysisStore: SaveAsync(Incident, IncidentAnalysisResult)
+    AnalysisStore->>Cosmos: Transactional batch<br/>Completed Incident + IncidentAnalysisDocument
+    Cosmos-->>AnalysisStore: Persisted atomically
+    AnalysisStore-->>AnalyseHandler: Saved
+
+    AnalyseHandler-->>AnalyseWorker: Analysis completed
+    AnalyseWorker->>Bus: CompleteMessageAsync()
+
+    %% ---------------------------
+    %% Frontend result retrieval
+    %% ---------------------------
+
+    Note over Web,Cosmos: Frontend polls while the incident is Queued or Processing
+
+    Web->>API: GET /api/incidents/{id}
+    API->>IncidentRepo: GetByIdAsync(id)
+    IncidentRepo->>Cosmos: Read Incident
+    Cosmos-->>IncidentRepo: Status = Completed
+    IncidentRepo-->>API: Incident
+    API-->>Web: IncidentResponse<br/>Status = Completed
+
+    Web->>API: GET /api/incidents/{id}/analysis
+
+    Note over API,Cosmos: Analysis read path uses IIncidentAnalysisReader<br/>with its Cosmos implementation
+
+    API->>Cosmos: Point read<br/>IncidentAnalysisDocument
+    Cosmos-->>API: Persisted analysis
+    API-->>Web: IncidentAnalysisResponse
+
+    Web-->>User: Display summary, likely causes<br/>confidence scores and recommended actions
+```
+
 ## Current Functionality
 
 Engineers can currently:
