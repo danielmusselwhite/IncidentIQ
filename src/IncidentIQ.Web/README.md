@@ -2,11 +2,9 @@
 
 `IncidentIQ.Web` is the React frontend for IncidentIQ.
 
-It provides the UI engineers use to submit incidents, track processing status, inspect incident details, and manage operational Runbooks.
+It provides the UI engineers use to submit incidents, track asynchronous processing, inspect persisted AI analysis, and manage operational Runbooks.
 
-The frontend is built with React, TypeScript, Vite, and React Router.
-
-It communicates only with `IncidentIQ.Api`; it does not connect directly to Cosmos DB, Service Bus, or other Azure services.
+The frontend is built with React, TypeScript, Vite, and React Router. It communicates only with `IncidentIQ.Api`; it does not connect directly to Cosmos DB, Service Bus, or Azure OpenAI.
 
 ## Current Functionality
 
@@ -15,12 +13,17 @@ It communicates only with `IncidentIQ.Api`; it does not connect directly to Cosm
 - Incident detail views.
 - Automatic polling while incidents are `Queued` or `Processing`.
 - Severity and status display.
+- Persisted AI-analysis retrieval after an Incident reaches `Completed`.
+- AI summary display.
+- Likely causes with confidence scores.
+- Recommended actions.
+- Analysis model/time metadata.
 - Runbook list, create, view, edit, and delete flows.
-- Loading, empty, validation, not-found, and error states.
+- Loading, empty, validation, not-found, analysis-failure, and general error states.
 - Shared application layout/navigation.
-- Typed API clients.
+- Typed API clients and TypeScript models.
 
-Planned UI work includes AI analysis results, similar incidents, supporting evidence, feedback, and Operations/Admin screens.
+Future UI work includes similar historical Incidents, supporting Runbook evidence/citations, feedback, and Operations/Admin screens.
 
 ## Structure
 
@@ -41,43 +44,39 @@ src/
 │   ├── CreateRunbook/
 │   └── EditRunbook/
 ├── types/
+│   ├── incident.ts
+│   └── incidentAnalysis.ts
 ├── App.tsx
 └── main.tsx
 ```
 
-Pages own page-level state and reusable behaviour is extracted into components or API modules where appropriate.
-
-## Frontend Flow
-
-```text
-React Page
-   ↓
-Typed API Client
-   ↓
-IncidentIQ.Api
-```
-
-Creating an incident:
+## Incident Detail Flow
 
 ```text
 SubmitIncidentPage
       ↓
-incidentsApi.ts
-      ↓
 POST /api/incidents
       ↓
-API returns created Incident
+navigate to /incidents/{id}
       ↓
-navigate to IncidentDetailPage
+IncidentDetailPage
       ↓
 poll GET /api/incidents/{id}
       ↓
 Queued → Processing → Completed / Failed
+      ↓
+if Completed
+      ↓
+GET /api/incidents/{id}/analysis
+      ↓
+render summary / causes / actions
 ```
 
-The asynchronous outbox, Change Feed, Service Bus, and Worker pipeline remains a backend concern.
+Polling occurs on an interval while processing is active and stops when a terminal state is reached or the page unmounts.
 
-For the full backend flow, see the repository [README](../../README.md).
+The asynchronous outbox, Change Feed, Service Bus, Worker, and Azure AI pipeline remains a backend concern.
+
+For the complete message flow, see the repository [README](../../ReadMe.md).
 
 ## API Layer
 
@@ -92,6 +91,7 @@ These modules handle:
 - HTTP calls to the ASP.NET Core API.
 - Request serialization.
 - Typed response deserialization.
+- Persisted analysis retrieval.
 - Conversion of Problem Details responses into `ApiError`.
 
 The API base URL is configured with:
@@ -114,9 +114,13 @@ Current routes include:
 /runbooks/:id/edit
 ```
 
-`AppLayout` provides the shared navigation around these pages.
+`AppLayout` provides shared navigation around these pages.
 
 ## Local Development
+
+When Docker Compose is used, the complete backend flow uses emulators plus deterministic local AI. The frontend does not need to know which `IIncidentAnalyzer` implementation is active.
+
+To run Vite directly:
 
 ```powershell
 npm install

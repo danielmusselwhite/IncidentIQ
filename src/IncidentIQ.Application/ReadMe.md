@@ -2,9 +2,7 @@
 
 `IncidentIQ.Application` contains the use cases and orchestration logic for IncidentIQ.
 
-It sits between the application hosts (`IncidentIQ.Api` and `IncidentIQ.Worker`) and the Domain model.
-
-The Application layer defines **what the system needs to do**. Infrastructure supplies concrete implementations for persistence and messaging.
+It sits between the application hosts (`IncidentIQ.Api` and `IncidentIQ.Worker`) and the Domain model. The Application layer defines **what the system needs to do**; Infrastructure supplies concrete implementations for persistence, messaging, and AI.
 
 ## High-Level Flow
 
@@ -13,11 +11,11 @@ API / Worker
     ↓
 Application Handler
     ↓
-Domain
+Domain rules + Application models
     ↓
-Application Abstraction
+Application abstraction
     ↓
-Infrastructure Implementation
+Infrastructure implementation
 ```
 
 ## Current Incident Use Cases
@@ -26,7 +24,9 @@ Infrastructure Implementation
 CreateIncident
 GetIncidentById
 GetAllIncidents
+GetIncidentAnalysisById
 AnalyseIncident
+RetryAnalyseIncident
 ```
 
 ### Create Incident
@@ -44,8 +44,6 @@ IIncidentSubmissionStore
 ```
 
 `IIncidentSubmissionStore` represents one durable submission operation. Its Cosmos implementation atomically persists the Incident and analysis-outbox document.
-
-The Application layer does not directly perform the Cosmos transactional batch and does not directly publish the create request to Service Bus.
 
 ### Analyse Incident
 
@@ -75,6 +73,32 @@ If processing ultimately exhausts retries, `MarkFailedAsync` persists the termin
 
 Completed incidents are treated as a no-op to provide basic state-based idempotency.
 
+### Read Persisted Analysis
+
+```text
+GetIncidentAnalysisByIdHandler
+      ↓
+IIncidentAnalysisReader
+      ↓
+IncidentAnalysisResult?
+```
+
+The handler throws the Application-level not-found exception when no persisted analysis exists; the API converts that into Problem Details.
+
+### AI Contracts
+
+Provider-independent structured analysis models live in Application:
+
+```text
+IncidentAnalysisInput
+IncidentAnalysisResult
+LikelyCause
+RecommendedAction
+IIncidentAnalyzer
+```
+
+Azure SDK types remain outside Application.
+
 ## Current Runbook Use Cases
 
 ```text
@@ -87,20 +111,19 @@ DeleteRunbook
 
 Runbook handlers use `IRunbookRepository` and remain independent of Cosmos DB implementation details.
 
-## Abstractions
-
-Important Application abstractions currently include:
+## Important Abstractions
 
 ```text
 IIncidentRepository
 IIncidentSubmissionStore
 IIncidentAnalyzer
 IIncidentAnalysisStore
+IIncidentAnalysisReader
 IRunbookRepository
 IIncidentAnalysisQueue
 ```
 
-Infrastructure implementations include:
+Infrastructure implementations currently include:
 
 ```text
 IIncidentRepository
@@ -110,19 +133,29 @@ IIncidentSubmissionStore
 └── CosmosIncidentSubmissionStore
 
 IIncidentAnalyzer
-└── AzureIncidentAnalyzer
+├── DevelopmentDummyIncidentAnalyzer   (Development)
+└── AzureIncidentAnalyzer              (non-Development Worker)
 
 IIncidentAnalysisStore
 └── CosmosIncidentAnalysisStore
+
+IIncidentAnalysisReader
+└── CosmosIncidentAnalysisReader
 
 IRunbookRepository
 └── CosmosRunbookRepository
 
 IIncidentAnalysisQueue
-└── Service Bus implementation
+└── AzureServiceBusIncidentAnalysisQueue
 ```
 
 `IIncidentAnalysisQueue` is used by the outbox relay to publish the persisted `AnalyseIncidentCommand`.
+
+## Dependency-Injection Boundary
+
+Most Application dependencies are host-agnostic, but `AnalyseIncidentHandler` is registered by the Worker host because it requires the Worker-specific `IIncidentAnalyzer` choice.
+
+The Service Bus hosted service creates a DI scope per message and resolves the scoped handler within that message scope.
 
 ## Validation
 
@@ -148,7 +181,8 @@ IncidentIQ.Application/
 ├── Incidents/
 │   ├── Create/
 │   ├── GetById/
-│   └── GetAll/
+│   ├── GetAll/
+│   └── ...analysis/retry use cases
 ├── Runbooks/
 └── DependencyInjection.cs
 ```
@@ -161,6 +195,6 @@ Application behaviour is tested in:
 tests/IncidentIQ.Application.Tests
 ```
 
-Mocks are used for Application abstractions so use-case behaviour can be tested without Azure resources.
+Mocks/fakes are used for Application abstractions so use-case behaviour can be tested without Azure resources.
 
 See [tests/ReadMe.md](../../tests/ReadMe.md) for the wider testing strategy.
