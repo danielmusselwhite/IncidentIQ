@@ -31,4 +31,23 @@ public sealed class AzureAIOptions
     /// </summary>
     [Required]
     public required string ModelName { get; init; }
+
+    /// <summary>
+    /// Maximum number of retry attempts performed by the Azure AI SDK
+    /// before allowing the failure to propagate to the Worker.
+    /// </summary>
+    [Range(0, 5)]
+    public int MaxRetries { get; init; } = 2;
+
+    /// <summary>
+    /// Maximum duration allowed for an individual network operation.
+    /// </summary>
+    [Range(10, 300)]
+    public int NetworkTimeoutSeconds { get; init; } = 60;
+
+    /// <summary>
+    /// Maximum duration allowed for the complete incident analysis operation.
+    /// </summary>
+    [Range(10, 300)]
+    public int RequestTimeoutSeconds { get; init; } = 90;
 }

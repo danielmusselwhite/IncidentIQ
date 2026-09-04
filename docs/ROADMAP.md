@@ -191,13 +191,11 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Validate and map Azure AI responses into `IncidentAnalysisResult`.
 * [x] Expose the AI analysis results through the API via a Get Analysis endpoint.
 * [x] Call the API on Front-End and Display the AI analysis results
-* [ ] Handle AI timeout, throttling and transient failure scenarios.
-* [ ] Add AI latency and failure telemetry.
-* [ ] Expose persisted analysis through the API.
-* [ ] Display AI-generated analysis in the React frontend.
-* [ ] Deploy Stage 10 changes to Azure.
-* [ ] Verify the full `Queued → Processing → AI analysis → Completed` flow.
-* [ ] Verify AI failure/retry behaviour in Azure.
+* [x] Handle AI timeout, throttling and transient failure scenarios.
+* [x] Add AI latency and failure telemetry.
+* [x] Deploy Stage 10 changes to Azure.
+* [x] Verify the full `Queued → Processing → AI analysis → Completed` flow.
+* [x] Verify AI failure/retry behaviour in Azure.
 * [ ] Update all relevant documentation to reflect Azure AI integration + dummy AI for local development.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
@@ -289,7 +287,7 @@ Expand the telemetry introduced in earlier stages into full distributed observab
 * [ ] Display Worker scaling information.
 * [ ] Display failed analyses and DLQ items.
 
-* [ ] Add retry/requeue administration.
+* [ ] Add retry/requeue administration to actually call the DLQ retry method we added in stage 8.
 * [ ] Add operational diagnostics.
 
 ## Stage 17 — Event-Driven Integrations
