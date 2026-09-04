@@ -1,5 +1,6 @@
 ﻿using IncidentIQ.Api.Contracts.Incidents;
 using IncidentIQ.Api.Tests.Infrastructure;
+using IncidentIQ.Application.Analyse;
 using IncidentIQ.Domain.Incidents;
 using System.Net;
 using System.Text.Json;
@@ -26,6 +27,7 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
 
         _factory.IncidentRepository.Clear();
         _factory.IncidentSubmissionStore.Clear();
+        _factory.IncidentAnalysisReader.Clear();
 
         _client = factory.CreateHttpsClient();
     }
@@ -145,6 +147,61 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         Assert.Equal(2, incidents.Length);
     }
 
+    #region Analysis Tests
+
+    [Fact]
+    public async Task GetAnalysis_WhenAnalysisExists_ReturnsAnalysis()
+    {
+        // Arrange
+        var incident = CreateIncident();
+        var analysis = CreateAnalysis();
+
+        _factory.IncidentAnalysisReader.Set(incident.Id, analysis);
+
+        // Act
+        var response = await _client.GetAsync($"/api/incidents/{incident.Id}/analysis");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var result = await response.Content.ReadFromJsonAsync<IncidentAnalysisResponse>(JsonOptions);
+
+        Assert.NotNull(result);
+
+        Assert.Equal(analysis.Summary, result.Summary);
+        Assert.Equal(analysis.Model, result.Model);
+        Assert.Equal(analysis.AnalysedAtUtc, result.AnalysedAtUtc);
+
+        var likelyCause = Assert.Single(result.LikelyCauses);
+
+        Assert.Equal("Database connection pool exhaustion.", likelyCause.Cause);
+        Assert.Equal(0.85, likelyCause.Confidence);
+
+        var recommendedAction = Assert.Single(result.RecommendedActions);
+
+        Assert.Equal(
+            "Review database connection pool metrics and recent database failures.",
+            recommendedAction.Action);
+    }
+
+    [Fact]
+    public async Task GetAnalysis_WhenAnalysisDoesNotExist_ReturnsNotFoundProblemDetails()
+    {
+        // Act
+        var response = await _client.GetAsync("/api/incidents/missing-id/analysis");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+
+        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+
+        Assert.True(json.RootElement.TryGetProperty("title", out var title));
+        Assert.False(string.IsNullOrWhiteSpace(title.GetString()));
+    }
+
+    #endregion
+
     #region Retry Tests
 
     [Fact]
@@ -173,6 +230,10 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         Assert.Null(retriedIncident.CompletedAt);
         Assert.Null(retriedIncident.FailureReason);
         Assert.Null(retriedIncident.FailedAt);
+
+        Assert.NotNull(retriedIncidentResponse);
+        Assert.Equal(incident.Id, retriedIncidentResponse.Id);
+        Assert.Equal(IncidentStatus.Queued, retriedIncidentResponse.Status);
 
         Assert.True(response.Headers.Contains("X-Correlation-ID"));
 
@@ -239,7 +300,7 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             IncidentSeverity.High,
             "Database timeout errors");
     }
-    
+
     private static Incident CreateFailedIncident()
     {
         var incident = CreateIncident();
@@ -248,5 +309,22 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         incident.MarkFailed("Analysis failed.");
 
         return incident;
+    }
+
+    private static IncidentAnalysisResult CreateAnalysis()
+    {
+        return new IncidentAnalysisResult(
+            "The Payments API is experiencing elevated checkout latency.",
+            [
+                new LikelyCause(
+                    "Database connection pool exhaustion.",
+                    0.85)
+            ],
+            [
+                new RecommendedAction(
+                    "Review database connection pool metrics and recent database failures.")
+            ],
+            "test-model",
+            new DateTimeOffset(2026, 9, 4, 12, 0, 0, TimeSpan.Zero));
     }
 }
