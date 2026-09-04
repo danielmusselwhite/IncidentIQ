@@ -22,7 +22,7 @@ else
 
 // Register application services and handlers.
 builder.Services.AddApplicationDependencies();
-builder.Services.AddTransient<AnalyseIncidentHandler>(); // Cannot be in AddApplicationDependencies as it is specific to the worker and requires the AzureAIDependencies to be added that the API does not need.
+builder.Services.AddScoped<AnalyseIncidentHandler>(); // Cannot be in AddApplicationDependencies as it is specific to the worker and requires the AzureAIDependencies to be added that the API does not need.
 
 // Relays persisted Cosmos outbox entries into Service Bus.
 builder.Services.AddHostedService<IncidentOutboxWorker>();
