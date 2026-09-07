@@ -1,6 +1,8 @@
 ﻿using Azure.AI.OpenAI;
 using Azure.Identity;
+using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Infrastructure.AzureAI.Embedding;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -18,13 +20,12 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
+        #region Azure AI
         services
             .AddOptions<AzureAIOptions>()
             .Bind(configuration.GetSection(AzureAIOptions.SectionName))
             .ValidateDataAnnotations()
             .ValidateOnStart();
-
-        #region Azure AI
 
         // AzureOpenAIClient is thread-safe and can be reused across requests.
         // DefaultAzureCredential allows the Worker to authenticate using its managed identity in Azure.
@@ -57,6 +58,26 @@ public static class DependencyInjection
 
         #endregion
 
+        #region Azure Embedding
+        services
+            .AddOptions<AzureEmbeddingOptions>()
+            .Bind(configuration.GetSection(AzureEmbeddingOptions.SectionName))
+            .ValidateDataAnnotations()
+            .ValidateOnStart();
+
+        // EmbeddingClient targets the specific Azure OpenAI deployment used to generate vectors for Runbook chunks.
+        services.AddSingleton(sp =>
+        {
+            var azureOpenAIClient = sp.GetRequiredService<AzureOpenAIClient>();
+            var embeddingOptions = sp.GetRequiredService<IOptions<AzureEmbeddingOptions>>().Value;
+
+            return azureOpenAIClient.GetEmbeddingClient(
+                embeddingOptions.DeploymentName);
+        });
+
+        services.AddScoped<IEmbeddingGenerator, AzureEmbeddingGenerator>();
+        #endregion
+
         return services;
     }
 
@@ -67,6 +88,7 @@ public static class DependencyInjection
     public static IServiceCollection AddDevelopmentAIDependencies(this IServiceCollection services)
     {
         services.AddScoped<IIncidentAnalyzer, DevelopmentDummyIncidentAnalyzer>();
+        services.AddScoped<IEmbeddingGenerator, DevelopmentDummyEmbeddingGenerator>();
 
         return services;
     }

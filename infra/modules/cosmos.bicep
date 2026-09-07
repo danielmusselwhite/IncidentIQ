@@ -9,7 +9,11 @@ param tags object
 param databaseName string = 'IncidentIQ'
 param incidentsContainerName string = 'Incidents'
 param runbooksContainerName string = 'Runbooks'
+param runbookChunksContainerName string = 'RunbookChunks'
 param changeFeedLeasesContainerName string = 'ChangeFeedLeases'
+
+@description('Number of dimensions stored in each Runbook embedding vector.')
+param runbookEmbeddingDimensions int = 1536
 
 param apiPrincipalId string
 param workerPrincipalId string
@@ -17,7 +21,7 @@ param workerPrincipalId string
 var cosmosAccountName = 'cosmos-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
 
 // Built-in Cosmos DB Data Contributor role. The API persists application data;
-// the Worker reads the Change Feed/leases and reads/updates Incident state.
+// the Worker reads Change Feeds, indexes Runbooks and processes Incidents.
 var cosmosDataContributorRoleId = '00000000-0000-0000-0000-000000000002'
 var cosmosDataContributorRoleDefinitionId = '${cosmosAccount.id}/sqlRoleDefinitions/${cosmosDataContributorRoleId}'
 
@@ -44,9 +48,15 @@ resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2026-03-15' = {
 
     // Serverless keeps the development environment usage-based rather than
     // provisioning dedicated throughput while the project is lightly used.
+    //
+    // NoSQL vector search must be enabled at account level before vector-enabled
+    // containers can be created.
     capabilities: [
       {
         name: 'EnableServerless'
+      }
+      {
+        name: 'EnableNoSQLVectorSearch'
       }
     ]
 
@@ -88,11 +98,13 @@ resource incidentsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true
+
         includedPaths: [
           {
             path: '/*'
           }
         ]
+
         excludedPaths: []
       }
     }
@@ -107,6 +119,8 @@ resource runbooksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
     resource: {
       id: runbooksContainerName
 
+      // Editable Runbooks remain the source of truth.
+      // Derived vectorised chunks are stored separately in RunbookChunks.
       partitionKey: {
         paths: [
           '/id'
@@ -118,18 +132,83 @@ resource runbooksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/c
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true
+
         includedPaths: [
           {
             path: '/*'
           }
         ]
+
         excludedPaths: []
       }
     }
   }
 }
 
-// SDK-managed checkpoint/ownership state used by the Cosmos Change Feed Processor.
+// Derived vector-search representation of Runbooks.
+//
+// One Runbook is split into multiple chunks and each chunk receives an embedding.
+// All chunks for the same Runbook share /runbookId, making re-indexing and cleanup
+// operate against a single logical partition.
+resource runbookChunksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2026-03-15' = {
+  parent: database
+  name: runbookChunksContainerName
+
+  properties: {
+    resource: {
+      id: runbookChunksContainerName
+
+      partitionKey: {
+        paths: [
+          '/runbookId'
+        ]
+        kind: 'Hash'
+        version: 2
+      }
+
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+
+        // Metadata such as service, title and update time remains normally indexed,
+        // allowing future vector queries to combine similarity with metadata filters.
+        includedPaths: [
+          {
+            path: '/*'
+          }
+        ]
+
+        // The embedding has its own specialised vector index, so exclude it from
+        // the ordinary Cosmos index to avoid unnecessary write RU and latency.
+        excludedPaths: [
+          {
+            path: '/embedding/*'
+          }
+        ]
+
+        vectorIndexes: [
+          {
+            path: '/embedding'
+            type: 'quantizedFlat'
+          }
+        ]
+      }
+
+      vectorEmbeddingPolicy: {
+        vectorEmbeddings: [
+          {
+            path: '/embedding'
+            dataType: 'float32'
+            dimensions: runbookEmbeddingDimensions
+            distanceFunction: 'cosine'
+          }
+        ]
+      }
+    }
+  }
+}
+
+// SDK-managed checkpoint/ownership state used by Cosmos Change Feed Processors.
 resource changeFeedLeasesContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2026-03-15' = {
   parent: database
   name: changeFeedLeasesContainerName
@@ -174,6 +253,8 @@ resource workerCosmosRoleAssignment 'Microsoft.DocumentDB/databaseAccounts/sqlRo
 output accountName string = cosmosAccount.name
 output endpoint string = cosmosAccount.properties.documentEndpoint
 output databaseName string = database.name
+
 output incidentsContainerName string = incidentsContainer.name
 output runbooksContainerName string = runbooksContainer.name
+output runbookChunksContainerName string = runbookChunksContainer.name
 output changeFeedLeasesContainerName string = changeFeedLeasesContainer.name

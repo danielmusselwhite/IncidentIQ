@@ -1,38 +1,62 @@
 // Composition root for the disposable IncidentIQ application environment.
 targetScope = 'resourceGroup'
 
-// Common deployment parameters.
+// -----------------------------------------------------------------------------
+// Common deployment parameters
+// -----------------------------------------------------------------------------
+
 param location string = resourceGroup().location
 param projectName string = 'incidentiq'
 param environmentName string
 
 // Container images are overridden by the deployment workflow after the real
 // API and Worker images have been pushed to ACR. Public images allow the
-// infrastructure to be provisioned for the first time before ACR contains them.
+// infrastructure to be provisioned before ACR contains application images.
 param apiImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 param workerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 
-// Keep the queue and Worker retry configuration sourced from the same value.
+// Keep the Service Bus queue and Worker retry configuration sourced from one value.
 param serviceBusMaxDeliveryCount int = 5
 
-// Common tags applied to application resources.
 param tags object = {
   project: 'IncidentIQ'
   environment: environmentName
   managedBy: 'Bicep'
 }
 
-// Azure AI configuration for the incident analysis model.
+// -----------------------------------------------------------------------------
+// Azure AI - incident analysis
+// -----------------------------------------------------------------------------
+
 param azureAiLocation string = location
+
 param azureAiModelName string = 'gpt-5-mini'
 param azureAiModelVersion string = '2025-08-07'
 param azureAiDeploymentName string = 'incident-analysis'
 param azureAiDeploymentSkuName string = 'GlobalStandard'
 param azureAiDeploymentCapacity int = 10
 
-// Workload identities used by the API and Worker Container Apps.
+// -----------------------------------------------------------------------------
+// Azure AI - Runbook embeddings
+// -----------------------------------------------------------------------------
+
+param azureAiEmbeddingModelName string = 'text-embedding-3-small'
+param azureAiEmbeddingModelVersion string = '1'
+param azureAiEmbeddingDeploymentName string = 'runbook-embedding'
+param azureAiEmbeddingDeploymentSkuName string = 'GlobalStandard'
+param azureAiEmbeddingDeploymentCapacity int = 10
+
+// One value is shared with Cosmos and the Worker so the stored vector policy and
+// generated embedding dimensions cannot accidentally become inconsistent.
+param azureAiEmbeddingDimensions int = 1536
+
+// -----------------------------------------------------------------------------
+// Workload identities
+// -----------------------------------------------------------------------------
+
 module apiIdentity './modules/api-identity.bicep' = {
   name: 'apiIdentity'
+
   params: {
     location: location
     projectName: projectName
@@ -43,6 +67,7 @@ module apiIdentity './modules/api-identity.bicep' = {
 
 module workerIdentity './modules/worker-identity.bicep' = {
   name: 'workerIdentity'
+
   params: {
     location: location
     projectName: projectName
@@ -51,9 +76,13 @@ module workerIdentity './modules/worker-identity.bicep' = {
   }
 }
 
-// Shared observability resources.
+// -----------------------------------------------------------------------------
+// Observability
+// -----------------------------------------------------------------------------
+
 module logAnalytics './modules/log-analytics.bicep' = {
   name: 'logAnalytics'
+
   params: {
     location: location
     projectName: projectName
@@ -64,6 +93,7 @@ module logAnalytics './modules/log-analytics.bicep' = {
 
 module applicationInsights './modules/application-insights.bicep' = {
   name: 'applicationInsights'
+
   params: {
     location: location
     projectName: projectName
@@ -73,10 +103,15 @@ module applicationInsights './modules/application-insights.bicep' = {
   }
 }
 
-// Service Bus carries durable AnalyseIncident commands. The Worker owns both
-// publication from the outbox relay and consumption for analysis processing.
+// -----------------------------------------------------------------------------
+// Messaging
+// -----------------------------------------------------------------------------
+
+// Service Bus currently carries durable AnalyseIncident commands.
+// The IndexRunbook queue is added later when the ingestion messaging flow is built.
 module serviceBus './modules/service-bus.bicep' = {
   name: 'serviceBus'
+
   params: {
     location: location
     projectName: projectName
@@ -87,63 +122,87 @@ module serviceBus './modules/service-bus.bicep' = {
   }
 }
 
-// Cosmos stores Incidents, Runbooks, transactional outbox documents and the
-// Change Feed Processor lease state. Both API and Worker require data access.
+// -----------------------------------------------------------------------------
+// Cosmos DB
+// -----------------------------------------------------------------------------
+
+// Cosmos stores the source application data, transactional Incident outbox,
+// Runbook vector chunks and Change Feed Processor lease state.
 module cosmos './modules/cosmos.bicep' = {
   name: 'cosmos'
+
   params: {
     location: location
     projectName: projectName
     environmentName: environmentName
     tags: tags
+
     apiPrincipalId: apiIdentity.outputs.principalId
     workerPrincipalId: workerIdentity.outputs.principalId
+
+    runbookEmbeddingDimensions: azureAiEmbeddingDimensions
   }
 }
 
-// ACR stores the API and Worker container images. Workload identities receive
-// pull-only access; the GitHub deployment identity receives push access via the
-// bootstrap resource-group RBAC assignment.
+// -----------------------------------------------------------------------------
+// Container registry
+// -----------------------------------------------------------------------------
+
 module acr './modules/acr.bicep' = {
   name: 'acr'
+
   params: {
     location: location
     projectName: projectName
     environmentName: environmentName
     tags: tags
+
     apiPrincipalId: apiIdentity.outputs.principalId
     workerPrincipalId: workerIdentity.outputs.principalId
   }
 }
 
-// Shared Container Apps Environment for the API and Worker, connected to the
-// existing Log Analytics workspace for platform/application logs.
+// -----------------------------------------------------------------------------
+// Container Apps environment
+// -----------------------------------------------------------------------------
+
 module containerAppsEnvironment './modules/container-apps-environment.bicep' = {
   name: 'containerAppsEnvironment'
+
   params: {
     location: location
     projectName: projectName
     environmentName: environmentName
     tags: tags
+
     logAnalyticsWorkspaceName: logAnalytics.outputs.name
   }
 }
 
-// Static hosting for the React/Vite frontend. The built frontend is uploaded by
-// GitHub Actions after Bicep has provisioned the Static Web App resource.
+// -----------------------------------------------------------------------------
+// Frontend
+// -----------------------------------------------------------------------------
+
 module frontend './modules/frontend.bicep' = {
   name: 'frontend'
+
   params: {
-    location: 'westeurope' // Static Web Apps don't have uksouth so we use westeurope as the location
+    // Static Web Apps does not currently offer UK South.
+    location: 'westeurope'
+
     projectName: projectName
     environmentName: environmentName
     tags: tags
   }
 }
 
-// Public HTTP API. It uses its managed identity for Cosmos and ACR access.
+// -----------------------------------------------------------------------------
+// API Container App
+// -----------------------------------------------------------------------------
+
 module apiContainerApp './modules/api-container-app.bicep' = {
   name: 'apiContainerApp'
+
   params: {
     location: location
     projectName: projectName
@@ -162,6 +221,7 @@ module apiContainerApp './modules/api-container-app.bicep' = {
     cosmosDatabaseName: cosmos.outputs.databaseName
     cosmosIncidentsContainerName: cosmos.outputs.incidentsContainerName
     cosmosRunbooksContainerName: cosmos.outputs.runbooksContainerName
+    cosmosRunbookChunksContainerName: cosmos.outputs.runbookChunksContainerName
     cosmosChangeFeedLeasesContainerName: cosmos.outputs.changeFeedLeasesContainerName
 
     applicationInsightsConnectionString: applicationInsights.outputs.connectionString
@@ -170,9 +230,15 @@ module apiContainerApp './modules/api-container-app.bicep' = {
   }
 }
 
-// Azure AI module for the incident analysis model.
+// -----------------------------------------------------------------------------
+// Azure OpenAI
+// -----------------------------------------------------------------------------
+
+// Both model deployments live under one Azure OpenAI account and are accessed
+// by the Worker's existing managed identity.
 module azureAi './modules/azure-ai.bicep' = {
   name: 'azureAi'
+
   params: {
     location: azureAiLocation
     projectName: projectName
@@ -181,18 +247,29 @@ module azureAi './modules/azure-ai.bicep' = {
 
     workerPrincipalId: workerIdentity.outputs.principalId
 
+    // Incident analysis
     modelName: azureAiModelName
     modelVersion: azureAiModelVersion
     deploymentName: azureAiDeploymentName
     deploymentSkuName: azureAiDeploymentSkuName
     deploymentCapacity: azureAiDeploymentCapacity
+
+    // Runbook embeddings
+    embeddingModelName: azureAiEmbeddingModelName
+    embeddingModelVersion: azureAiEmbeddingModelVersion
+    embeddingDeploymentName: azureAiEmbeddingDeploymentName
+    embeddingDeploymentSkuName: azureAiEmbeddingDeploymentSkuName
+    embeddingDeploymentCapacity: azureAiEmbeddingDeploymentCapacity
   }
 }
 
-// Background Worker. It has no ingress and hosts both the Change Feed outbox
-// relay and Service Bus analysis consumer.
+// -----------------------------------------------------------------------------
+// Worker Container App
+// -----------------------------------------------------------------------------
+
 module workerContainerApp './modules/worker-container-app.bicep' = {
   name: 'workerContainerApp'
+
   params: {
     location: location
     projectName: projectName
@@ -207,30 +284,44 @@ module workerContainerApp './modules/worker-container-app.bicep' = {
     acrLoginServer: acr.outputs.acrLoginServer
     image: workerImage
 
+    // Cosmos
     cosmosEndpoint: cosmos.outputs.endpoint
     cosmosDatabaseName: cosmos.outputs.databaseName
     cosmosIncidentsContainerName: cosmos.outputs.incidentsContainerName
     cosmosRunbooksContainerName: cosmos.outputs.runbooksContainerName
+    cosmosRunbookChunksContainerName: cosmos.outputs.runbookChunksContainerName
     cosmosChangeFeedLeasesContainerName: cosmos.outputs.changeFeedLeasesContainerName
 
+    // Service Bus
     serviceBusFullyQualifiedNamespace: serviceBus.outputs.fullyQualifiedNamespace
     analyseIncidentQueueName: serviceBus.outputs.analyseIncidentQueueName
     maxDeliveryCount: serviceBusMaxDeliveryCount
 
+    // Observability
     applicationInsightsConnectionString: applicationInsights.outputs.connectionString
-    
+
+    // Incident analysis AI
     azureAiEndpoint: azureAi.outputs.endpoint
-    azureAiDeploymentName: azureAi.outputs.deploymentName
-    azureAiModelName: azureAi.outputs.modelName
+    azureAiDeploymentName: azureAi.outputs.analysisDeploymentName
+    azureAiModelName: azureAi.outputs.analysisModelName
+
+    // Runbook embedding AI
+    azureAiEmbeddingDeploymentName: azureAi.outputs.embeddingDeploymentName
+    azureAiEmbeddingModelName: azureAi.outputs.embeddingModelName
+    azureAiEmbeddingDimensions: azureAiEmbeddingDimensions
   }
 }
 
-// Outputs consumed by deployment workflows and operational tooling.
+// -----------------------------------------------------------------------------
+// Outputs
+// -----------------------------------------------------------------------------
+
 output cosmosAccountName string = cosmos.outputs.accountName
 output cosmosEndpoint string = cosmos.outputs.endpoint
 output cosmosDatabaseName string = cosmos.outputs.databaseName
 output cosmosIncidentsContainerName string = cosmos.outputs.incidentsContainerName
 output cosmosRunbooksContainerName string = cosmos.outputs.runbooksContainerName
+output cosmosRunbookChunksContainerName string = cosmos.outputs.runbookChunksContainerName
 output cosmosChangeFeedLeasesContainerName string = cosmos.outputs.changeFeedLeasesContainerName
 
 output logAnalyticsWorkspaceName string = logAnalytics.outputs.name
@@ -238,6 +329,7 @@ output applicationInsightsName string = applicationInsights.outputs.name
 
 output apiIdentityName string = apiIdentity.outputs.name
 output apiIdentityClientId string = apiIdentity.outputs.clientId
+
 output workerIdentityName string = workerIdentity.outputs.name
 output workerIdentityClientId string = workerIdentity.outputs.clientId
 
@@ -255,7 +347,13 @@ output containerAppsEnvironmentDefaultDomain string = containerAppsEnvironment.o
 
 output apiContainerAppName string = apiContainerApp.outputs.name
 output apiUrl string = apiContainerApp.outputs.url
+
 output workerContainerAppName string = workerContainerApp.outputs.name
 
 output frontendName string = frontend.outputs.name
 output frontendUrl string = frontend.outputs.url
+
+output azureAiAccountName string = azureAi.outputs.name
+output azureAiEndpoint string = azureAi.outputs.endpoint
+output azureAiAnalysisDeploymentName string = azureAi.outputs.analysisDeploymentName
+output azureAiEmbeddingDeploymentName string = azureAi.outputs.embeddingDeploymentName

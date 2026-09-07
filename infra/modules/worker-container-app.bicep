@@ -18,6 +18,7 @@ param cosmosEndpoint string
 param cosmosDatabaseName string
 param cosmosIncidentsContainerName string
 param cosmosRunbooksContainerName string
+param cosmosRunbookChunksContainerName string
 param cosmosChangeFeedLeasesContainerName string
 
 param serviceBusFullyQualifiedNamespace string
@@ -26,9 +27,15 @@ param maxDeliveryCount int = 5
 
 param applicationInsightsConnectionString string
 
+// Incident analysis Azure OpenAI configuration.
 param azureAiEndpoint string
 param azureAiDeploymentName string
 param azureAiModelName string
+
+// Runbook embedding Azure OpenAI configuration.
+param azureAiEmbeddingDeploymentName string
+param azureAiEmbeddingModelName string
+param azureAiEmbeddingDimensions int = 1536
 
 var containerAppName = 'ca-${projectName}-worker-${environmentName}'
 
@@ -59,7 +66,7 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
       ]
     }
 
-    // No ingress is configured: both hosted services are background consumers.
+    // No ingress is configured because the Worker only performs background work.
     template: {
       containers: [
         {
@@ -73,6 +80,8 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
               name: 'AZURE_CLIENT_ID'
               value: workerIdentityClientId
             }
+
+            // Cosmos DB
             {
               name: 'Cosmos__Endpoint'
               value: cosmosEndpoint
@@ -90,9 +99,15 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
               value: cosmosRunbooksContainerName
             }
             {
+              name: 'Cosmos__RunbookChunksContainerName'
+              value: cosmosRunbookChunksContainerName
+            }
+            {
               name: 'Cosmos__ChangeFeedLeasesContainerName'
               value: cosmosChangeFeedLeasesContainerName
             }
+
+            // Service Bus
             {
               name: 'ServiceBus__FullyQualifiedNamespace'
               value: serviceBusFullyQualifiedNamespace
@@ -105,10 +120,14 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
               name: 'ServiceBus__MaxDeliveryCount'
               value: string(maxDeliveryCount)
             }
+
+            // Application Insights
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: applicationInsightsConnectionString
             }
+
+            // Azure OpenAI account + incident analysis deployment
             {
               name: 'AzureAI__Endpoint'
               value: azureAiEndpoint
@@ -121,6 +140,23 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
               name: 'AzureAI__ModelName'
               value: azureAiModelName
             }
+
+            // Azure OpenAI Runbook embedding deployment.
+            //
+            // Double underscores map to nested .NET configuration:
+            // AzureAI:Embedding:DeploymentName, etc.
+            {
+              name: 'AzureAI__Embedding__DeploymentName'
+              value: azureAiEmbeddingDeploymentName
+            }
+            {
+              name: 'AzureAI__Embedding__ModelName'
+              value: azureAiEmbeddingModelName
+            }
+            {
+              name: 'AzureAI__Embedding__Dimensions'
+              value: string(azureAiEmbeddingDimensions)
+            }
           ]
 
           resources: {
@@ -130,9 +166,8 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
         }
       ]
 
-      // Keep exactly one Worker running for now because IncidentOutboxWorker must
-      // continuously run the Cosmos Change Feed Processor. Queue/KEDA scaling is
-      // intentionally deferred to the later scaling stage.
+      // Keep exactly one Worker running for now because the Change Feed Processor
+      // must continuously monitor Cosmos. KEDA scaling remains a later stage.
       scale: {
         minReplicas: 1
         maxReplicas: 1

@@ -18,11 +18,13 @@ param cosmosEndpoint string
 param cosmosDatabaseName string
 param cosmosIncidentsContainerName string
 param cosmosRunbooksContainerName string
+param cosmosRunbookChunksContainerName string
 param cosmosChangeFeedLeasesContainerName string
 
 param applicationInsightsConnectionString string
 
-param frontendOrigin string // the origin URL of the frontend application, used for CORS configuration in production.
+// Origin URL of the frontend application, used for production CORS.
+param frontendOrigin string
 
 var containerAppName = 'ca-${projectName}-api-${environmentName}'
 
@@ -75,10 +77,13 @@ resource apiContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
               name: 'AZURE_CLIENT_ID'
               value: apiIdentityClientId
             }
+
             {
               name: 'ASPNETCORE_HTTP_PORTS'
               value: '8080'
             }
+
+            // Cosmos DB
             {
               name: 'Cosmos__Endpoint'
               value: cosmosEndpoint
@@ -96,13 +101,19 @@ resource apiContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
               value: cosmosRunbooksContainerName
             }
             {
+              name: 'Cosmos__RunbookChunksContainerName'
+              value: cosmosRunbookChunksContainerName
+            }
+            {
               name: 'Cosmos__ChangeFeedLeasesContainerName'
               value: cosmosChangeFeedLeasesContainerName
             }
+
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: applicationInsightsConnectionString
             }
+
             {
               name: 'Frontend__Origin'
               value: frontendOrigin

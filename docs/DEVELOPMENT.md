@@ -215,6 +215,14 @@ AzureAI:NetworkTimeoutSeconds = 60
 AzureAI:RequestTimeoutSeconds = 90
 ```
 
+Azure AI Embedding settings:
+
+```text
+AzureAI:Embedding:ModelName
+AzureAI:Embedding:DeploymentName
+AzureAI:Embedding:Dimensions
+```
+
 These can be overridden through normal configuration if needed.
 
 To use the real Azure analyzer while running the Worker locally, run the Worker in a **non-Development** environment and provide the Azure AI settings. `Development` intentionally selects the deterministic analyzer.
