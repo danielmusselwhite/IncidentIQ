@@ -2,7 +2,7 @@
 
 `IncidentIQ.Domain` contains the core business models and business rules for IncidentIQ.
 
-It has no dependency on ASP.NET Core, Cosmos DB, Service Bus, React, or Azure SDKs.
+It has no dependency on ASP.NET Core, Cosmos DB, Service Bus, React, Azure OpenAI, or Azure SDKs.
 
 ## Responsibilities
 
@@ -53,6 +53,12 @@ Represents editable operational guidance used to investigate and resolve inciden
 
 Editable Runbooks remain separate from the future vectorised `RunbookChunk` persistence used by the RAG pipeline.
 
+### Why AI Results Are Not Domain Entities
+
+The current structured AI result (`IncidentAnalysisResult`, likely causes, recommended actions) lives in Application rather than Domain.
+
+The Domain owns the Incident business lifecycle; the generated analysis is an output of an application use case and may evolve as providers/retrieval strategies change. Keeping it outside Domain avoids coupling core business entities to the current AI representation.
+
 ## Structure
 
 ```text
@@ -68,7 +74,8 @@ IncidentIQ.Domain/
 ## Design Rules
 
 - No Azure dependencies.
+- No AI-provider SDK types.
 - No persistence-specific behaviour.
 - No HTTP concerns.
-- Business state transitions belong in the domain where practical.
-- Domain objects remain valid regardless of how they are stored or transported.
+- Business state transitions belong in the Domain where practical.
+- Domain objects remain valid regardless of how they are stored, transported, or analysed.

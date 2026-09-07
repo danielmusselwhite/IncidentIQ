@@ -44,17 +44,9 @@ rg-incidentiq-bootstrap
     └── OIDC federated credential
 ```
 
-The deployment identity receives resource-group-scoped permissions on `rg-incidentiq-dev`:
+The deployment identity receives resource-group-scoped permissions on `rg-incidentiq-dev` including Contributor, Role Based Access Control Administrator, and ACR push access.
 
-```text
-Contributor
-Role Based Access Control Administrator
-AcrPush
-```
-
-This lets GitHub Actions provision the development environment, create workload RBAC assignments, and push application images to ACR without storing an Azure client secret.
-
-Bootstrap is run manually using the documented Azure CLI command when the deployment identity, OIDC federation, or bootstrap-level RBAC changes.
+This lets GitHub Actions provision the development environment, create workload RBAC assignments, and push application images without storing an Azure client secret.
 
 ## Development Environment
 
@@ -85,6 +77,8 @@ rg-incidentiq-dev
 └── Log Analytics
 ```
 
+The repository root [README](../ReadMe.md) contains Mermaid diagrams for the deployed infrastructure, internal application architecture, and Incident submission/message flow.
+
 ## Cosmos DB
 
 Defined in `modules/cosmos.bicep`.
@@ -95,7 +89,17 @@ Defined in `modules/cosmos.bicep`.
 | `Runbooks` | `/id` | Editable operational Runbooks |
 | `ChangeFeedLeases` | `/id` | SDK-managed Change Feed Processor checkpoints/ownership |
 
-The shared `/incidentId` partition allows an Incident and its associated outbox document to be persisted atomically using a Cosmos transactional batch. The Worker later reads the outbox change through the Cosmos Change Feed and publishes the command to Service Bus.
+The shared `/incidentId` partition allows two important atomic operations:
+
+```text
+Create / Retry
+→ Incident + analysis outbox
+
+Complete Analysis
+→ Completed Incident + IncidentAnalysisDocument
+```
+
+Both use Cosmos transactional batches inside one logical partition.
 
 See [Design Decisions & Trade-offs](../docs/DESIGN-DECISIONS.md) for the reasoning behind the outbox and partition-key change.
 
@@ -103,13 +107,19 @@ See [Design Decisions & Trade-offs](../docs/DESIGN-DECISIONS.md) for the reasoni
 
 Defined in `modules/service-bus.bicep`.
 
-`analyse-incident` carries durable analysis commands and is configured for bounded redelivery, dead-lettering, TTL, and duplicate detection. The queue's `maxDeliveryCount` and the Worker application's `ServiceBus__MaxDeliveryCount` setting are sourced from the same Bicep parameter to keep retry behaviour aligned.
+`analyse-incident` carries durable analysis commands and is configured for bounded redelivery, dead-lettering, TTL, and duplicate detection. The queue's `maxDeliveryCount` and the Worker's `ServiceBus__MaxDeliveryCount` setting are sourced from the same infrastructure value so application and broker behaviour stay aligned.
+
+The API does not require Service Bus sender access because it persists an outbox instead. The Worker needs sender access for the outbox relay and receiver access for analysis consumption.
 
 ## Azure AI
 
 Defined in `modules/azure-ai.bicep`.
 
-The development environment provisions an Azure OpenAI account and the `incident-analysis` model deployment. The Worker receives the Azure AI endpoint, deployment name, and model name through Container App environment configuration and authenticates with its managed identity.
+The development environment provisions an Azure OpenAI account and the `incident-analysis` model deployment. The Worker receives the Azure AI endpoint, deployment name, and model name through Container App configuration and authenticates with its managed identity.
+
+The Worker identity is assigned `Cognitive Services OpenAI User` on the Azure OpenAI resource.
+
+Application-level resilience settings such as bounded SDK retries and request/network timeouts live in the Worker/Infrastructure configuration; they do not require extra Azure resources.
 
 ## Container Hosting
 
@@ -124,7 +134,7 @@ API Container App
 
 Worker Container App
 ├── no ingress
-├── one replica kept running during Stage 9
+├── one replica kept running before KEDA stage
 ├── Worker managed identity
 ├── Cosmos + ACR access
 ├── Service Bus sender + receiver access
@@ -139,9 +149,9 @@ ACR stores the API and Worker images.
 
 - Admin credentials are disabled.
 - Anonymous pull is disabled.
-- API and Worker managed identities receive `AcrPull` on the registry.
-- The GitHub deployment identity receives `AcrPush` at the development resource-group scope through bootstrap RBAC.
-- Container images are tagged as `<VersionPrefix>-<short-git-sha>` for human-readable versioning and source traceability.
+- API and Worker managed identities receive `AcrPull`.
+- The GitHub deployment identity receives push access through bootstrap RBAC.
+- Container images are tagged as `<VersionPrefix>-<short-git-sha>` for traceability.
 
 Example:
 
@@ -152,7 +162,7 @@ incidentiq-worker:1.0.0-a83bf21
 
 ## Frontend Hosting
 
-The React/Vite frontend is hosted in Azure Static Web Apps on the Free tier. Bicep provisions the Static Web App resource; GitHub Actions builds the frontend with the deployed API URL and uploads the generated `dist` directory.
+The React/Vite frontend is hosted in Azure Static Web Apps. Bicep provisions the Static Web App resource; GitHub Actions builds the frontend with the deployed API URL and uploads the generated `dist` directory.
 
 ## Workload Identities
 
@@ -179,7 +189,9 @@ It therefore requires Cosmos DB Data Contributor, queue-scoped Service Bus Data 
 
 ## Monitoring
 
-`application-insights.bicep`, `log-analytics.bicep`, and `container-apps-environment.bicep` provide the initial telemetry foundation. API and Worker Container Apps receive the Application Insights connection string through environment configuration.
+`application-insights.bicep`, `log-analytics.bicep`, and `container-apps-environment.bicep` provide the telemetry foundation.
+
+Stage 10 now emits structured AI success/failure logs from `AzureIncidentAnalyzer`, including analysis duration, failure category, deployment, and model. Full OpenTelemetry dependency tracing, dashboards, KQL, queue metrics, and scaling telemetry remain Stage 15 work.
 
 ## GitHub Actions
 
@@ -201,7 +213,7 @@ Push → main / manual trigger
 → deploy frontend to Static Web Apps
 ```
 
-Normal application-environment deployments should be performed through the repository workflows. Bootstrap infrastructure remains a separate, intentionally infrequent manual operation.
+Normal environment deployments should be performed through repository workflows. Bootstrap infrastructure remains a separate, intentionally infrequent manual operation.
 
 ## Local Infrastructure
 
@@ -210,10 +222,13 @@ Docker Compose provides local equivalents where practical:
 ```text
 IncidentIQ.Api
 IncidentIQ.Worker
+IncidentIQ.Web
 Cosmos DB Emulator
 Service Bus Emulator
 └── SQL Server dependency
 ```
+
+Azure OpenAI itself is not emulated. Instead, when the Worker runs with `DOTNET_ENVIRONMENT=Development`, `DevelopmentDummyIncidentAnalyzer` provides deterministic structured analysis while the rest of the asynchronous pipeline uses the local emulators.
 
 The Service Bus Emulator queue definition is stored at `infra/local/servicebus/Config.json`.
 
@@ -247,5 +262,6 @@ For startup commands and local URLs, see the [Development Guide](../docs/DEVELOP
 - Use OIDC rather than GitHub client secrets.
 - Use Managed Identity and least-privilege RBAC where practical.
 - Keep bootstrap resources separate from disposable application resources.
-- Tag deployed container images as `<VersionPrefix>-<short-git-sha>` for human-readable versioning and source traceability.
-- Use local emulators for normal development where practical.
+- Keep application-level resilience policy in application configuration rather than encoding it as unrelated infrastructure.
+- Tag deployed container images for source traceability.
+- Use local emulators and deterministic local AI for normal development where practical.

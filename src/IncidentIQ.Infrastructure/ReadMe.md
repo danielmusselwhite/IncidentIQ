@@ -2,43 +2,40 @@
 
 `IncidentIQ.Infrastructure` contains the concrete implementations used by the Application layer to communicate with external systems.
 
-It is responsible for persistence, messaging, Azure SDK integration, and other technical concerns that should not live inside the Domain or Application projects.
-
----
+It is responsible for persistence, messaging, Azure/OpenAI SDK integration, deterministic local AI, and technical concerns that should not live inside Domain or Application.
 
 ## Responsibilities
 
 Current responsibilities include:
 
-- Cosmos DB client configuration.
+- Cosmos DB client configuration and local initialization.
 - Incident persistence.
-- Atomic Incident + analysis outbox persistence.
-- Atomic completed Incident + structured analysis persistence.
+- Atomic Incident + analysis-outbox persistence.
+- Atomic completed Incident + structured-analysis persistence.
+- Persisted analysis point reads.
 - Runbook persistence.
-- Local Cosmos initialization.
-- Azure Service Bus client configuration.
-- Sending `AnalyseIncidentCommand` messages.
-- Azure OpenAI incident analysis using structured outputs.
+- Azure Service Bus client configuration and `AnalyseIncidentCommand` publishing.
+- Azure OpenAI structured incident analysis.
+- Deterministic development incident analysis.
+- Azure AI timeout/retry/failure classification and structured telemetry.
 - Azure authentication through `DefaultAzureCredential` where configured.
-- Dependency injection registration for Infrastructure services.
-
----
+- Infrastructure dependency-injection registration.
 
 ## High-Level Structure
 
 ```text
 IncidentIQ.Infrastructure/
-
 ├── AzureAI/
 │   ├── AzureAIOptions.cs
 │   ├── AzureIncidentAnalyzer.cs
+│   ├── DevelopmentDummyIncidentAnalyzer.cs
 │   ├── AzureIncidentAnalysisResponse.cs
-│   └── AzureIncidentAnalysisSchema.cs
-│
+│   ├── AzureIncidentAnalysisSchema.cs
+│   ├── AzureAIAnalysisException.cs
+│   └── AzureAIFailureCategory.cs
 ├── Messaging/
 │   ├── AzureServiceBusIncidentAnalysisQueue.cs
 │   └── ServiceBusOptions.cs
-│
 ├── Persistence/
 │   └── Cosmos/
 │       ├── CosmosOptions.cs
@@ -46,69 +43,46 @@ IncidentIQ.Infrastructure/
 │       ├── CosmosIncidentRepository.cs
 │       ├── CosmosIncidentSubmissionStore.cs
 │       ├── CosmosIncidentAnalysisStore.cs
+│       ├── CosmosIncidentAnalysisReader.cs
 │       ├── CosmosRunbookRepository.cs
 │       └── Documents/
-│
 └── DependencyInjection.cs
 ```
-
----
 
 ## Cosmos DB
 
 IncidentIQ uses the native Azure Cosmos DB SDK.
 
-Current Cosmos persistence includes:
-
 ```text
 IncidentIQ Database
-
-├── Incidents
-├── Runbooks
-└── ChangeFeedLeases
+├── Incidents          /incidentId
+├── Runbooks           /id
+└── ChangeFeedLeases   /id
 ```
 
-The `Runbooks` container uses: `Partition key: /id`
+The `Incidents` container stores multiple document types sharing the Incident partition:
 
-The `ChangeFeedLeases` container uses: `Partition key: /id`
+```text
+IncidentDocument
+IncidentAnalysisOutboxDocument
+IncidentAnalysisDocument
+```
 
-The `Incidents` container uses: `Partition key: /incidentId`
+This supports two transactional batches:
 
-The `Incidents` container stores Incident, analysis-outbox, and structured analysis documents.
+```text
+submission/retry
+→ Incident + Outbox
 
-These document types share the same `incidentId`. This allows Incident submission/retry + outbox persistence, and completed Incident + analysis persistence, to use Cosmos transactional batches within one logical partition.
+successful analysis
+→ Completed Incident + Analysis
+```
 
-Repository and persistence implementations map between Domain/Application models and Cosmos persistence documents.
-
-The local `CosmosInitializer` creates development containers when running against the local emulator.
-
-Azure infrastructure is provisioned separately through `Bicep`.
+`CosmosIncidentAnalysisReader` reads a persisted analysis using its deterministic ID (`analysis-{incidentId}`) and the raw Incident ID as partition key, giving an efficient point read.
 
 ## Transactional Outbox
 
-Incident creation and retry operations must persist both:
-
-```text
-Incident state
-+
-AnalyseIncident outbox request
-```
-
-These are written atomically through `CosmosIncidentSubmissionStore`.
-
-This avoids the dual-write failure case where an Incident could be saved successfully but the corresponding Service Bus message failed to publish.
-
-The outbox document is later read through the Cosmos Change Feed by the Worker and published to Azure Service Bus.
-
-## Service Bus
-
-Infrastructure provides the implementation of: `IIncidentAnalysisQueue`
-
-using `Azure Service Bus`.
-
-The Infrastructure implementation serialises and sends an `AnalyseIncidentCommand` to: `analyse-incident`
-
-The API does not publish directly to Service Bus. Instead:
+Incident creation and deliberate retry operations persist both Incident state and an `AnalyseIncident` outbox request through `CosmosIncidentSubmissionStore`.
 
 ```text
 API/Application
@@ -116,44 +90,80 @@ API/Application
 → Cosmos Change Feed
 → IncidentOutboxWorker
 → IIncidentAnalysisQueue
-→ Azure Service Bus
+→ Service Bus
 ```
 
-The Application layer therefore does not need to know that Azure Service Bus is being used.
+This avoids the Cosmos + Service Bus dual-write failure mode.
+
+## Service Bus
+
+`AzureServiceBusIncidentAnalysisQueue` implements `IIncidentAnalysisQueue` and publishes `AnalyseIncidentCommand` to `analyse-incident`.
+
+The API does not publish directly to Service Bus; only the Worker-side outbox relay uses the queue abstraction.
 
 ## Azure AI
 
-`AzureIncidentAnalyzer` implements `IIncidentAnalyzer` using Azure OpenAI. It sends the Incident as chat input, requires a strict structured-output schema, validates the returned data, and maps it to `IncidentAnalysisResult`.
+### Development
 
-Azure AI dependencies are registered separately through `AddAzureAIDependencies`, so only the Worker requires Azure AI configuration.
+```text
+IIncidentAnalyzer
+└── DevelopmentDummyIncidentAnalyzer
+```
 
----
+`AddDevelopmentAIDependencies()` is used when the Worker environment is `Development`. It returns deterministic structured analysis so the complete local workflow can be tested without Azure credentials or model cost.
+
+### Azure / non-Development
+
+```text
+IIncidentAnalyzer
+└── AzureIncidentAnalyzer
+    ↓
+Azure OpenAI ChatClient
+```
+
+`AzureIncidentAnalyzer`:
+
+- Builds system/user chat messages from `IncidentAnalysisInput`.
+- Requires the strict structured response schema.
+- Deserializes and semantically validates the returned JSON.
+- Maps Infrastructure response types to `IncidentAnalysisResult`.
+- Uses an overall request timeout.
+- Classifies throttling, service/client failures, timeout, and invalid model responses.
+- Preserves caller cancellation semantics.
+- Logs structured duration/success/failure metadata without logging the Incident payload or raw model response.
+
+The Azure OpenAI client is long-lived and uses a bounded SDK retry policy plus an individual network timeout. Service Bus remains the durable outer retry mechanism.
+
+Current defaults are:
+
+```text
+MaxRetries = 2
+NetworkTimeoutSeconds = 60
+RequestTimeoutSeconds = 90
+```
 
 ## Authentication
 
-Infrastructure supports two common development modes:
+Infrastructure supports two common modes:
 
 ```text
-Docker Compose
+Docker Compose Development
 → emulator credentials / connection strings
+→ DevelopmentDummyIncidentAnalyzer
 ```
 
 ```text
-Azure
+Azure / non-Development
 → DefaultAzureCredential
 → Managed Identity or developer Azure identity
+→ Azure OpenAI / Cosmos / Service Bus RBAC
 ```
-
-This allows the same application code to work against local emulators and Azure-hosted services.
-
----
 
 ## Design Approach
 
-Infrastructure is the technical edge of the application:
-
-- Application defines abstractions.
-- Infrastructure implements those abstractions.
-- Azure SDK types remain outside Domain and Application where practical.
+- Application defines abstractions; Infrastructure implements them.
+- Azure SDK types remain outside Domain/Application where practical.
 - External-service configuration is bound through options classes.
 - Long-lived SDK clients are registered and reused through dependency injection.
+- Incident persistence and analysis persistence/read responsibilities remain separate.
+- Resilience logic classifies and propagates failures rather than swallowing them, preserving Worker/Service Bus retry semantics.

@@ -60,11 +60,11 @@ APPLICATIONINSIGHTS_CONNECTION_STRING
 ServiceBus:ConnectionString    (only when SAS authentication is used)
 ```
 
-Deterministic resource/container names normally remain unchanged.
+Deterministic resource/container/deployment names normally remain unchanged.
 
-These values are mainly required when running the API or Worker locally against the recreated Azure environment.
+These values are mainly required when running the API or Worker locally against the recreated Azure environment. Normal Docker Compose development uses the local emulators and `DevelopmentDummyIncidentAnalyzer`, so it does not require the Azure AI endpoint.
 
-The deployed Container Apps receive their Azure resource configuration through Bicep and authenticate to Azure services using Managed Identity.
+The deployed Container Apps receive Azure resource configuration through Bicep and authenticate to Azure services using Managed Identity.
 
 Common Cosmos configuration:
 
@@ -92,7 +92,17 @@ AzureAI:DeploymentName = incident-analysis
 AzureAI:ModelName = gpt-5-mini
 ```
 
-When connection strings/API keys are not configured, the application uses `DefaultAzureCredential` and the local/Azure identity must have the required RBAC permissions.
+The application currently defaults its Azure AI resilience settings to:
+
+```text
+AzureAI:MaxRetries = 2
+AzureAI:NetworkTimeoutSeconds = 60
+AzureAI:RequestTimeoutSeconds = 90
+```
+
+These are application configuration values rather than separate Azure resources and can be overridden through normal configuration when required.
+
+When keys/connection strings are not configured, the application uses `DefaultAzureCredential` and the local/Azure identity must have the required RBAC permissions.
 
 ## Retrieve Azure Configuration Values
 
@@ -176,7 +186,7 @@ dotnet user-secrets set "APPLICATIONINSIGHTS_CONNECTION_STRING" "<APP_INSIGHTS_C
     --project src\IncidentIQ.Api
 ```
 
-Example Worker values:
+Example Worker values for real Azure integration:
 
 ```powershell
 dotnet user-secrets set "Cosmos:Key" "<COSMOS_KEY>" `
@@ -312,8 +322,23 @@ rg-incidentiq-dev
 └── Log Analytics
 ```
 
-### 6. Refresh Local Configuration
+### 6. Verify the Deployment
 
-Retrieve the recreated resource values using the commands above, update user-secrets where necessary, then run the API and Worker locally if required.
+After deployment, submit an Incident through the frontend and verify:
+
+```text
+Queued
+→ Processing
+→ real Azure OpenAI analysis
+→ Completed
+→ persisted analysis returned by GET /api/incidents/{id}/analysis
+→ analysis displayed in React
+```
+
+Worker/Application Insights logs should also contain structured AI completion/failure telemetry such as duration, deployment/model, and a failure category when applicable.
+
+### 7. Refresh Local Configuration
+
+Retrieve recreated resource values using the commands above, update user-secrets where necessary, then run the API and Worker locally if required.
 
 For runtime startup instructions, return to the [Development Guide](DEVELOPMENT.md).

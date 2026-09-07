@@ -189,16 +189,16 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Implement `AzureIncidentAnalyzer`.
 * [x] Generate structured summary, likely causes and recommended actions.
 * [x] Validate and map Azure AI responses into `IncidentAnalysisResult`.
-* [x] Expose the AI analysis results through the API via a Get Analysis endpoint.
-* [x] Call the API on Front-End and Display the AI analysis results
-* [ ] Handle AI timeout, throttling and transient failure scenarios.
-* [ ] Add AI latency and failure telemetry.
-* [ ] Expose persisted analysis through the API.
-* [ ] Display AI-generated analysis in the React frontend.
-* [ ] Deploy Stage 10 changes to Azure.
-* [ ] Verify the full `Queued → Processing → AI analysis → Completed` flow.
-* [ ] Verify AI failure/retry behaviour in Azure.
-* [ ] Update all relevant documentation to reflect Azure AI integration + dummy AI for local development.
+* [x] Add persisted analysis read path with `IIncidentAnalysisReader` + Cosmos point read.
+* [x] Expose persisted AI analysis through `GET /api/incidents/{id}/analysis`.
+* [x] Display AI summary, likely causes/confidence, recommended actions and metadata in React.
+* [x] Add deterministic `DevelopmentDummyIncidentAnalyzer` for normal local development.
+* [x] Handle AI timeout, throttling and transient failure scenarios.
+* [x] Add AI latency and failure telemetry.
+* [x] Deploy Stage 10 changes to Azure.
+* [x] Verify the full `Queued → Processing → AI analysis → Completed` flow.
+* [x] Verify AI failure/retry behaviour in Azure.
+* [x] Update documentation for Azure AI, local deterministic analysis, resilience, telemetry, and architecture diagrams.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
 
@@ -289,7 +289,7 @@ Expand the telemetry introduced in earlier stages into full distributed observab
 * [ ] Display Worker scaling information.
 * [ ] Display failed analyses and DLQ items.
 
-* [ ] Add retry/requeue administration.
+* [ ] Add retry/requeue administration to actually call the DLQ retry method we added in stage 8.
 * [ ] Add operational diagnostics.
 
 ## Stage 17 — Event-Driven Integrations
@@ -321,15 +321,15 @@ Provision Event Grid and Functions before integrating them.
 * [ ] Review error handling and edge cases.
 * [ ] Complete architecture documentation and ADRs.
 
-* [ ] Add architecture diagrams.
-* [ ] Create polished README.
+* [x] Add architecture diagrams.
+* [x] Create polished README with infrastructure, internal architecture, and message-flow Mermaid diagrams.
 
 * [ ] Create portfolio demo/video.
 * [ ] Perform final end-to-end testing.
 
 ## Stage 19 - Optional other potential improvements
 
-- [ ] Add Polly maybe?
+- [ ] Revisit a circuit breaker/named resilience pipeline in Stage 15 if telemetry shows it adds value; avoid adding another retry layer by default.
 - [ ] Atm we just have basic state-based idempotency by disallowing work on incidents that are already marked as completed. Could strengthen this by implementing more robust idempotency mechanisms, such as request tokens, distributed locks, or optimistic concurrecy/ eTags.
 
 - [x] Add architecture and create-incident message-flow diagrams. 

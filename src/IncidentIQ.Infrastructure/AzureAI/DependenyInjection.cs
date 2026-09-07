@@ -4,6 +4,7 @@ using IncidentIQ.Application.Analyse;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.ClientModel.Primitives;
 
 namespace IncidentIQ.Infrastructure.AzureAI;
 
@@ -31,9 +32,16 @@ public static class DependencyInjection
         {
             var options = sp.GetRequiredService<IOptions<AzureAIOptions>>().Value;
 
+            var clientOptions = new AzureOpenAIClientOptions
+            {
+                NetworkTimeout = TimeSpan.FromSeconds(options.NetworkTimeoutSeconds),
+                RetryPolicy = new ClientRetryPolicy(maxRetries: options.MaxRetries)
+            };
+
             return new AzureOpenAIClient(
                 new Uri(options.Endpoint),
-                new DefaultAzureCredential());
+                new DefaultAzureCredential(),
+                clientOptions);
         });
 
         // ChatClient represents the specific Azure OpenAI deployment used for incident analysis.
