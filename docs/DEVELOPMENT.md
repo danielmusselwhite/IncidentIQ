@@ -319,3 +319,7 @@ Use **Docker Compose + DevelopmentDummyIncidentAnalyzer** for normal feature dev
 Use **Azure-connected execution** when verifying real Azure OpenAI, Cosmos DB, Service Bus, Managed Identity/RBAC, or telemetry behaviour.
 
 For automated and manual testing, see [tests/ReadMe.md](../tests/ReadMe.md).
+
+# Breakpoints
+
+- Useful breakpoint groups have been added to [breakpoint export](./other/breakpoints.xml) which can be imported to your IDE for easier debugging.

@@ -202,19 +202,42 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
 
-* [ ] Define `IndexRunbook` workflow.
-* [ ] Define dedicated Runbook chunk/vector persistence.
+### 11A — Runbook Vector Ingestion
 
-* [ ] Configure Cosmos vector policies and indexes through Bicep.
-* [ ] Chunk Runbook content.
+* [x] Define `IndexRunbookCommand` and indexing workflow.
+* [x] Define dedicated `RunbookChunk` application and persistence models.
+* [x] Create vector-enabled `RunbookChunks` Cosmos container.
+* [x] Configure Cosmos vector policy and `quantizedFlat` index through Bicep.
+* [x] Deploy `text-embedding-3-small` embedding model configuration.
+* [x] Add `IEmbeddingGenerator` abstraction.
+* [x] Add deterministic local embedding generator.
+* [x] Add Azure OpenAI embedding generator.
+* [x] Implement deterministic overlapping Runbook chunking.
+* [x] Implement Runbook chunk replacement persistence.
+* [x] Add `index-runbook` Service Bus queue.
+* [x] Publish indexing commands from the Runbooks Cosmos Change Feed.
+* [x] Consume indexing commands with `IndexRunbookWorker`.
+* [x] Generate and persist vectorised Runbook chunks.
+* [x] Verify create/update indexing end-to-end locally.
+* [ ] Remove indexed chunks when a Runbook is deleted.
+* [ ] Add final ingestion tests and edge-case coverage.
+* [ ] Deploy Runbook ingestion changes to Azure.
+* [ ] Verify real Azure embeddings and Runbook re-indexing in Azure.
+* [ ] Update ingestion documentation and architecture notes.
 
-* [ ] Generate embeddings.
-* [ ] Store Runbook chunks, embeddings and retrieval metadata.
+### 11B — Runbook Vector Retrieval
 
-* [ ] Implement Runbook vector retrieval.
-* [ ] Add metadata filtering.
-
-* [ ] Measure retrieval latency and RU usage.
+* [ ] Define Runbook retrieval abstraction/result model.
+* [ ] Generate embeddings for retrieval queries.
+* [ ] Implement Cosmos `VectorDistance` Runbook chunk retrieval.
+* [ ] Return top-K relevant Runbook chunks.
+* [ ] Add metadata filtering, including service filtering.
+* [ ] Handle empty/no-result retrieval scenarios.
+* [ ] Add retrieval tests.
+* [ ] Measure retrieval latency.
+* [ ] Measure Cosmos RU usage.
+* [ ] Verify vector retrieval in Azure.
+* [ ] Update documentation and architecture notes.
 
 ## Stage 12 — Historical Incident Retrieval & RAG
 
