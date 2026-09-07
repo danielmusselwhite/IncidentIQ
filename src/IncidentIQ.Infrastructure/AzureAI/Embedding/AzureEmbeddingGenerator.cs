@@ -27,7 +27,7 @@ public sealed class AzureEmbeddingGenerator(
         // Cosmos RunbookChunks vector policy.
         var generationOptions = new EmbeddingGenerationOptions
         {
-            Dimensions = _options.EmbeddingDimensions
+            Dimensions = _options.Dimensions
         };
 
         var embeddingResponse = await embeddingClient.GenerateEmbeddingAsync(
@@ -39,11 +39,11 @@ public sealed class AzureEmbeddingGenerator(
         var vector = embedding.ToFloats();
 
         // Guard against configuration drift between Azure OpenAI and Cosmos.
-        if (vector.Length != _options.EmbeddingDimensions)
+        if (vector.Length != _options.Dimensions)
         {
             throw new InvalidOperationException(
                 $"Azure OpenAI returned an embedding with {vector.Length} dimensions, " +
-                $"but {_options.EmbeddingDimensions} dimensions were expected.");
+                $"but {_options.Dimensions} dimensions were expected.");
         }
 
         return vector.ToArray();
