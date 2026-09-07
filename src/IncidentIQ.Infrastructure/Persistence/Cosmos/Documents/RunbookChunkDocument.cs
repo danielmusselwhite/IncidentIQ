@@ -4,17 +4,15 @@ using System.Text.Json.Serialization;
 namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 
 /// <summary>
-/// Cosmos DB persistence representation of a vectorised Runbook chunk.
-/// Multiple chunks belonging to the same Runbook share the same logical partition.
+/// Cosmos persistence representation of a vectorised Runbook chunk.
 /// </summary>
-public sealed class RunbookChunkDocument
+internal sealed class RunbookChunkDocument
 {
     [JsonPropertyName("id")]
     public required string Id { get; init; }
 
     /// <summary>
-    /// Used as the Cosmos partition key so all chunks derived from one Runbook
-    /// are stored in the same logical partition.
+    /// Partition key shared by every chunk derived from the same Runbook.
     /// </summary>
     [JsonPropertyName("runbookId")]
     public required string RunbookId { get; init; }
@@ -29,14 +27,14 @@ public sealed class RunbookChunkDocument
 
     public DateTime SourceUpdatedAtUtc { get; init; }
 
-    /// <summary>
-    /// Numeric vector representation of this chunk used by Cosmos vector search.
-    /// </summary>
+    // Explicitly name this property because the Cosmos vector policy targets
+    // the exact /embedding JSON path.
+    [JsonPropertyName("embedding")]
     public required IReadOnlyList<float> Embedding { get; init; }
 
     /// <summary>
-    /// Creates a deterministic document ID so processing the same Runbook
-    /// revision more than once does not create duplicate chunk documents.
+    /// Generates a stable ID so re-indexing the same Runbook does not create
+    /// duplicate documents for the same chunk position.
     /// </summary>
     private static string GenerateId(Guid runbookId, int chunkIndex) =>
         $"{runbookId}-chunk-{chunkIndex}";
@@ -55,13 +53,4 @@ public sealed class RunbookChunkDocument
             Embedding = runbookChunk.Embedding
         };
     }
-
-    internal RunbookChunk ToApplication() => new(
-        Guid.Parse(RunbookId),
-        ChunkIndex,
-        Content,
-        Title,
-        Service,
-        SourceUpdatedAtUtc,
-        Embedding);
 }

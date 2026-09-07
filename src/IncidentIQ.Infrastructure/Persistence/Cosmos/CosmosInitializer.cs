@@ -1,5 +1,6 @@
 ﻿using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
+using System.Collections.ObjectModel;
 
 namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
 
@@ -8,6 +9,8 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
 /// </summary>
 public sealed class CosmosInitializer
 {
+    private const int RunbookEmbeddingDimensions = 1536;
+
     private readonly CosmosClient _client;
     private readonly CosmosOptions _options;
 
@@ -55,5 +58,53 @@ public sealed class CosmosInitializer
                 _options.ChangeFeedLeasesContainerName,
                 "/id"),
             cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates the same RunbookChunks vector policy locally that is provisioned
+    /// through Bicep in Azure.
+    /// </summary>
+    private ContainerProperties CreateRunbookChunksContainerProperties()
+    {
+        var embeddings = new Collection<Embedding>
+        {
+            new()
+            {
+                Path = "/embedding",
+                DataType = VectorDataType.Float32,
+                DistanceFunction = DistanceFunction.Cosine,
+                Dimensions = RunbookEmbeddingDimensions
+            }
+        };
+
+        var properties = new ContainerProperties(
+            _options.RunbookChunksContainerName,
+            "/runbookId")
+        {
+            VectorEmbeddingPolicy = new VectorEmbeddingPolicy(embeddings),
+            IndexingPolicy = new IndexingPolicy()
+        };
+
+        properties.IndexingPolicy.IncludedPaths.Add(
+            new IncludedPath
+            {
+                Path = "/*"
+            });
+
+        // The specialised vector index handles /embedding.
+        properties.IndexingPolicy.ExcludedPaths.Add(
+            new ExcludedPath
+            {
+                Path = "/embedding/*"
+            });
+
+        properties.IndexingPolicy.VectorIndexes.Add(
+            new VectorIndexPath
+            {
+                Path = "/embedding",
+                Type = VectorIndexType.QuantizedFlat
+            });
+
+        return properties;
     }
 }

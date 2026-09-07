@@ -51,6 +51,7 @@ public static class DependencyInjection
         services.AddSingleton<CosmosInitializer>();
         services.AddScoped<IIncidentRepository, CosmosIncidentRepository>();
         services.AddScoped<IRunbookRepository, CosmosRunbookRepository>();
+        services.AddScoped<IRunbookChunkStore, CosmosRunbookChunkStore>();
         services.AddScoped<IIncidentSubmissionStore, CosmosIncidentSubmissionStore>();
         services.AddScoped<IIncidentAnalysisStore, CosmosIncidentAnalysisStore>();
         services.AddScoped<IIncidentAnalysisReader, CosmosIncidentAnalysisReader>();
