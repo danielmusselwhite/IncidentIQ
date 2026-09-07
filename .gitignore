@@ -1,3 +1,6 @@
+# Ignore infrastructure main configuration file
+infra/main.json
+
 # react
 .DS_STORE
 node_modules

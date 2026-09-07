@@ -73,6 +73,7 @@ Cosmos:Endpoint
 Cosmos:DatabaseName = IncidentIQ
 Cosmos:IncidentsContainerName = Incidents
 Cosmos:RunbooksContainerName = Runbooks
+Cosmos:RunbookChunksContainerName = RunbookChunks
 Cosmos:ChangeFeedLeasesContainerName = ChangeFeedLeases
 ```
 

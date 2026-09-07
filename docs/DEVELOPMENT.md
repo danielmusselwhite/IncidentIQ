@@ -187,6 +187,7 @@ Cosmos:Key
 Cosmos:DatabaseName
 Cosmos:IncidentsContainerName
 Cosmos:RunbooksContainerName
+Cosmos:RunbookChunksContainerName
 Cosmos:ChangeFeedLeasesContainerName
 ```
 

@@ -41,7 +41,13 @@ public sealed class CosmosInitializer
         await databaseResponse.Database.CreateContainerIfNotExistsAsync(
             new ContainerProperties(
                 _options.RunbooksContainerName,
-                "/id"),
+                "/runbookId"),
+            cancellationToken: cancellationToken);
+
+        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
+            new ContainerProperties(
+                _options.RunbookChunksContainerName,
+                "/runbookId"),
             cancellationToken: cancellationToken);
 
         await databaseResponse.Database.CreateContainerIfNotExistsAsync(
