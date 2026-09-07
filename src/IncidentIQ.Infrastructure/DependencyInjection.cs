@@ -60,7 +60,10 @@ public static class DependencyInjection
 
         #region Service Bus
 
-        services.Configure<ServiceBusOptions>(configuration.GetSection(ServiceBusOptions.SectionName));
+        services
+            .AddOptions<ServiceBusOptions>()
+            .Bind(configuration.GetSection(ServiceBusOptions.SectionName))
+            .ValidateOnStart();
 
         services.AddSingleton(sp =>
         {
@@ -68,18 +71,13 @@ public static class DependencyInjection
 
             return !string.IsNullOrWhiteSpace(options.ConnectionString)
                 ? new ServiceBusClient(options.ConnectionString)
-                : new ServiceBusClient(options.FullyQualifiedNamespace, new DefaultAzureCredential());
-        });
-
-        services.AddSingleton(sp =>
-        {
-            var client = sp.GetRequiredService<ServiceBusClient>();
-            var options = sp.GetRequiredService<IOptions<ServiceBusOptions>>().Value;
-
-            return client.CreateSender(options.AnalyseIncidentQueueName);
+                : new ServiceBusClient(
+                    options.FullyQualifiedNamespace,
+                    new DefaultAzureCredential());
         });
 
         services.AddSingleton<IIncidentAnalysisQueue, AzureServiceBusIncidentAnalysisQueue>();
+        services.AddSingleton<IRunbookIndexQueue, AzureServiceBusRunbookIndexQueue>();
 
         #endregion
 

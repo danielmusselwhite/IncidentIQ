@@ -82,6 +82,7 @@ Worker Service Bus configuration:
 ```text
 ServiceBus:FullyQualifiedNamespace
 ServiceBus:AnalyseIncidentQueueName = analyse-incident
+ServiceBus:IndexRunbookQueueName = index-runbook
 ServiceBus:MaxDeliveryCount
 ```
 

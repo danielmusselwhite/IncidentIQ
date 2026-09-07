@@ -196,6 +196,7 @@ Worker Service Bus settings:
 ```text
 ServiceBus:FullyQualifiedNamespace
 ServiceBus:AnalyseIncidentQueueName
+ServiceBus:IndexRunbookQueueName
 ServiceBus:MaxDeliveryCount
 ```
 

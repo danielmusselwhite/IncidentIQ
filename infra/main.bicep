@@ -295,6 +295,7 @@ module workerContainerApp './modules/worker-container-app.bicep' = {
     // Service Bus
     serviceBusFullyQualifiedNamespace: serviceBus.outputs.fullyQualifiedNamespace
     analyseIncidentQueueName: serviceBus.outputs.analyseIncidentQueueName
+    indexRunbookQueueName: serviceBus.outputs.indexRunbookQueueName
     maxDeliveryCount: serviceBusMaxDeliveryCount
 
     // Observability
@@ -336,6 +337,7 @@ output workerIdentityClientId string = workerIdentity.outputs.clientId
 output serviceBusNamespaceName string = serviceBus.outputs.namespaceName
 output serviceBusFullyQualifiedNamespace string = serviceBus.outputs.fullyQualifiedNamespace
 output analyseIncidentQueueName string = serviceBus.outputs.analyseIncidentQueueName
+output indexRunbookQueueName string = serviceBus.outputs.indexRunbookQueueName
 
 output acrId string = acr.outputs.acrId
 output acrName string = acr.outputs.acrName
