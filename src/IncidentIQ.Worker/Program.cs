@@ -1,5 +1,5 @@
 using IncidentIQ.Application;
-using IncidentIQ.Application.Analyse;
+using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Infrastructure;
 using IncidentIQ.Infrastructure.AzureAI;
 using IncidentIQ.Worker;

@@ -1,9 +1,9 @@
 ﻿using FluentValidation;
 using IncidentIQ.Application.Common.Abstractions;
-using IncidentIQ.Application.Analyse;
 using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Domain.Incidents;
 using Moq;
+using IncidentIQ.Application.Incidents.Analyse;
 
 namespace IncidentIQ.Application.Tests.Incidents.Create;
 

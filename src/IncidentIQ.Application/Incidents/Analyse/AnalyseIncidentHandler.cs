@@ -1,8 +1,9 @@
+using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Common.Exceptions;
 using IncidentIQ.Domain.Incidents;
 
-namespace IncidentIQ.Application.Analyse;
+namespace IncidentIQ.Application.Incidents.Analyse;
 
 public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepository, IIncidentAnalyzer incidentAnalyzer, IIncidentAnalysisStore incidentAnalysisStore)
 {

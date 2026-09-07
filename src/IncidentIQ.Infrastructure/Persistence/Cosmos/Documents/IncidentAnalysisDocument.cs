@@ -1,4 +1,4 @@
-using IncidentIQ.Application.Analyse;
+using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
 using System.Text.Json.Serialization;
 

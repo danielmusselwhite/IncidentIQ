@@ -1,6 +1,6 @@
 ﻿using Azure.AI.OpenAI;
 using Azure.Identity;
-using IncidentIQ.Application.Analyse;
+using IncidentIQ.Application.Incidents.Analyse;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

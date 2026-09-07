@@ -1,4 +1,4 @@
-namespace IncidentIQ.Application.Analyse;
+namespace IncidentIQ.Application.Incidents.Analyse;
 
 /// <summary>
 /// Represents the structured result produced by an incident analyser.

@@ -1,5 +1,5 @@
 using IncidentIQ.Api.Contracts.Incidents;
-using IncidentIQ.Application.Analyse.Retry;
+using IncidentIQ.Application.Incidents.Analyse.Retry;
 using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
 using IncidentIQ.Application.Incidents.GetAnalysisById;

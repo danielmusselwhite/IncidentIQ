@@ -1,4 +1,4 @@
-﻿namespace IncidentIQ.Application.Analyse;
+﻿namespace IncidentIQ.Application.Incidents.Analyse;
 
 /// <summary>
 /// Represents a request for the Worker to asynchronously analyse an Incident.

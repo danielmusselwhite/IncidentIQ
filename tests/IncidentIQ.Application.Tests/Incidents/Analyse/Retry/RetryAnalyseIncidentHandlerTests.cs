@@ -1,9 +1,9 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Common.Exceptions;
-using IncidentIQ.Application.Analyse;
-using IncidentIQ.Application.Analyse.Retry;
 using IncidentIQ.Domain.Incidents;
 using Moq;
+using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Retry;
 
 namespace IncidentIQ.Application.Tests.Incidents.Analyse.Retry;
 
