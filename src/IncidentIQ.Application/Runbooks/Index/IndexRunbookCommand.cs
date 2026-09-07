@@ -1,8 +1,11 @@
 ﻿namespace IncidentIQ.Application.Runbooks.Index;
 
+/// <summary>
+/// Represents a request to asynchronously index a Runbook for vector retrieval.
+/// </summary>
 public sealed record IndexRunbookCommand(
     Guid CommandId,
-    string RunbookId,
-    string CorrelationId, // Used to correlate the indexing request throughout the system
-    DateTimeOffset QueuedAtUtc
-);
+    Guid RunbookId,
+    string CorrelationId,
+    DateTime QueuedAtUtc,
+    DateTime SourceUpdatedAtUtc);

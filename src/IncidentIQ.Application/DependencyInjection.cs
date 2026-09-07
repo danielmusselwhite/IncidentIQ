@@ -33,6 +33,7 @@ public static class DependencyInjection
 
         services.AddTransient<RetryAnalyseIncidentHandler>();
 
+        services.AddScoped<IndexRunbookHandler>();
         services.AddSingleton<RunbookChunker>();
 
         return services;
