@@ -43,21 +43,21 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
             // Construct the SQL query to retrieve the top K Runbook chunks based on vector similarity
             var whereClause = !string.IsNullOrEmpty(service) ? "WHERE c.service = @service" : string.Empty;
 
-            var query = new QueryDefinition( // Alias the projected Cosmos fields to ensure they line up with the MatchResult properties we cast them to later
+            var query = new QueryDefinition(
                 $"""
                 SELECT TOP @topK
-                c.runbookId AS RunbookId,
-                c.chunkIndex AS ChunkIndex,
-                c.title AS Title,
-                c.service AS Service,
-                c.content AS Content,
-                VectorDistance(c.embedding, @embedding) AS Distance
+                    c.runbookId AS runbookId,
+                    c.chunkIndex AS chunkIndex,
+                    c.title AS title,
+                    c.service AS service,
+                    c.content AS content,
+                    VectorDistance(c.embedding, @embedding) AS distance
                 FROM c
                 {whereClause}
                 ORDER BY VectorDistance(c.embedding, @embedding)
                 """)
                 .WithParameter("@topK", topK)
-                .WithParameter("@embedding", queryEmbedding.ToArray()); // safer as we want to ensure the Cosmos DSK receives the vector as an ordinary numeric array
+                .WithParameter("@embedding", queryEmbedding.ToArray()); // safer as we want to ensure the Cosmos SDK receives the vector as an ordinary numeric array
 
             if (!string.IsNullOrWhiteSpace(service))
                 query.WithParameter("@service", service);

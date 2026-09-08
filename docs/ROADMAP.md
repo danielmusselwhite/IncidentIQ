@@ -235,6 +235,10 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Measure retrieval latency.
 * [x] Measure Cosmos RU usage (response units which we are costed on).
 * [x] Verify vector retrieval in Azure.
+* [ ] Configure API Managed Identity/RBAC for Azure AI embedding access.
+* [ ] Pass Azure AI embedding configuration into the API Container App through Bicep.
+* [ ] Deploy Stage 11B infrastructure changes to Azure.
+* [ ] Verify vector retrieval end-to-end in Azure.
 * [ ] Update documentation and architecture notes.
 
 ## Stage 12 — Historical Incident Retrieval & RAG
