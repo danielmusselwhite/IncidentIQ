@@ -49,20 +49,94 @@ infra/main.bicep
 └── infra/environments/dev.bicepparam
 ```
 
+### Cosmos NoSQL Vector Search
+
+The `RunbookChunks` container uses a Cosmos DB vector policy and therefore requires the `EnableNoSQLVectorSearch` capability on the Cosmos account.
+
+This is an **account-level Cosmos capability**. It is not registered using `az feature register`.
+
+After a Cosmos account has been created, retrieve its name:
+
+```powershell
+$resourceGroup = "rg-incidentiq-dev"
+
+$accountName = az cosmosdb list `
+    --resource-group $resourceGroup `
+    --query "[0].name" `
+    --output tsv
+```
+
+Check the current account capabilities:
+
+```powershell
+az cosmosdb show `
+    --resource-group $resourceGroup `
+    --name $accountName `
+    --query capabilities `
+    --output json
+```
+
+For IncidentIQ, the expected capabilities are:
+
+```json
+[
+  {
+    "name": "EnableServerless"
+  },
+  {
+    "name": "EnableNoSQLVectorSearch"
+  }
+]
+```
+
+If vector search is not enabled, update the account while preserving the existing Serverless capability:
+
+```powershell
+az cosmosdb update `
+    --resource-group $resourceGroup `
+    --name $accountName `
+    --capabilities @("EnableServerless","EnableNoSQLVectorSearch")
+```
+
+Then confirm the capabilities again:
+
+```powershell
+az cosmosdb show `
+    --resource-group $resourceGroup `
+    --name $accountName `
+    --query capabilities `
+    --output json
+```
+
+Vector-search capability activation can take several minutes to propagate.
+
+The `RunbookChunks` container must only be created once the vector-search capability is active because its vector embedding policy and vector index are defined when the container is created.
+
+If an environment deployment provisions the Cosmos account but `RunbookChunks` fails because vector search is not yet active:
+
+1. Enable or confirm `EnableNoSQLVectorSearch` using the commands above.
+2. Wait for the capability to become active.
+3. Re-run the **Deploy Development** workflow.
+
+The Bicep definition remains the source of truth for the Cosmos account capability and vector-enabled container configuration.
+
 ## Values to Refresh After Redeploy
 
 Values derived from recreated resources may change, especially:
 
 ```text
 Cosmos:Key
+
 AzureAI:Endpoint
+
 APPLICATIONINSIGHTS_CONNECTION_STRING
+
 ServiceBus:ConnectionString    (only when SAS authentication is used)
 ```
 
 Deterministic resource/container/deployment names normally remain unchanged.
 
-These values are mainly required when running the API or Worker locally against the recreated Azure environment. Normal Docker Compose development uses the local emulators and `DevelopmentDummyIncidentAnalyzer`, so it does not require the Azure AI endpoint.
+These values are mainly required when running the API or Worker locally against the recreated Azure environment. Normal Docker Compose development uses the local emulators and deterministic development AI implementations, so it does not require the Azure AI endpoint.
 
 The deployed Container Apps receive Azure resource configuration through Bicep and authenticate to Azure services using Managed Identity.
 
@@ -102,7 +176,7 @@ AzureAI:Embedding:ModelName = text-embedding-3-small
 AzureAI:Embedding:Dimensions = 1536
 ```
 
-The application currently defaults its Azure AI resilience settings to:
+The application defaults its Azure AI resilience settings to:
 
 ```text
 AzureAI:MaxRetries = 2
@@ -116,11 +190,25 @@ When keys/connection strings are not configured, the application uses `DefaultAz
 
 ## Retrieve Azure Configuration Values
 
+### Cosmos Account Name
+
+```powershell
+az cosmosdb list `
+    --resource-group "rg-incidentiq-dev" `
+    --query "[0].name" `
+    --output tsv
+```
+
 ### Cosmos Endpoint
 
 ```powershell
+$accountName = az cosmosdb list `
+    --resource-group "rg-incidentiq-dev" `
+    --query "[0].name" `
+    --output tsv
+
 az cosmosdb show `
-    --name "cosmos-incidentiq-dev-sw6lfgr7whyxm" `
+    --name $accountName `
     --resource-group "rg-incidentiq-dev" `
     --query documentEndpoint `
     --output tsv
@@ -129,12 +217,39 @@ az cosmosdb show `
 ### Cosmos Key
 
 ```powershell
+$accountName = az cosmosdb list `
+    --resource-group "rg-incidentiq-dev" `
+    --query "[0].name" `
+    --output tsv
+
 az cosmosdb keys list `
-    --name "cosmos-incidentiq-dev-sw6lfgr7whyxm" `
+    --name $accountName `
     --resource-group "rg-incidentiq-dev" `
     --type keys `
     --query primaryMasterKey `
     --output tsv
+```
+
+### Cosmos Capabilities
+
+```powershell
+$accountName = az cosmosdb list `
+    --resource-group "rg-incidentiq-dev" `
+    --query "[0].name" `
+    --output tsv
+
+az cosmosdb show `
+    --resource-group "rg-incidentiq-dev" `
+    --name $accountName `
+    --query capabilities `
+    --output json
+```
+
+Expected:
+
+```text
+EnableServerless
+EnableNoSQLVectorSearch
 ```
 
 ### Application Insights Connection String
@@ -254,6 +369,8 @@ az provider register --namespace Microsoft.CognitiveServices --wait
 
 These registrations are subscription-level and normally only need to be completed once.
 
+Cosmos NoSQL vector search does **not** use `az feature register`. It is enabled on the individual Cosmos account using the `EnableNoSQLVectorSearch` capability.
+
 ### 3. Deploy Bootstrap Infrastructure
 
 ```powershell
@@ -315,37 +432,87 @@ tests
 → build + deploy React frontend
 ```
 
-The current Bicep environment definition includes:
+The Bicep environment definition includes:
 
 ```text
 rg-incidentiq-dev
 
 ├── Azure Container Registry
+
 ├── Azure Container Apps Environment
 │   ├── API Container App
 │   └── Worker Container App
+
 ├── Azure Static Web Apps
+
 ├── Azure Cosmos DB
 │   └── IncidentIQ
 │       ├── Incidents              /incidentId
 │       ├── Runbooks               /id
 │       ├── RunbookChunks          /runbookId (vector-enabled)
 │       └── ChangeFeedLeases       /id
+
 ├── Azure Service Bus
 │   ├── analyse-incident
 │   │   └── $DeadLetterQueue
 │   └── index-runbook
 │       └── $DeadLetterQueue
+
 ├── Azure OpenAI
 │   ├── incident-analysis deployment (gpt-5-mini)
 │   └── runbook-embedding deployment (text-embedding-3-small)
+
 ├── API Managed Identity
+
 ├── Worker Managed Identity
+
 ├── Application Insights
+
 └── Log Analytics
 ```
 
-### 6. Verify the Deployment
+### 6. Confirm Cosmos Vector Search
+
+Once the Cosmos account exists:
+
+```powershell
+$resourceGroup = "rg-incidentiq-dev"
+
+$accountName = az cosmosdb list `
+    --resource-group $resourceGroup `
+    --query "[0].name" `
+    --output tsv
+```
+
+Check its capabilities:
+
+```powershell
+az cosmosdb show `
+    --resource-group $resourceGroup `
+    --name $accountName `
+    --query capabilities `
+    --output json
+```
+
+The account should contain:
+
+```text
+EnableServerless
+EnableNoSQLVectorSearch
+```
+
+If `EnableNoSQLVectorSearch` is missing:
+
+```powershell
+az cosmosdb update `
+    --resource-group $resourceGroup `
+    --name $accountName `
+    --capabilities @("EnableServerless","EnableNoSQLVectorSearch")
+```
+
+Wait for the capability to become active, then rerun the **Deploy Development** workflow so the vector-enabled `RunbookChunks` container can be provisioned.
+
+### 7. Verify the Deployment
 
 After deployment, submit an Incident through the frontend and verify:
 
@@ -360,7 +527,7 @@ Queued
 
 Worker/Application Insights logs should also contain structured AI completion/failure telemetry such as duration, deployment/model, and a failure category when applicable.
 
-For Runbook ingestion verification, also create or update a Runbook and confirm:
+For Runbook ingestion verification, create or update a Runbook and confirm:
 
 ```text
 Runbook persisted
@@ -372,9 +539,11 @@ Runbook persisted
 → embedding length = 1536
 ```
 
-Edit the Runbook to confirm stale chunks are replaced, then delete it and confirm its derived `RunbookChunks` are removed.
+Edit the Runbook and confirm stale chunks are replaced.
 
-### 7. Refresh Local Configuration
+Delete the Runbook and confirm its derived `RunbookChunks` are removed.
+
+### 8. Refresh Local Configuration
 
 Retrieve recreated resource values using the commands above, update user-secrets where necessary, then run the API and Worker locally if required.
 
