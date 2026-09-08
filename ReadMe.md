@@ -17,8 +17,11 @@ IncidentIQ follows a lightweight Clean Architecture approach: business rules sit
 The development environment is defined and provisioned with Bicep. The main runtime, data, AI, identity, observability, and delivery components are grouped below so the Azure boundary is easier to read.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 flowchart LR
+
+    subgraph WhiteBackground[" "]
+        direction LR
+
     User["Engineer / Browser"]:::external
     GitHub["GitHub Actions<br/>OIDC"]:::delivery
 
@@ -76,6 +79,8 @@ flowchart LR
     WorkerMI -. RBAC .-> ServiceBus
     WorkerMI -. RBAC .-> OpenAI
 
+    end
+
     classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
     classDef frontend fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
     classDef compute fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
@@ -85,6 +90,8 @@ flowchart LR
     classDef observe fill:#ffedd5,stroke:#ea580c,color:#7c2d12,stroke-width:2px;
     classDef identity fill:#fce7f3,stroke:#db2777,color:#831843,stroke-width:2px;
     classDef delivery fill:#f1f5f9,stroke:#475569,color:#0f172a,stroke-width:2px;
+
+    style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
 
     style Azure fill:#ffffff,stroke:#64748b,stroke-width:3px
     style Frontend fill:#f8fafc,stroke:#bae6fd,stroke-width:2px
@@ -99,8 +106,11 @@ flowchart LR
 At code level, the solution keeps responsibilities separated by project. This diagram intentionally stays above individual classes and shows the important *types* of code each layer contains and the direction of dependencies.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 flowchart LR
+
+    subgraph WhiteBackground[" "]
+        direction LR
+
     Web["IncidentIQ.Web<br/>Pages • Components • API Clients"]:::web
 
     subgraph Hosts["Application Hosts"]
@@ -131,11 +141,15 @@ flowchart LR
     API -. composition root .-> InfraTypes
     Worker -. composition root .-> InfraTypes
 
+    end
+
     classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
     classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
     classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
     classDef domain fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
     classDef infra fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
+
+    style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
 
     style Hosts fill:#f8fafc,stroke:#93c5fd,stroke-width:2px
     style Application fill:#f0fdf4,stroke:#86efac,stroke-width:2px
@@ -148,8 +162,11 @@ flowchart LR
 A submitted Incident is persisted before it is queued. The API writes the Incident and outbox record atomically, then the asynchronous pipeline moves the command through Change Feed and Service Bus to the analysis Worker.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 flowchart TD
+
+    subgraph WhiteBackground[" "]
+        direction TD
+
     Web["React Web<br/>Submit Incident"]:::web
 
     subgraph Request["Synchronous Request"]
@@ -194,6 +211,8 @@ flowchart TD
     FinalWrite --> Result
     Result --> Web
 
+    end
+
     classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
     classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
     classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
@@ -203,16 +222,20 @@ flowchart TD
     classDef ai fill:#f3e8ff,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
     classDef result fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
 
+    style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
+
     style Request fill:#f8fafc,stroke:#94a3b8,stroke-width:2px
     style Async fill:#f8fafc,stroke:#94a3b8,stroke-width:2px
 ```
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 sequenceDiagram
+
     autonumber
 
-    actor User as Engineer
+    box rgb(248,250,252) External
+        actor User as Engineer
+    end
 
     box rgb(224,242,254) Presentation Layer - IncidentIQ.Web
         participant Web as React Web
@@ -351,8 +374,11 @@ sequenceDiagram
 Runbook CRUD remains independent from AI indexing. A Runbook is persisted first; the Worker then observes the `Runbooks` Change Feed, queues an `IndexRunbookCommand`, chunks the latest content, generates embeddings, and replaces the derived vector index.
 
 ```mermaid
-%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 flowchart TD
+
+    subgraph WhiteBackground[" "]
+        direction TD
+
     API["API<br/>Create / Update Runbook"]:::host
     CrudHandler["Create / Update Runbook Handler"]:::application
     Repo["IRunbookRepository"]:::application
@@ -383,11 +409,15 @@ flowchart TD
     Handler --> Store
     Store --> Chunks
 
+    end
+
     classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
     classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
     classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
     classDef messaging fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
     classDef ai fill:#f3e8ff,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
+
+    style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
 ```
 
 ## Current Functionality
