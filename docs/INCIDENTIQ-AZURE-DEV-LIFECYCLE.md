@@ -94,6 +94,14 @@ AzureAI:DeploymentName = incident-analysis
 AzureAI:ModelName = gpt-5-mini
 ```
 
+Worker Runbook embedding configuration:
+
+```text
+AzureAI:Embedding:DeploymentName = runbook-embedding
+AzureAI:Embedding:ModelName = text-embedding-3-small
+AzureAI:Embedding:Dimensions = 1536
+```
+
 The application currently defaults its Azure AI resilience settings to:
 
 ```text
@@ -202,6 +210,15 @@ dotnet user-secrets set "AzureAI:DeploymentName" "incident-analysis" `
 
 dotnet user-secrets set "AzureAI:ModelName" "gpt-5-mini" `
     --project src\IncidentIQ.Worker
+
+dotnet user-secrets set "AzureAI:Embedding:DeploymentName" "runbook-embedding" `
+    --project src\IncidentIQ.Worker
+
+dotnet user-secrets set "AzureAI:Embedding:ModelName" "text-embedding-3-small" `
+    --project src\IncidentIQ.Worker
+
+dotnet user-secrets set "AzureAI:Embedding:Dimensions" "1536" `
+    --project src\IncidentIQ.Worker
 ```
 
 If SAS Service Bus authentication is being used:
@@ -298,7 +315,7 @@ tests
 → build + deploy React frontend
 ```
 
-The current environment includes:
+The current Bicep environment definition includes:
 
 ```text
 rg-incidentiq-dev
@@ -312,12 +329,16 @@ rg-incidentiq-dev
 │   └── IncidentIQ
 │       ├── Incidents              /incidentId
 │       ├── Runbooks               /id
+│       ├── RunbookChunks          /runbookId (vector-enabled)
 │       └── ChangeFeedLeases       /id
 ├── Azure Service Bus
-│   └── analyse-incident
+│   ├── analyse-incident
+│   │   └── $DeadLetterQueue
+│   └── index-runbook
 │       └── $DeadLetterQueue
 ├── Azure OpenAI
-│   └── incident-analysis deployment
+│   ├── incident-analysis deployment (gpt-5-mini)
+│   └── runbook-embedding deployment (text-embedding-3-small)
 ├── API Managed Identity
 ├── Worker Managed Identity
 ├── Application Insights
@@ -338,6 +359,20 @@ Queued
 ```
 
 Worker/Application Insights logs should also contain structured AI completion/failure telemetry such as duration, deployment/model, and a failure category when applicable.
+
+For Runbook ingestion verification, also create or update a Runbook and confirm:
+
+```text
+Runbook persisted
+→ Runbooks Change Feed
+→ index-runbook
+→ IndexRunbookWorker
+→ text-embedding-3-small
+→ RunbookChunks populated
+→ embedding length = 1536
+```
+
+Edit the Runbook to confirm stale chunks are replaced, then delete it and confirm its derived `RunbookChunks` are removed.
 
 ### 7. Refresh Local Configuration
 

@@ -240,9 +240,9 @@ ModelName
 
 It deliberately does not log Incident descriptions, symptoms, prompts, or raw model responses.
 
-**Why:** Stage 10 needs enough telemetry to diagnose latency/failure behaviour without unnecessarily recording potentially sensitive operational payloads.
+**Why:** The analysis pipeline needs enough telemetry to diagnose latency and failure behaviour without unnecessarily recording potentially sensitive operational payloads.
 
-Full dependency metrics, distributed tracing, dashboards, and KQL remain Stage 15 work.
+Full dependency metrics, distributed tracing, dashboards, and KQL remain future work.
 
 ## 14. At-Least-Once by Design
 
@@ -262,6 +262,97 @@ Application state-based idempotency
 
 This provides **at-least-once delivery with duplicate-safe processing** and is intentionally preferred over a complex distributed exactly-once guarantee.
 
+## 15. Editable Runbooks and Derived Vector Chunks Are Separate
+
+The editable `Runbook` remains the source of truth in the `Runbooks` container. Vector-search data is stored separately as derived `RunbookChunk` documents.
+
+```text
+Runbooks /id
+→ editable operational content
+
+RunbookChunks /runbookId
+→ chunk content + retrieval metadata + embedding[]
+```
+
+**Why:** embeddings and chunk boundaries are retrieval implementation details that can be regenerated when the model, chunking strategy, or vector index changes. They should not pollute the Domain entity or Runbook CRUD model.
+
+**Trade-off:** Runbook source data and its derived vector index are eventually consistent rather than one atomic document.
+
+## 16. Runbook Indexing Uses Change Feed + Service Bus
+
+Runbook creation/update stays fast and independent from embedding generation:
+
+```text
+Runbook persisted
+      ↓
+Runbooks Change Feed
+      ↓
+RunbookIndexChangeFeedWorker
+      ↓
+IndexRunbookCommand
+      ↓
+Service Bus: index-runbook
+      ↓
+IndexRunbookWorker
+      ↓
+IndexRunbookHandler
+```
+
+The handler reloads the current Runbook, chunks it, generates an embedding for each chunk, and replaces the persisted chunk set.
+
+**Why:** Runbook CRUD does not wait on Azure OpenAI, and indexing can use Service Bus redelivery/DLQ semantics independently. The Change Feed also provides a durable way to discover existing and updated Runbooks without introducing an API → Service Bus dual write.
+
+**Trade-off:** Change Feed is at-least-once, so the same Runbook revision may be observed more than once. Stable Runbook revision message IDs plus replace-based persistence make repeated indexing safe.
+
+## 17. Provider-Independent Embedding Boundary
+
+Application defines `IEmbeddingGenerator`. Infrastructure supplies:
+
+```text
+Development
+→ DevelopmentDummyEmbeddingGenerator
+
+Non-Development
+→ AzureEmbeddingGenerator
+→ runbook-embedding deployment
+→ text-embedding-3-small
+```
+
+Both implementations produce the same 1536-float Application-level vector shape. The local implementation is deterministic so the complete ingestion pipeline can run without Azure credentials or model cost.
+
+**Why:** chunking/indexing orchestration remains independent of the Azure SDK and local development exercises the real storage/messaging boundaries.
+
+## 18. Runbook Chunk Partitioning and Vector Index
+
+`RunbookChunks` uses `/runbookId` as its partition key. Chunk IDs are deterministic by Runbook and chunk position. The embedding path is configured as a 1536-dimension `float32` cosine vector with a `quantizedFlat` index.
+
+```text
+Runbook ABC partition
+├── ABC-chunk-0
+├── ABC-chunk-1
+└── ABC-chunk-2
+```
+
+**Why:** all derived chunks for one Runbook can be queried, replaced, and cleaned up within one logical partition. Deterministic IDs prevent duplicate documents from accumulating during re-indexing. The embedding path is excluded from the ordinary Cosmos index because the specialised vector index owns that data.
+
+**Trade-off:** the current replace operation is intentionally bounded by Cosmos transactional-batch limits; exceptionally large Runbooks would need a different batching strategy.
+
+## 19. Runbook Deletion Cleans Derived Search Data First
+
+Deleting a Runbook is orchestrated in Application:
+
+```text
+DeleteRunbookHandler
+      ↓
+IRunbookChunkStore → remove derived chunks
+      ↓
+IRunbookRepository → delete source Runbook
+```
+
+**Why:** if vector cleanup fails, the source Runbook remains visible and the delete can be retried. Deleting the source first could leave orphaned vector chunks that future retrieval might incorrectly surface.
+
+**Trade-off:** the two containers cannot participate in one Cosmos transaction, so deletion is not globally atomic. The chosen ordering prefers temporary missing derived data over stale evidence for a deleted source.
+
 ## Current Accepted Trade-offs
 
 - Basic rather than full concurrency-safe idempotency.
@@ -269,8 +360,9 @@ This provides **at-least-once delivery with duplicate-safe processing** and is i
 - No automatic DLQ reprocessing; requeue is deliberate through the backend capability.
 - No automatic outbox cleanup yet.
 - Final failure persistence can still be affected by Cosmos availability.
-- AI quality is currently based on the submitted Incident only; evidence-backed RAG begins in Stages 11–12.
+- Runbook vector retrieval is not yet wired into Incident analysis, so evidence-backed RAG is not yet active.
 - AI telemetry is intentionally lightweight until the full observability stage.
+- Runbook source/vector persistence is eventually consistent across containers; stronger source-version concurrency checks can be added if parallel indexing becomes significant.
 - Stronger optimistic concurrency can be added before significant Worker scaling.
 
 These are deliberate limits: the current design demonstrates realistic cloud reliability patterns without adding complexity before it is needed.

@@ -90,7 +90,7 @@ Move the working Cosmos-backed application from local development into an initia
 - [x] Build Runbook management frontend.
 - [x] Add Runbook tests.
 
-- [x] Keep editable Runbooks separate from future vectorised `RunbookChunk` documents.
+- [x] Keep editable Runbooks separate from derived vectorised `RunbookChunk` documents.
 - [x] Update Cosmos Bicep configuration for the `Runbooks` container.
 
 ## Stage 7 — Service Bus & Asynchronous Processing
@@ -204,26 +204,24 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 
 ### 11A — Runbook Vector Ingestion
 
-* [x] Define `IndexRunbookCommand` and indexing workflow.
-* [x] Define dedicated `RunbookChunk` application and persistence models.
-* [x] Create vector-enabled `RunbookChunks` Cosmos container.
-* [x] Configure Cosmos vector policy and `quantizedFlat` index through Bicep.
-* [x] Deploy `text-embedding-3-small` embedding model configuration.
-* [x] Add `IEmbeddingGenerator` abstraction.
-* [x] Add deterministic local embedding generator.
-* [x] Add Azure OpenAI embedding generator.
+* [x] Define `IndexRunbookCommand` and the indexing workflow.
+* [x] Define dedicated `RunbookChunk` application and Cosmos persistence models.
+* [x] Configure a vector-enabled `RunbookChunks` container locally and through Bicep.
+* [x] Configure the `/embedding` 1536-dimension cosine `quantizedFlat` vector index.
+* [x] Add the `text-embedding-3-small` Runbook embedding deployment to Azure AI Bicep.
+* [x] Add `IEmbeddingGenerator` with deterministic local and Azure OpenAI implementations.
 * [x] Implement deterministic overlapping Runbook chunking.
-* [x] Implement Runbook chunk replacement persistence.
-* [x] Add `index-runbook` Service Bus queue.
-* [x] Publish indexing commands from the Runbooks Cosmos Change Feed.
+* [x] Implement replace-based Runbook chunk persistence and stale-chunk cleanup.
+* [x] Add the `index-runbook` Service Bus queue locally and through Bicep.
+* [x] Publish indexing commands from the `Runbooks` Cosmos Change Feed.
 * [x] Consume indexing commands with `IndexRunbookWorker`.
 * [x] Generate and persist vectorised Runbook chunks.
 * [x] Verify create/update indexing end-to-end locally.
-* [x] Remove indexed chunks when a Runbook is deleted.
+* [x] Remove indexed chunks before deleting a Runbook.
 * [ ] Add final ingestion tests and edge-case coverage.
 * [ ] Deploy Runbook ingestion changes to Azure.
-* [ ] Verify real Azure embeddings and Runbook re-indexing in Azure.
-* [ ] Update ingestion documentation and architecture notes.
+* [ ] Verify real Azure embeddings, re-indexing, and deletion cleanup in Azure.
+* [x] Update ingestion documentation and architecture notes.
 
 ### 11B — Runbook Vector Retrieval
 

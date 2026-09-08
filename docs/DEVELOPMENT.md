@@ -2,7 +2,7 @@
 
 IncidentIQ supports two main development modes:
 
-1. **Fully local application workflow** — Docker Compose with Cosmos DB and Service Bus emulators plus `DevelopmentDummyIncidentAnalyzer`. This is the normal day-to-day mode and does **not** require Azure OpenAI credentials.
+1. **Fully local application workflow** — Docker Compose with Cosmos DB and Service Bus emulators plus `DevelopmentDummyIncidentAnalyzer` and `DevelopmentDummyEmbeddingGenerator`. This is the normal day-to-day mode and does **not** require Azure OpenAI credentials.
 2. **Azure-connected verification** — API/Worker run against the Azure development environment when you specifically want to verify real Cosmos DB, Service Bus, Azure OpenAI, RBAC, or Application Insights behaviour.
 
 For Azure resource creation, teardown, and secret refresh instructions, see [IncidentIQ Azure Dev Environment Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
@@ -52,9 +52,12 @@ In Development, dependency injection selects:
 ```text
 IIncidentAnalyzer
 └── DevelopmentDummyIncidentAnalyzer
+
+IEmbeddingGenerator
+└── DevelopmentDummyEmbeddingGenerator
 ```
 
-so the complete analysis workflow remains deterministic and local.
+so both Incident analysis and Runbook vector ingestion remain deterministic and local.
 
 The Service Bus Emulator queue is defined in:
 
@@ -62,10 +65,11 @@ The Service Bus Emulator queue is defined in:
 infra/local/servicebus/Config.json
 ```
 
-Current queue:
+Current queues:
 
 ```text
 analyse-incident
+index-runbook
 ```
 
 ### 3. Local URLs
@@ -114,6 +118,28 @@ React polls status then fetches /analysis
 
 The dummy analyzer still returns the same Application-level `IncidentAnalysisResult` shape used by Azure OpenAI, so API persistence/retrieval and frontend rendering are exercised locally.
 
+Runbook indexing is also exercised locally:
+
+```text
+Create / update Runbook
+      ↓
+Runbooks Change Feed
+      ↓
+RunbookIndexChangeFeedWorker
+      ↓
+Service Bus Emulator: index-runbook
+      ↓
+IndexRunbookWorker
+      ↓
+RunbookChunker
+      ↓
+DevelopmentDummyEmbeddingGenerator
+      ↓
+RunbookChunks
+```
+
+The dummy embedding generator returns deterministic 1536-dimensional vectors so the vector persistence pipeline can be verified without Azure OpenAI.
+
 ### 5. Local Cosmos Data Explorer
 
 Useful containers include:
@@ -122,6 +148,7 @@ Useful containers include:
 IncidentIQ
 ├── Incidents
 ├── Runbooks
+├── RunbookChunks
 └── ChangeFeedLeases
 ```
 
@@ -132,6 +159,9 @@ IncidentDocument
 IncidentAnalysisOutboxDocument
 IncidentAnalysisDocument
 ```
+
+
+`Runbooks` uses `/id` and remains the editable source of truth. `RunbookChunks` uses `/runbookId` and stores derived chunk content, retrieval metadata, and 1536-dimensional vectors under `/embedding`.
 
 `ChangeFeedLeases` is SDK-managed state used by the Cosmos Change Feed Processor.
 
@@ -265,14 +295,20 @@ $env:DOTNET_ENVIRONMENT = "Production"
 dotnet run --project src\IncidentIQ.Worker
 ```
 
-The Worker runs both:
+The Worker runs four hosted services:
 
 ```text
 IncidentOutboxWorker
-└── Cosmos Change Feed → Service Bus
+└── Incidents Change Feed → analyse-incident
 
 AnalyseIncidentWorker
-└── Service Bus → IIncidentAnalyzer → analysis persistence
+└── analyse-incident → IIncidentAnalyzer → analysis persistence
+
+RunbookIndexChangeFeedWorker
+└── Runbooks Change Feed → index-runbook
+
+IndexRunbookWorker
+└── index-runbook → chunking → IEmbeddingGenerator → RunbookChunks
 ```
 
 ### 6. Start the Frontend

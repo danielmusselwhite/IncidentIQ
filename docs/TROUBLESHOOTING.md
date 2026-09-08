@@ -104,3 +104,41 @@ SERVICEBUS_SQL_PASSWORD=<LOCAL_SQL_PASSWORD>
 - Replace placeholders in `.env` with real local values.
 - The Cosmos emulator key must match the emulator's expected key; it is not an arbitrary secret.
 - See [Development](./DEVELOPMENT.md).
+
+## Runbook creation fails after adding vector ingestion
+
+If `POST /api/runbooks` fails inside `CosmosRunbookRepository.CreateAsync`, verify the two Runbook containers have different partition keys:
+
+```text
+Runbooks       → /id
+RunbookChunks  → /runbookId
+```
+
+A common mistake is accidentally creating `Runbooks` with `/runbookId` while adding the new vector container. Cosmos partition keys cannot be changed in place, so delete/recreate the affected local container after fixing `CosmosInitializer`.
+
+`RunbookChunks` must also be created with its vector embedding policy/index from the start. If it was previously created as a plain container, delete/recreate only `RunbookChunks` after fixing local initialization.
+
+## Runbook indexing message is queued but not consumed
+
+If the Runbooks Change Feed publishes to `index-runbook` but no chunk documents appear:
+
+- Confirm Worker `Program.cs` registers `AddHostedService<IndexRunbookWorker>()`.
+- Confirm `ServiceBus:IndexRunbookQueueName` / `ServiceBus__IndexRunbookQueueName` is `index-runbook`.
+- Confirm `infra/local/servicebus/Config.json` defines both `analyse-incident` and `index-runbook`.
+- Restart/recreate the Service Bus emulator after changing its entity configuration.
+- Look for `Starting IndexRunbook Service Bus processor.` in Worker logs.
+
+The expected local pipeline is:
+
+```text
+Runbooks Change Feed
+→ RunbookIndexChangeFeedWorker
+→ index-runbook
+→ IndexRunbookWorker
+→ IndexRunbookHandler
+→ RunbookChunks
+```
+
+## RunbookChunks delete fails with partition-key mismatch
+
+`RunbookChunks` is partitioned by `/runbookId`. Deleting a chunk therefore uses the Runbook ID as the `PartitionKey`, not the chunk document ID. Prefer the existing replace/cleanup store operation so all derived chunks for a Runbook are handled consistently.

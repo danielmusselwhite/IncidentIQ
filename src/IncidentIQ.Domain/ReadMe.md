@@ -51,7 +51,7 @@ This keeps lifecycle rules out of controllers, repositories, and Worker transpor
 
 Represents editable operational guidance used to investigate and resolve incidents.
 
-Editable Runbooks remain separate from the future vectorised `RunbookChunk` persistence used by the RAG pipeline.
+Editable Runbooks remain the Domain/source-of-truth model. Vectorised `RunbookChunk` data now exists outside Domain as a derived Application/Infrastructure search representation that can be regenerated from the Runbook.
 
 ### Why AI Results Are Not Domain Entities
 

@@ -107,9 +107,33 @@ GetRunbookById
 GetAllRunbooks
 UpdateRunbook
 DeleteRunbook
+IndexRunbook
 ```
 
-Runbook handlers use `IRunbookRepository` and remain independent of Cosmos DB implementation details.
+Runbook CRUD handlers use `IRunbookRepository` and remain independent of Cosmos DB implementation details. `DeleteRunbookHandler` also clears the derived vector index through `IRunbookChunkStore` before deleting the source Runbook.
+
+
+### Index Runbook
+
+`IndexRunbookHandler` is invoked by `IndexRunbookWorker` and orchestrates the provider-independent ingestion use case:
+
+```text
+IndexRunbookCommand
+      ↓
+IRunbookRepository.GetByIdAsync
+      ↓
+RunbookChunker
+      ↓
+IEmbeddingGenerator
+      ↓
+RunbookChunk[]
+      ↓
+IRunbookChunkStore.ReplaceForRunbookAsync
+```
+
+The command carries Runbook/revision identity rather than copying the full Runbook payload. The handler reloads the current source Runbook, builds deterministic overlapping chunks, generates one embedding per chunk, and replaces the existing derived chunk set.
+
+`RunbookChunk` is an Application retrieval/indexing model rather than a Domain entity because chunk boundaries and vectors are derived AI/search concerns.
 
 ## Important Abstractions
 
@@ -120,6 +144,9 @@ IIncidentAnalyzer
 IIncidentAnalysisStore
 IIncidentAnalysisReader
 IRunbookRepository
+IRunbookChunkStore
+IEmbeddingGenerator
+IRunbookIndexQueue
 IIncidentAnalysisQueue
 ```
 
@@ -145,17 +172,27 @@ IIncidentAnalysisReader
 IRunbookRepository
 └── CosmosRunbookRepository
 
+IRunbookChunkStore
+└── CosmosRunbookChunkStore
+
+IEmbeddingGenerator
+├── DevelopmentDummyEmbeddingGenerator   (Development)
+└── AzureEmbeddingGenerator              (non-Development Worker)
+
+IRunbookIndexQueue
+└── AzureServiceBusRunbookIndexQueue
+
 IIncidentAnalysisQueue
 └── AzureServiceBusIncidentAnalysisQueue
 ```
 
-`IIncidentAnalysisQueue` is used by the outbox relay to publish the persisted `AnalyseIncidentCommand`.
+`IIncidentAnalysisQueue` is used by the Incident outbox relay to publish the persisted `AnalyseIncidentCommand`. `IRunbookIndexQueue` is used by the Runbooks Change Feed relay to publish `IndexRunbookCommand`.
 
 ## Dependency-Injection Boundary
 
-Most Application dependencies are host-agnostic, but `AnalyseIncidentHandler` is registered by the Worker host because it requires the Worker-specific `IIncidentAnalyzer` choice.
+Most Application dependencies are host-agnostic, but `AnalyseIncidentHandler` and `IndexRunbookHandler` are registered by the Worker host because they require environment-specific AI implementations (`IIncidentAnalyzer` / `IEmbeddingGenerator`).
 
-The Service Bus hosted service creates a DI scope per message and resolves the scoped handler within that message scope.
+Each Service Bus hosted service creates a DI scope per message and resolves its scoped handler within that message scope.
 
 ## Validation
 
@@ -184,6 +221,7 @@ IncidentIQ.Application/
 │   ├── GetAll/
 │   └── ...analysis/retry use cases
 ├── Runbooks/
+│   └── Index/
 └── DependencyInjection.cs
 ```
 
