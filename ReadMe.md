@@ -161,72 +161,116 @@ flowchart LR
 
 A submitted Incident is persisted before it is queued. The API writes the Incident and outbox record atomically, then the asynchronous pipeline moves the command through Change Feed and Service Bus to the analysis Worker.
 
-```mermaid
+```mermaid id="0kbx15"
 flowchart TD
 
     subgraph WhiteBackground[" "]
         direction TD
 
-    Web["React Web<br/>Submit Incident"]:::web
+        Web["React Web<br/>Submit Incident"]:::web
 
-    subgraph Request["Synchronous Request"]
-        API["API<br/>POST /api/incidents"]:::host
-        Command["Application<br/>CreateIncidentCommand"]:::application
-        CreateHandler["Create Incident Handler"]:::application
-        SubmissionStore["Incident Submission Store"]:::infra
-        InitialWrite["Cosmos Transactional Batch<br/>Incident + Outbox"]:::data
-        Created["201 Created<br/>Incident is Queued"]:::result
-    end
+        subgraph Request["Synchronous Request"]
+            direction TD
 
-    subgraph Async["Asynchronous Processing"]
-        ChangeFeed["Cosmos Change Feed"]:::data
-        OutboxWorker["Outbox Worker"]:::host
-        Queue["Service Bus<br/>AnalyseIncidentCommand"]:::messaging
-        AnalyseWorker["Analysis Worker"]:::host
-        AnalyseHandler["Analyse Incident Handler"]:::application
-        Analyzer["Incident Analyzer"]:::application
-        AI["Azure OpenAI<br/>or local dummy analyzer"]:::ai
-        FinalWrite["Cosmos Transactional Batch<br/>Completed Incident + Analysis"]:::data
-    end
+            API["API<br/>POST /api/incidents"]:::host
 
-    Result["Frontend polls status<br/>then requests persisted analysis"]:::result
+            Command["Application<br/>CreateIncidentCommand"]:::application
 
-    Web --> API
-    API --> Command
-    Command --> CreateHandler
-    CreateHandler --> SubmissionStore
-    SubmissionStore --> InitialWrite
-    InitialWrite --> Created
-    Created --> Web
+            CreateHandler["Create Incident Handler"]:::application
 
-    InitialWrite --> ChangeFeed
-    ChangeFeed --> OutboxWorker
-    OutboxWorker --> Queue
-    Queue --> AnalyseWorker
-    AnalyseWorker --> AnalyseHandler
-    AnalyseHandler --> Analyzer
-    Analyzer --> AI
-    AI --> AnalyseHandler
-    AnalyseHandler --> FinalWrite
-    FinalWrite --> Result
-    Result --> Web
+            SubmissionStore["Incident Submission Store"]:::infra
 
+            InitialWrite["Cosmos Transactional Batch<br/>Incident + Outbox"]:::data
+
+            Created["201 Created<br/>Incident is Queued"]:::result
+        end
+
+        QueuedView["React Web<br/>Shows Queued Incident"]:::web
+
+        subgraph Async["Asynchronous Processing"]
+            direction TD
+
+            ChangeFeed["Cosmos Change Feed"]:::data
+
+            OutboxWorker["Outbox Worker"]:::host
+
+            Queue["Service Bus<br/>AnalyseIncidentCommand"]:::messaging
+
+            AnalyseWorker["Analysis Worker"]:::host
+
+            AnalyseHandler["Analyse Incident Handler"]:::application
+
+            Analyzer["Incident Analyzer"]:::application
+
+            AI["Azure OpenAI<br/>or local dummy analyzer"]:::ai
+
+            FinalWrite["Cosmos Transactional Batch<br/>Completed Incident + Analysis"]:::data
+        end
+
+        Result["Frontend polls status<br/>then requests persisted analysis"]:::result
+
+        CompletedView["React Web<br/>Displays Analysis"]:::web
+
+        Web --> API
+
+        API --> Command
+
+        Command --> CreateHandler
+
+        CreateHandler --> SubmissionStore
+
+        SubmissionStore --> InitialWrite
+
+        InitialWrite --> Created
+
+        Created --> QueuedView
+
+        InitialWrite --> ChangeFeed
+
+        ChangeFeed --> OutboxWorker
+
+        OutboxWorker --> Queue
+
+        Queue --> AnalyseWorker
+
+        AnalyseWorker --> AnalyseHandler
+
+        AnalyseHandler --> Analyzer
+
+        Analyzer --> AI
+
+        AI --> AnalyseHandler
+
+        AnalyseHandler --> FinalWrite
+
+        FinalWrite --> Result
+
+        Result --> CompletedView
     end
 
     classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
+
     classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+
     classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
+
     classDef infra fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
+
     classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+
     classDef messaging fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
+
     classDef ai fill:#f3e8ff,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
+
     classDef result fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
 
     style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
 
     style Request fill:#f8fafc,stroke:#94a3b8,stroke-width:2px
+
     style Async fill:#f8fafc,stroke:#94a3b8,stroke-width:2px
 ```
+
 
 ```mermaid
 sequenceDiagram
