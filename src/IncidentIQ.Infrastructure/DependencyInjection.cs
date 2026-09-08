@@ -3,6 +3,8 @@ using Azure.Messaging.ServiceBus;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Infrastructure.Messaging;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
+using IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents;
+using IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

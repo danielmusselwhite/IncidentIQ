@@ -5,7 +5,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
 using System.Net;
 
-namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
+namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents;
 
 /// <summary>
 /// Represents a repository for managing incidents in a Cosmos DB database.

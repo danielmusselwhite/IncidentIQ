@@ -4,7 +4,7 @@ using IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
 
-namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
+namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks;
 
 /// <summary>
 /// Stores the vectorised representation of Runbooks in Cosmos DB.

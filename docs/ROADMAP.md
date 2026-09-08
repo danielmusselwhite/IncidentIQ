@@ -218,9 +218,9 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Generate and persist vectorised Runbook chunks.
 * [x] Verify create/update indexing end-to-end locally.
 * [x] Remove indexed chunks before deleting a Runbook.
-* [ ] Add final ingestion tests and edge-case coverage.
-* [ ] Deploy Runbook ingestion changes to Azure.
-* [ ] Verify real Azure embeddings, re-indexing, and deletion cleanup in Azure.
+* [x] Add final ingestion tests and edge-case coverage.
+* [x] Deploy Runbook ingestion changes to Azure.
+* [x] Verify real Azure embeddings, re-indexing, and deletion cleanup in Azure.
 * [x] Update ingestion documentation and architecture notes.
 
 ### 11B — Runbook Vector Retrieval

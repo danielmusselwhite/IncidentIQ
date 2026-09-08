@@ -1,10 +1,10 @@
-﻿using System.Net;
-using IncidentIQ.Application.Common.Abstractions;
+﻿using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Domain.Runbooks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
+using System.Net;
 
-namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
+namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks;
 
 /// <summary>
 /// Represents a repository for managing runbooks in Cosmos DB.
