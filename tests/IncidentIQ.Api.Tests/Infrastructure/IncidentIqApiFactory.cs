@@ -17,6 +17,8 @@ public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
 
     public InMemoryIncidentAnalysisReader IncidentAnalysisReader { get; } = new();
 
+    public InMemoryRunbookChunkStore RunbookChunkStore { get; } = new();
+
     public IncidentIqApiFactory()
     {
         IncidentSubmissionStore = new InMemoryIncidentSubmissionStore(IncidentRepository);
@@ -44,6 +46,9 @@ public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IIncidentAnalysisReader>();
             services.AddSingleton<IIncidentAnalysisReader>(IncidentAnalysisReader);
+
+            services.RemoveAll<IRunbookChunkStore>();
+            services.AddSingleton<IRunbookChunkStore>(RunbookChunkStore);
         });
     }
 
