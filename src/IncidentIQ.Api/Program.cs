@@ -2,6 +2,7 @@ using Azure.Monitor.OpenTelemetry.AspNetCore;
 using IncidentIQ.Api.ExceptionHandling;
 using IncidentIQ.Application;
 using IncidentIQ.Infrastructure;
+using IncidentIQ.Infrastructure.AzureAI;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
 using System.Text.Json.Serialization;
 
@@ -11,10 +12,11 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
-// application insights telemetry
+// Application Insights telemetry.
 var applicationInsightsConnectionString =
     builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
 
@@ -28,19 +30,31 @@ if (!string.IsNullOrWhiteSpace(applicationInsightsConnectionString))
         });
 }
 
-// swagger
+// Swagger.
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// exception handling middleware
+// Exception handling middleware.
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-// Add custom services and dependencies from the Infrastructure project
+// Register Infrastructure and Application dependencies.
 builder.Services.AddInfrastructureDependencies(builder.Configuration);
 builder.Services.AddApplicationDependencies();
 
-// CORS
+// Semantic Runbook search requires embedding generation but does not require
+// the incident-analysis ChatClient or IIncidentAnalyzer.
+if (builder.Environment.IsDevelopment() ||
+    builder.Environment.IsEnvironment("Testing"))
+{
+    builder.Services.AddDevelopmentEmbeddingDependencies();
+}
+else
+{
+    builder.Services.AddAzureEmbeddingDependencies(builder.Configuration);
+}
+
+// CORS.
 var frontendOrigin = builder.Configuration["Frontend:Origin"];
 
 builder.Services.AddCors(options =>
@@ -57,7 +71,8 @@ builder.Services.AddCors(options =>
         !builder.Environment.IsEnvironment("Testing"))
     {
         if (string.IsNullOrWhiteSpace(frontendOrigin))
-            throw new InvalidOperationException("Frontend:Origin must be configured in production.");
+            throw new InvalidOperationException(
+                "Frontend:Origin must be configured in production.");
 
         options.AddPolicy("ProductionCors", policy =>
         {
@@ -85,7 +100,7 @@ if (app.Environment.IsDevelopment())
 }
 else if (app.Environment.IsEnvironment("Testing"))
 {
-    // No specific CORS policy for testing environment.
+    // No specific CORS policy for the testing environment.
 }
 else
 {
@@ -93,13 +108,15 @@ else
     app.UseCors("ProductionCors");
 }
 
-// Initialize Cosmos DB if running in development.
+// Initialize Cosmos DB when running locally.
 // Production infrastructure is provisioned through Bicep.
 if (app.Environment.IsDevelopment())
 {
     using var scope = app.Services.CreateScope();
 
-    var initializer = scope.ServiceProvider.GetRequiredService<CosmosInitializer>();
+    var initializer = scope.ServiceProvider
+        .GetRequiredService<CosmosInitializer>();
+
     await initializer.InitializeAsync();
 }
 
@@ -110,8 +127,8 @@ app.MapHealthChecks("/api/health");
 
 app.Run();
 
-// Add a partial Program class to allow for integration testing 
-// Required to allow WebApplicationFactory<Program> to boot the application in integration tests in memory
+// Required to allow WebApplicationFactory<Program> to boot the API
+// application in memory during integration tests.
 public partial class Program
 {
 }

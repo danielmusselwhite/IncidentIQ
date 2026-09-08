@@ -1,5 +1,6 @@
 ﻿using IncidentIQ.Api.Tests.Fakes;
 using IncidentIQ.Application.Common.Abstractions;
+using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -18,6 +19,8 @@ public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
     public InMemoryIncidentAnalysisReader IncidentAnalysisReader { get; } = new();
 
     public InMemoryRunbookChunkStore RunbookChunkStore { get; } = new();
+
+    public InMemoryRunbookChunkRetriever RunbookChunkRetriever { get; } = new();
 
     public IncidentIqApiFactory()
     {
@@ -49,6 +52,9 @@ public sealed class IncidentIqApiFactory : WebApplicationFactory<Program>
 
             services.RemoveAll<IRunbookChunkStore>();
             services.AddSingleton<IRunbookChunkStore>(RunbookChunkStore);
+
+            services.RemoveAll<IRunbookChunkRetriever>();
+            services.AddSingleton<IRunbookChunkRetriever>(RunbookChunkRetriever);
         });
     }
 

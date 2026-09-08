@@ -9,6 +9,7 @@ using IncidentIQ.Application.Runbooks.Delete;
 using IncidentIQ.Application.Runbooks.GetAll;
 using IncidentIQ.Application.Runbooks.GetById;
 using IncidentIQ.Application.Runbooks.Index;
+using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using IncidentIQ.Application.Runbooks.Update;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -34,6 +35,7 @@ public static class DependencyInjection
         services.AddTransient<RetryAnalyseIncidentHandler>();
 
         services.AddSingleton<RunbookChunker>();
+        services.AddScoped<RetrieveRunbookChunksHandler>();
 
         return services;
     }

@@ -232,9 +232,9 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Add metadata filtering, including service filtering.
 * [x] Handle empty/no-result retrieval scenarios.
 * [x] Add retrieval tests.
-* [ ] Measure retrieval latency.
-* [ ] Measure Cosmos RU usage (response units which we are costed on).
-* [ ] Verify vector retrieval in Azure.
+* [x] Measure retrieval latency.
+* [x] Measure Cosmos RU usage (response units which we are costed on).
+* [x] Verify vector retrieval in Azure.
 * [ ] Update documentation and architecture notes.
 
 ## Stage 12 — Historical Incident Retrieval & RAG
