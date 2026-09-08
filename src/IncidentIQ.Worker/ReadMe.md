@@ -2,17 +2,23 @@
 
 `IncidentIQ.Worker` is the .NET background-processing host for IncidentIQ.
 
-It runs two separate hosted services:
+It currently runs four hosted services:
 
 ```text
 IncidentOutboxWorker
-└── Cosmos Change Feed → Service Bus
+└── Incidents Change Feed → analyse-incident
 
 AnalyseIncidentWorker
-└── Service Bus → Application analysis workflow
+└── analyse-incident → Application analysis workflow
+
+RunbookIndexChangeFeedWorker
+└── Runbooks Change Feed → index-runbook
+
+IndexRunbookWorker
+└── index-runbook → Application Runbook indexing workflow
 ```
 
-Keeping these responsibilities separate allows durable work relay and the expensive analysis pipeline to evolve/scale independently.
+Keeping relay/consumer responsibilities separate lets Incident analysis and Runbook indexing retry, evolve, and eventually scale independently.
 
 ## Current Flow
 
@@ -42,6 +48,35 @@ Cosmos Incidents container
 CosmosIncidentAnalysisStore
           ↓
 Completed Incident + analysis atomically
+```
+
+
+The Runbook ingestion path is separate:
+
+```text
+Cosmos Runbooks container
+          ↓
+     Cosmos Change Feed
+          ↓
+RunbookIndexChangeFeedWorker
+          ↓
+    IRunbookIndexQueue
+          ↓
+ Service Bus: index-runbook
+          ↓
+    IndexRunbookWorker
+          ↓
+    IndexRunbookHandler
+          ↓
+      RunbookChunker
+          ↓
+   IEmbeddingGenerator
+    ├── DevelopmentDummyEmbeddingGenerator
+    └── AzureEmbeddingGenerator → text-embedding-3-small
+          ↓
+   IRunbookChunkStore
+          ↓
+Cosmos RunbookChunks
 ```
 
 ## `IncidentOutboxWorker`
@@ -75,6 +110,16 @@ It:
 - Dead-letters permanently invalid messages immediately.
 - Marks the Incident `Failed` and dead-letters after retry exhaustion.
 
+## `RunbookIndexChangeFeedWorker`
+
+Responsible for detecting created/updated Runbooks and publishing asynchronous indexing work. It monitors the `Runbooks` Change Feed, uses an independent processor name/lease checkpoint, builds `IndexRunbookCommand`, and publishes through `IRunbookIndexQueue`. Existing Runbooks can be backfilled when this processor is introduced.
+
+## `IndexRunbookWorker`
+
+Responsible for consuming `index-runbook` commands. It deserializes the command, creates a DI scope per message, resolves scoped `IndexRunbookHandler`, completes only after chunking/embedding/persistence succeeds, and allows processing failures to flow into Service Bus redelivery/DLQ behaviour.
+
+The handler reloads the current Runbook, generates deterministic overlapping chunks, calls `IEmbeddingGenerator`, and replaces the current `RunbookChunks` set.
+
 ## AI Implementation Selection
 
 The Worker selects its analyzer from the host environment:
@@ -83,37 +128,36 @@ The Worker selects its analyzer from the host environment:
 DOTNET_ENVIRONMENT=Development
 → AddDevelopmentAIDependencies()
 → DevelopmentDummyIncidentAnalyzer
+→ DevelopmentDummyEmbeddingGenerator
 
 Non-Development
 → AddAzureAIDependencies(...)
 → AzureIncidentAnalyzer
+→ AzureEmbeddingGenerator
 ```
 
-This means local Docker development exercises the complete queue/persistence/API/frontend flow without calling Azure OpenAI.
+This means local Docker development exercises the complete Incident-analysis and Runbook-ingestion messaging/persistence flows without calling Azure OpenAI.
 
 ## Reliability
 
+Both Service Bus consumers settle messages only after their Application workflow succeeds:
+
 ```text
-Success
-→ complete message
-
-Transient / classified AI failure
-→ analyzer rethrows
-→ Worker does not complete
+Incident analysis failure
+→ analyzer/handler rethrows
 → Service Bus redelivery
+→ final Incident failure handling + DLQ after retry exhaustion
 
-Invalid message
+Runbook indexing failure
+→ chunking/embedding/persistence throws
+→ Service Bus redelivery
+→ DLQ after retry exhaustion
+
+Malformed message
 → immediate DLQ
-
-Retries exhausted
-→ Incident Failed
-→ DLQ
-
-Already Completed
-→ no-op
 ```
 
-The real Azure analyzer has a small bounded SDK retry policy and request timeout, but Service Bus remains the durable outer retry mechanism. This avoids stacking SDK + Polly + Service Bus retries and multiplying expensive AI calls.
+The real Incident analyzer has a small bounded SDK retry policy and request timeout, but Service Bus remains the durable outer retry mechanism. Runbook embedding/indexing failures likewise propagate to `IndexRunbookWorker` so the queue remains responsible for durable redelivery rather than failures being swallowed inside the ingestion pipeline.
 
 See [Design Decisions & Trade-offs](../../docs/DESIGN-DECISIONS.md) for the detailed reasoning.
 
@@ -121,7 +165,7 @@ See [Design Decisions & Trade-offs](../../docs/DESIGN-DECISIONS.md) for the deta
 
 `AzureIncidentAnalyzer` records structured success/failure logs containing analysis duration, model, deployment, and failure category. It deliberately avoids logging prompts, raw responses, and Incident payload fields.
 
-Full distributed tracing, dependency metrics, dashboards, and KQL remain Stage 15 work.
+Full distributed tracing, dependency metrics, dashboards, and KQL remain future work.
 
 ## Structure
 
@@ -129,13 +173,15 @@ Full distributed tracing, dependency metrics, dashboards, and KQL remain Stage 1
 IncidentIQ.Worker/
 ├── IncidentOutboxWorker.cs
 ├── AnalyseIncidentWorker.cs
+├── RunbookIndexChangeFeedWorker.cs
+├── IndexRunbookWorker.cs
 ├── Program.cs
 ├── Dockerfile
 ├── appsettings.json
 └── Properties/
 ```
 
-`Program.cs` registers shared Application/Infrastructure dependencies, chooses the environment-specific AI implementation, registers `AnalyseIncidentHandler` as scoped, and hosts both Worker services.
+`Program.cs` registers shared Application/Infrastructure dependencies, chooses environment-specific analyzer/embedding implementations, registers `AnalyseIncidentHandler` and `IndexRunbookHandler` as scoped, and hosts all four background services.
 
 ## Local Development
 
@@ -157,4 +203,4 @@ See the [Development Guide](../../docs/DEVELOPMENT.md) for local emulator and re
 
 ## Planned Work
 
-Later work adds Runbook/historical-Incident retrieval and RAG, full observability, completion events, operational tooling, and KEDA-based scaling.
+Runbook vector ingestion is now implemented locally. Next work adds Runbook vector retrieval/metadata filtering, followed by historical-Incident retrieval and evidence-backed RAG; later stages add full observability, completion events, operational tooling, and KEDA-based scaling.

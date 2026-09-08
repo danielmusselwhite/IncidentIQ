@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using IncidentIQ.Domain.Incidents;
 
-namespace IncidentIQ.Application.Analyse;
+namespace IncidentIQ.Application.Incidents.Analyse;
 
 /// <summary>
 /// Represents the input required for analyzing an incident.

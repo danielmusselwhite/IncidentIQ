@@ -1,6 +1,7 @@
-﻿using IncidentIQ.Application.Analyse;
+﻿using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Common.Exceptions;
+using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
 using Moq;
 

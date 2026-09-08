@@ -1,5 +1,5 @@
 ﻿using Azure.Messaging.ServiceBus;
-using IncidentIQ.Application.Analyse;
+using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Infrastructure.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;

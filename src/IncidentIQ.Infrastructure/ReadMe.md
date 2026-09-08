@@ -13,10 +13,10 @@ Current responsibilities include:
 - Atomic Incident + analysis-outbox persistence.
 - Atomic completed Incident + structured-analysis persistence.
 - Persisted analysis point reads.
-- Runbook persistence.
-- Azure Service Bus client configuration and `AnalyseIncidentCommand` publishing.
-- Azure OpenAI structured incident analysis.
-- Deterministic development incident analysis.
+- Runbook source persistence and vectorised Runbook chunk persistence.
+- Azure Service Bus client configuration plus `AnalyseIncidentCommand` and `IndexRunbookCommand` publishing.
+- Azure OpenAI structured incident analysis and Runbook embedding generation.
+- Deterministic development incident analysis and embedding generation.
 - Azure AI timeout/retry/failure classification and structured telemetry.
 - Azure authentication through `DefaultAzureCredential` where configured.
 - Infrastructure dependency-injection registration.
@@ -26,15 +26,15 @@ Current responsibilities include:
 ```text
 IncidentIQ.Infrastructure/
 ├── AzureAI/
-│   ├── AzureAIOptions.cs
 │   ├── AzureIncidentAnalyzer.cs
 │   ├── DevelopmentDummyIncidentAnalyzer.cs
-│   ├── AzureIncidentAnalysisResponse.cs
-│   ├── AzureIncidentAnalysisSchema.cs
-│   ├── AzureAIAnalysisException.cs
-│   └── AzureAIFailureCategory.cs
+│   └── Embedding/
+│       ├── AzureEmbeddingOptions.cs
+│       ├── AzureEmbeddingGenerator.cs
+│       └── DevelopmentDummyEmbeddingGenerator.cs
 ├── Messaging/
 │   ├── AzureServiceBusIncidentAnalysisQueue.cs
+│   ├── AzureServiceBusRunbookIndexQueue.cs
 │   └── ServiceBusOptions.cs
 ├── Persistence/
 │   └── Cosmos/
@@ -45,6 +45,7 @@ IncidentIQ.Infrastructure/
 │       ├── CosmosIncidentAnalysisStore.cs
 │       ├── CosmosIncidentAnalysisReader.cs
 │       ├── CosmosRunbookRepository.cs
+│       ├── CosmosRunbookChunkStore.cs
 │       └── Documents/
 └── DependencyInjection.cs
 ```
@@ -57,6 +58,7 @@ IncidentIQ uses the native Azure Cosmos DB SDK.
 IncidentIQ Database
 ├── Incidents          /incidentId
 ├── Runbooks           /id
+├── RunbookChunks      /runbookId
 └── ChangeFeedLeases   /id
 ```
 
@@ -80,6 +82,8 @@ successful analysis
 
 `CosmosIncidentAnalysisReader` reads a persisted analysis using its deterministic ID (`analysis-{incidentId}`) and the raw Incident ID as partition key, giving an efficient point read.
 
+`CosmosRunbookChunkStore` persists the derived Runbook search index. Chunk IDs are deterministic, all chunks for one Runbook share `/runbookId`, and replacement removes stale chunks when a Runbook becomes shorter or is re-indexed. `RunbookChunks` is created with a 1536-dimension `/embedding` cosine vector policy and `quantizedFlat` vector index.
+
 ## Transactional Outbox
 
 Incident creation and deliberate retry operations persist both Incident state and an `AnalyseIncident` outbox request through `CosmosIncidentSubmissionStore`.
@@ -97,9 +101,9 @@ This avoids the Cosmos + Service Bus dual-write failure mode.
 
 ## Service Bus
 
-`AzureServiceBusIncidentAnalysisQueue` implements `IIncidentAnalysisQueue` and publishes `AnalyseIncidentCommand` to `analyse-incident`.
+`AzureServiceBusIncidentAnalysisQueue` implements `IIncidentAnalysisQueue` and publishes `AnalyseIncidentCommand` to `analyse-incident`. `AzureServiceBusRunbookIndexQueue` implements `IRunbookIndexQueue` and publishes `IndexRunbookCommand` to `index-runbook`.
 
-The API does not publish directly to Service Bus; only the Worker-side outbox relay uses the queue abstraction.
+The API does not publish directly to Service Bus. Incident commands are relayed from the transactional outbox, while Runbook indexing commands are published by the Worker-side Runbooks Change Feed relay.
 
 ## Azure AI
 
@@ -142,6 +146,20 @@ NetworkTimeoutSeconds = 60
 RequestTimeoutSeconds = 90
 ```
 
+### Runbook Embeddings
+
+```text
+IEmbeddingGenerator
+├── DevelopmentDummyEmbeddingGenerator
+└── AzureEmbeddingGenerator
+    ↓
+Azure OpenAI EmbeddingClient
+    ↓
+runbook-embedding / text-embedding-3-small
+```
+
+`AzureEmbeddingGenerator` requests the configured 1536 dimensions and validates the returned vector length before passing the provider-independent float vector back to Application. The deterministic Development implementation produces repeatable local vectors so the ingestion pipeline can run without Azure OpenAI.
+
 ## Authentication
 
 Infrastructure supports two common modes:
@@ -150,6 +168,7 @@ Infrastructure supports two common modes:
 Docker Compose Development
 → emulator credentials / connection strings
 → DevelopmentDummyIncidentAnalyzer
+→ DevelopmentDummyEmbeddingGenerator
 ```
 
 ```text

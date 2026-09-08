@@ -1,7 +1,7 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
-using IncidentIQ.Application.Analyse;
 using IncidentIQ.Domain.Incidents;
 using System.Collections.Concurrent;
+using IncidentIQ.Application.Incidents.Analyse;
 
 namespace IncidentIQ.Api.Tests.Infrastructure;
 

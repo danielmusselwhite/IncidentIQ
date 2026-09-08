@@ -1,6 +1,6 @@
-using IncidentIQ.Application.Analyse;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Common.Exceptions;
+using IncidentIQ.Application.Incidents.Analyse;
 
 namespace IncidentIQ.Application.Incidents.GetAnalysisById;
 

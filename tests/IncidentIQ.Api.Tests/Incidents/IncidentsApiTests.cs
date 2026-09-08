@@ -1,6 +1,7 @@
 ﻿using IncidentIQ.Api.Contracts.Incidents;
 using IncidentIQ.Api.Tests.Infrastructure;
-using IncidentIQ.Application.Analyse;
+using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
 using System.Net;
 using System.Text.Json;

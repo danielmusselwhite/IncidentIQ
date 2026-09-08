@@ -17,6 +17,20 @@
               "RequiresDuplicateDetection": true,
               "RequiresSession": false
             }
+          },
+          {
+            "Name": "index-runbook",
+            "Properties": {
+              "DeadLetteringOnMessageExpiration": true,
+              "DefaultMessageTimeToLive": "PT1H",
+              "DuplicateDetectionHistoryTimeWindow": "PT5M",
+              "ForwardDeadLetteredMessagesTo": "",
+              "ForwardTo": "",
+              "LockDuration": "PT1M",
+              "MaxDeliveryCount": 5,
+              "RequiresDuplicateDetection": true,
+              "RequiresSession": false
+            }
           }
         ],
         "Topics": []

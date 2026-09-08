@@ -90,7 +90,7 @@ Move the working Cosmos-backed application from local development into an initia
 - [x] Build Runbook management frontend.
 - [x] Add Runbook tests.
 
-- [x] Keep editable Runbooks separate from future vectorised `RunbookChunk` documents.
+- [x] Keep editable Runbooks separate from derived vectorised `RunbookChunk` documents.
 - [x] Update Cosmos Bicep configuration for the `Runbooks` container.
 
 ## Stage 7 — Service Bus & Asynchronous Processing
@@ -202,19 +202,40 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
 
-* [ ] Define `IndexRunbook` workflow.
-* [ ] Define dedicated Runbook chunk/vector persistence.
+### 11A — Runbook Vector Ingestion
 
-* [ ] Configure Cosmos vector policies and indexes through Bicep.
-* [ ] Chunk Runbook content.
+* [x] Define `IndexRunbookCommand` and the indexing workflow.
+* [x] Define dedicated `RunbookChunk` application and Cosmos persistence models.
+* [x] Configure a vector-enabled `RunbookChunks` container locally and through Bicep.
+* [x] Configure the `/embedding` 1536-dimension cosine `quantizedFlat` vector index.
+* [x] Add the `text-embedding-3-small` Runbook embedding deployment to Azure AI Bicep.
+* [x] Add `IEmbeddingGenerator` with deterministic local and Azure OpenAI implementations.
+* [x] Implement deterministic overlapping Runbook chunking.
+* [x] Implement replace-based Runbook chunk persistence and stale-chunk cleanup.
+* [x] Add the `index-runbook` Service Bus queue locally and through Bicep.
+* [x] Publish indexing commands from the `Runbooks` Cosmos Change Feed.
+* [x] Consume indexing commands with `IndexRunbookWorker`.
+* [x] Generate and persist vectorised Runbook chunks.
+* [x] Verify create/update indexing end-to-end locally.
+* [x] Remove indexed chunks before deleting a Runbook.
+* [ ] Add final ingestion tests and edge-case coverage.
+* [ ] Deploy Runbook ingestion changes to Azure.
+* [ ] Verify real Azure embeddings, re-indexing, and deletion cleanup in Azure.
+* [x] Update ingestion documentation and architecture notes.
 
-* [ ] Generate embeddings.
-* [ ] Store Runbook chunks, embeddings and retrieval metadata.
+### 11B — Runbook Vector Retrieval
 
-* [ ] Implement Runbook vector retrieval.
-* [ ] Add metadata filtering.
-
-* [ ] Measure retrieval latency and RU usage.
+* [ ] Define Runbook retrieval abstraction/result model.
+* [ ] Generate embeddings for retrieval queries.
+* [ ] Implement Cosmos `VectorDistance` Runbook chunk retrieval.
+* [ ] Return top-K relevant Runbook chunks.
+* [ ] Add metadata filtering, including service filtering.
+* [ ] Handle empty/no-result retrieval scenarios.
+* [ ] Add retrieval tests.
+* [ ] Measure retrieval latency.
+* [ ] Measure Cosmos RU usage.
+* [ ] Verify vector retrieval in Azure.
+* [ ] Update documentation and architecture notes.
 
 ## Stage 12 — Historical Incident Retrieval & RAG
 

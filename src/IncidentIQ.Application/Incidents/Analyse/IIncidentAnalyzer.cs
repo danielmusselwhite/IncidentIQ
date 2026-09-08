@@ -1,4 +1,4 @@
-﻿namespace IncidentIQ.Application.Analyse;
+﻿namespace IncidentIQ.Application.Incidents.Analyse;
 
 /// <summary>
 /// Defines the application boundary. Something later will implement it, but Application doesn't know that implementation is Azure.

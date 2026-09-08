@@ -1,6 +1,5 @@
 ﻿using FluentValidation;
-using IncidentIQ.Application.Analyse;
-using IncidentIQ.Application.Analyse.Retry;
+using IncidentIQ.Application.Incidents.Analyse.Retry;
 using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
 using IncidentIQ.Application.Incidents.GetAnalysisById;
@@ -9,6 +8,7 @@ using IncidentIQ.Application.Runbooks.Create;
 using IncidentIQ.Application.Runbooks.Delete;
 using IncidentIQ.Application.Runbooks.GetAll;
 using IncidentIQ.Application.Runbooks.GetById;
+using IncidentIQ.Application.Runbooks.Index;
 using IncidentIQ.Application.Runbooks.Update;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -32,6 +32,8 @@ public static class DependencyInjection
         services.AddScoped<DeleteRunbookHandler>();
 
         services.AddTransient<RetryAnalyseIncidentHandler>();
+
+        services.AddSingleton<RunbookChunker>();
 
         return services;
     }

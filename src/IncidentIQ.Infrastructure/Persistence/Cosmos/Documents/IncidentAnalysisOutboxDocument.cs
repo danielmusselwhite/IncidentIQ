@@ -1,4 +1,4 @@
-﻿using IncidentIQ.Application.Analyse;
+﻿using IncidentIQ.Application.Incidents.Analyse;
 using System.Text.Json.Serialization;
 
 namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;

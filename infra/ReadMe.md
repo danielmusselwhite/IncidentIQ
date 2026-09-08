@@ -52,7 +52,7 @@ This lets GitHub Actions provision the development environment, create workload 
 
 `main.bicep` is the composition root for the application environment and receives environment-specific values from `environments/dev.bicepparam`.
 
-Current development resources include:
+The Bicep development-environment definition currently includes:
 
 ```text
 rg-incidentiq-dev
@@ -65,19 +65,25 @@ rg-incidentiq-dev
 │   └── IncidentIQ
 │       ├── Incidents
 │       ├── Runbooks
+│       ├── RunbookChunks
 │       └── ChangeFeedLeases
 ├── Azure Service Bus
-│   └── analyse-incident
+│   ├── analyse-incident
+│   │   └── $DeadLetterQueue
+│   └── index-runbook
 │       └── $DeadLetterQueue
 ├── Azure OpenAI
-│   └── incident-analysis deployment
+│   ├── incident-analysis deployment
+│   └── runbook-embedding deployment
 ├── API Managed Identity
 ├── Worker Managed Identity
 ├── Application Insights
 └── Log Analytics
 ```
 
-The repository root [README](../ReadMe.md) contains Mermaid diagrams for the deployed infrastructure, internal application architecture, and Incident submission/message flow.
+Bicep defines the `RunbookChunks` vector container, `index-runbook` queue, and Runbook embedding deployment.
+
+The repository root [README](../ReadMe.md) contains Mermaid diagrams for the infrastructure, internal application architecture, and asynchronous message flows.
 
 ## Cosmos DB
 
@@ -86,7 +92,8 @@ Defined in `modules/cosmos.bicep`.
 | Container | Partition key | Purpose |
 |---|---|---|
 | `Incidents` | `/incidentId` | Incident, `AnalyseIncident` outbox, and structured analysis documents |
-| `Runbooks` | `/id` | Editable operational Runbooks |
+| `Runbooks` | `/id` | Editable operational Runbooks and Change Feed source for indexing |
+| `RunbookChunks` | `/runbookId` | Derived Runbook chunks, retrieval metadata, and 1536-dimension embeddings |
 | `ChangeFeedLeases` | `/id` | SDK-managed Change Feed Processor checkpoints/ownership |
 
 The shared `/incidentId` partition allows two important atomic operations:
@@ -101,21 +108,38 @@ Complete Analysis
 
 Both use Cosmos transactional batches inside one logical partition.
 
+`RunbookChunks` is configured with a `/embedding` `float32` vector policy using cosine distance and a `quantizedFlat` index. The embedding path is excluded from the ordinary Cosmos index. Grouping chunks by `/runbookId` lets re-indexing replace stale chunks inside one logical partition.
+
 See [Design Decisions & Trade-offs](../docs/DESIGN-DECISIONS.md) for the reasoning behind the outbox and partition-key change.
 
 ## Service Bus
 
 Defined in `modules/service-bus.bicep`.
 
-`analyse-incident` carries durable analysis commands and is configured for bounded redelivery, dead-lettering, TTL, and duplicate detection. The queue's `maxDeliveryCount` and the Worker's `ServiceBus__MaxDeliveryCount` setting are sourced from the same infrastructure value so application and broker behaviour stay aligned.
+Two queues are currently provisioned:
 
-The API does not require Service Bus sender access because it persists an outbox instead. The Worker needs sender access for the outbox relay and receiver access for analysis consumption.
+```text
+analyse-incident
+→ durable Incident analysis commands
+
+index-runbook
+→ durable Runbook indexing commands
+```
+
+Both use bounded redelivery, dead-lettering, TTL, and duplicate detection. The Worker's queue-scoped RBAC grants sender/receiver access only where its hosted services require it. The API does not require Service Bus access: Incident submission uses the Cosmos outbox, while Runbook indexing is initiated by the Worker-side Runbooks Change Feed relay.
 
 ## Azure AI
 
 Defined in `modules/azure-ai.bicep`.
 
-The development environment provisions an Azure OpenAI account and the `incident-analysis` model deployment. The Worker receives the Azure AI endpoint, deployment name, and model name through Container App configuration and authenticates with its managed identity.
+The development environment provisions one Azure OpenAI account with two deployments:
+
+```text
+incident-analysis → gpt-5-mini
+runbook-embedding → text-embedding-3-small (1536 dimensions)
+```
+
+The Worker receives the Azure AI endpoint plus analysis/embedding deployment configuration through Container App environment variables and authenticates with its managed identity.
 
 The Worker identity is assigned `Cognitive Services OpenAI User` on the Azure OpenAI resource.
 
@@ -172,17 +196,20 @@ The API uses Managed Identity for Cosmos DB and ACR. With the transactional outb
 
 ### Worker Identity
 
-The Worker host runs both background services:
+The Worker host currently runs four background services:
 
 ```text
 IncidentOutboxWorker
-→ Cosmos Change Feed
-→ Service Bus Data Sender
+→ Incidents Change Feed → analyse-incident
 
 AnalyseIncidentWorker
-→ Service Bus Data Receiver
-→ Azure OpenAI
-→ Cosmos analysis persistence
+→ analyse-incident → Azure OpenAI → Cosmos analysis persistence
+
+RunbookIndexChangeFeedWorker
+→ Runbooks Change Feed → index-runbook
+
+IndexRunbookWorker
+→ index-runbook → chunking/embeddings → RunbookChunks
 ```
 
 It therefore requires Cosmos DB Data Contributor, queue-scoped Service Bus Data Sender/Data Receiver, and Cognitive Services OpenAI User access.
@@ -191,7 +218,7 @@ It therefore requires Cosmos DB Data Contributor, queue-scoped Service Bus Data 
 
 `application-insights.bicep`, `log-analytics.bicep`, and `container-apps-environment.bicep` provide the telemetry foundation.
 
-Stage 10 now emits structured AI success/failure logs from `AzureIncidentAnalyzer`, including analysis duration, failure category, deployment, and model. Full OpenTelemetry dependency tracing, dashboards, KQL, queue metrics, and scaling telemetry remain Stage 15 work.
+`AzureIncidentAnalyzer` emits structured AI success/failure logs including analysis duration, failure category, deployment, and model. Full OpenTelemetry dependency tracing, dashboards, KQL, queue metrics, and scaling telemetry remain future work.
 
 ## GitHub Actions
 
@@ -228,7 +255,7 @@ Service Bus Emulator
 └── SQL Server dependency
 ```
 
-Azure OpenAI itself is not emulated. Instead, when the Worker runs with `DOTNET_ENVIRONMENT=Development`, `DevelopmentDummyIncidentAnalyzer` provides deterministic structured analysis while the rest of the asynchronous pipeline uses the local emulators.
+Azure OpenAI itself is not emulated. When the Worker runs with `DOTNET_ENVIRONMENT=Development`, `DevelopmentDummyIncidentAnalyzer` provides deterministic structured analysis and `DevelopmentDummyEmbeddingGenerator` provides deterministic 1536-dimensional vectors while Cosmos/Service Bus use the local emulators.
 
 The Service Bus Emulator queue definition is stored at `infra/local/servicebus/Config.json`.
 

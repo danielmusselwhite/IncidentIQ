@@ -1,4 +1,5 @@
-using IncidentIQ.Application.Analyse;
+using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse;
 
 namespace IncidentIQ.Infrastructure.AzureAI;
 

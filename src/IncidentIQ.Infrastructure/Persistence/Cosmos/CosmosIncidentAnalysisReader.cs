@@ -1,5 +1,5 @@
-using IncidentIQ.Application.Analyse;
 using IncidentIQ.Application.Common.Abstractions;
+using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;

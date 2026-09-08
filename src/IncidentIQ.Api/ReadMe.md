@@ -81,7 +81,7 @@ PUT    /api/runbooks/{id}
 DELETE /api/runbooks/{id}
 ```
 
-The reliability stage also provides backend retry/requeue functionality for failed analysis; the Operations/Admin frontend for that capability is planned for Stage 16.
+Backend retry/requeue functionality is available for failed analysis; the Operations/Admin frontend for that capability is planned separately.
 
 Health:
 

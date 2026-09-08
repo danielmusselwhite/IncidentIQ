@@ -26,6 +26,7 @@ Current areas include:
 - Final failure handling.
 - Structured analysis persistence orchestration.
 - Runbook create/read/update/delete behaviour.
+- Runbook chunking and indexing orchestration coverage.
 
 External dependencies are mocked/faked so these tests do not require Cosmos DB, Service Bus, or Azure OpenAI.
 
@@ -125,6 +126,26 @@ GET /api/incidents/{id}/analysis
 
 This locally exercises the complete asynchronous architecture without an Azure OpenAI dependency.
 
+The local Runbook ingestion smoke test additionally verifies:
+
+```text
+Create / update Runbook
+      ↓
+Runbooks Change Feed
+      ↓
+index-runbook (Service Bus Emulator)
+      ↓
+IndexRunbookWorker
+      ↓
+RunbookChunker
+      ↓
+DevelopmentDummyEmbeddingGenerator
+      ↓
+RunbookChunks with 1536-dimensional vectors
+```
+
+Editing the same Runbook should replace stale chunks rather than append duplicates. Deleting the Runbook should remove the derived chunks before the source document is deleted.
+
 ### Important Outbox Reliability Check
 
 A useful manual test is:
@@ -160,4 +181,6 @@ Queued
 → frontend displays analysis
 ```
 
-Application Insights/Worker logs should contain the Stage 10 AI duration/success/failure metadata without logging raw Incident/prompt/model-response payloads.
+Application Insights/Worker logs should contain AI duration/success/failure metadata without logging raw Incident, prompt, or model-response payloads.
+
+Azure verification for Runbook ingestion checks that a Runbook create/update reaches `IndexRunbookWorker`, calls the `runbook-embedding` / `text-embedding-3-small` deployment, persists 1536-dimensional vectors in `RunbookChunks`, replaces stale chunks after an edit, and removes them after deletion.

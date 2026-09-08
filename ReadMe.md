@@ -2,7 +2,7 @@
 
 IncidentIQ is an AI-powered incident analysis platform for engineers. Users submit technical incidents through a React frontend, and the system processes them asynchronously through Cosmos DB, Azure Service Bus, a .NET Worker, and Azure OpenAI.
 
-The project is being built incrementally as a practical Azure/AI engineering project. The current system includes Incident and Runbook management, a transactional outbox, Service Bus reliability/DLQ handling, structured AI analysis, persisted analysis retrieval, frontend analysis display, bounded AI resilience, and structured AI telemetry. Local development uses deterministic AI output so the complete workflow can run without Azure OpenAI credentials.
+The project is being built incrementally as a practical Azure/AI engineering project. The current system includes Incident and Runbook management, a transactional outbox, Service Bus reliability/DLQ handling, structured AI analysis, persisted analysis retrieval, frontend analysis display, bounded AI resilience, and asynchronous Runbook vector ingestion. Runbooks are chunked, embedded, and stored in a dedicated Cosmos vector container for the retrieval/RAG work that follows. Local development uses deterministic analysis and embedding implementations so the complete workflow can run without Azure OpenAI credentials.
 
 ## Architecture
 
@@ -14,9 +14,10 @@ IncidentIQ follows a lightweight Clean Architecture approach: business rules sit
 
 ### 1. Azure Infrastructure Architecture
 
-The deployed development environment is provisioned with Bicep. The main runtime, data, AI, identity, observability, and delivery components are grouped below so the Azure boundary is easier to read.
+The development environment is defined and provisioned with Bicep. The main runtime, data, AI, identity, observability, and delivery components are grouped below so the Azure boundary is easier to read.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 flowchart LR
     User["Engineer / Browser"]:::external
     GitHub["GitHub Actions<br/>OIDC"]:::delivery
@@ -34,9 +35,9 @@ flowchart LR
         end
 
         subgraph Platform["Data, Messaging & AI"]
-            Cosmos["Cosmos DB<br/>Incidents • Runbooks • Analysis"]:::data
-            ServiceBus["Service Bus<br/>analyse-incident + DLQ"]:::messaging
-            OpenAI["Azure OpenAI<br/>Incident Analysis"]:::ai
+            Cosmos["Cosmos DB<br/>Incidents • Runbooks • RunbookChunks • Analysis"]:::data
+            ServiceBus["Service Bus<br/>analyse-incident • index-runbook<br/>+ DLQs"]:::messaging
+            OpenAI["Azure OpenAI<br/>Incident Analysis • Runbook Embeddings"]:::ai
         end
 
         subgraph Observability["Observability"]
@@ -98,6 +99,7 @@ flowchart LR
 At code level, the solution keeps responsibilities separated by project. This diagram intentionally stays above individual classes and shows the important *types* of code each layer contains and the direction of dependencies.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 flowchart LR
     Web["IncidentIQ.Web<br/>Pages • Components • API Clients"]:::web
 
@@ -146,6 +148,7 @@ flowchart LR
 A submitted Incident is persisted before it is queued. The API writes the Incident and outbox record atomically, then the asynchronous pipeline moves the command through Change Feed and Service Bus to the analysis Worker.
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 flowchart TD
     Web["React Web<br/>Submit Incident"]:::web
 
@@ -205,6 +208,7 @@ flowchart TD
 ```
 
 ```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
 sequenceDiagram
     autonumber
 
@@ -342,6 +346,50 @@ sequenceDiagram
     Web-->>User: Display summary, likely causes<br/>confidence scores and recommended actions
 ```
 
+### 4. Example Message Flow — Index a Runbook
+
+Runbook CRUD remains independent from AI indexing. A Runbook is persisted first; the Worker then observes the `Runbooks` Change Feed, queues an `IndexRunbookCommand`, chunks the latest content, generates embeddings, and replaces the derived vector index.
+
+```mermaid
+%%{init: {"theme": "base", "themeVariables": {"background": "#ffffff", "primaryTextColor": "#111827", "lineColor": "#475569"}}}%%
+flowchart TD
+    API["API<br/>Create / Update Runbook"]:::host
+    CrudHandler["Create / Update Runbook Handler"]:::application
+    Repo["IRunbookRepository"]:::application
+    Runbooks["Cosmos DB<br/>Runbooks /id"]:::data
+    ChangeFeed["Cosmos Change Feed"]:::data
+    Relay["RunbookIndexChangeFeedWorker"]:::host
+    Queue["Service Bus<br/>index-runbook"]:::messaging
+    Consumer["IndexRunbookWorker"]:::host
+    Handler["IndexRunbookHandler"]:::application
+    Chunker["RunbookChunker"]:::application
+    Embedder["IEmbeddingGenerator"]:::application
+    AI["text-embedding-3-small<br/>or deterministic local embedding"]:::ai
+    Store["IRunbookChunkStore"]:::application
+    Chunks["Cosmos DB<br/>RunbookChunks /runbookId<br/>1536-dim cosine vectors"]:::data
+
+    API --> CrudHandler
+    CrudHandler --> Repo
+    Repo --> Runbooks
+    Runbooks --> ChangeFeed
+    ChangeFeed --> Relay
+    Relay --> Queue
+    Queue --> Consumer
+    Consumer --> Handler
+    Handler --> Repo
+    Handler --> Chunker
+    Handler --> Embedder
+    Embedder --> AI
+    Handler --> Store
+    Store --> Chunks
+
+    classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
+    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+    classDef messaging fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
+    classDef ai fill:#f3e8ff,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
+```
+
 ## Current Functionality
 
 Engineers can currently:
@@ -352,7 +400,7 @@ Engineers can currently:
 - Create, view, edit, and delete operational Runbooks.
 - Retry failed analysis through the backend retry/requeue capability.
 
-Reliability and AI features currently include:
+Reliability, AI, and ingestion features currently include:
 
 - Cosmos transactional outbox for Incident submission.
 - Cosmos Change Feed relay to Service Bus.
@@ -366,6 +414,11 @@ Reliability and AI features currently include:
 - Bounded Azure AI SDK retries plus an overall request timeout.
 - Failure classification for timeout, throttling, service/client failures, and invalid model responses.
 - Structured AI success/failure logs with duration, model, deployment, and failure category.
+- Dedicated `RunbookChunks` Cosmos container partitioned by `/runbookId` with a 1536-dimension cosine `quantizedFlat` vector index.
+- `text-embedding-3-small` deployment configuration plus deterministic local embedding generation.
+- Deterministic overlapping Runbook chunking and replace-based vector persistence.
+- Asynchronous Runbook indexing through the `Runbooks` Change Feed, `index-runbook` Service Bus queue, and `IndexRunbookWorker`.
+- Runbook deletion cleans up derived vector chunks before deleting the source Runbook.
 
 ## Projects
 
@@ -373,10 +426,10 @@ Reliability and AI features currently include:
 | ------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
 | [`IncidentIQ.Web`](src/IncidentIQ.Web/)                       | React frontend for Incidents, Runbooks, and persisted AI analysis                  |
 | [`IncidentIQ.Api`](src/IncidentIQ.Api/)                       | ASP.NET Core HTTP API and Problem Details boundary                                 |
-| [`IncidentIQ.Worker`](src/IncidentIQ.Worker/)                 | Change Feed outbox relay and Service Bus analysis processing                       |
+| [`IncidentIQ.Worker`](src/IncidentIQ.Worker/)                 | Change Feed relays plus Service Bus Incident-analysis and Runbook-indexing processing |
 | [`IncidentIQ.Domain`](src/IncidentIQ.Domain/)                 | Core business models and lifecycle rules                                           |
 | [`IncidentIQ.Application`](src/IncidentIQ.Application/)       | Use cases, handlers, validation, and external-service abstractions                 |
-| [`IncidentIQ.Infrastructure`](src/IncidentIQ.Infrastructure/) | Cosmos DB, Service Bus, Azure OpenAI, local AI, and Azure SDK implementations      |
+| [`IncidentIQ.Infrastructure`](src/IncidentIQ.Infrastructure/) | Cosmos DB/vector persistence, Service Bus, Azure OpenAI, local AI, and SDK adapters |
 | [`infra`](infra/)                                             | Bicep, identities/RBAC, deployment configuration, and local emulator configuration |
 | [`tests`](tests/)                                             | Application, API, Worker, and reliability tests                                    |
 
@@ -404,7 +457,7 @@ IncidentIQ has Visual Studio Container/Compose support. Select the appropriate D
 docker compose up --build
 ```
 
-The local Worker runs with `DOTNET_ENVIRONMENT=Development`, so `IIncidentAnalyzer` resolves to `DevelopmentDummyIncidentAnalyzer`. The full asynchronous workflow therefore works locally without Azure OpenAI credentials.
+The local Worker runs with `DOTNET_ENVIRONMENT=Development`, so `IIncidentAnalyzer` resolves to `DevelopmentDummyIncidentAnalyzer` and `IEmbeddingGenerator` resolves to `DevelopmentDummyEmbeddingGenerator`. Incident analysis and Runbook vector ingestion therefore work locally without Azure OpenAI credentials.
 
 Typical local endpoints:
 
@@ -433,7 +486,5 @@ See [tests/ReadMe.md](tests/ReadMe.md) for the testing strategy and reliability 
 See the [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for common development issues and resolutions.
 
 ## Roadmap
-
-Stage 10 delivers the first complete Azure AI incident-analysis flow. The next stage adds Runbook chunking, embeddings, Cosmos vector search, and retrieval for RAG.
 
 See the full [Development Roadmap](docs/ROADMAP.md).

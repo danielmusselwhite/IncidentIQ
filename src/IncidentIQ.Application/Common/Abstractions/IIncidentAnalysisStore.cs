@@ -1,4 +1,4 @@
-﻿using IncidentIQ.Application.Analyse;
+﻿using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
 namespace IncidentIQ.Application.Common.Abstractions;
 

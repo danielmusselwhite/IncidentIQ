@@ -8,7 +8,8 @@ namespace IncidentIQ.Application.Runbooks.Delete;
 /// </summary>
 /// <param name="runbookRepository">The repository used to manage runbooks.</param>
 public sealed class DeleteRunbookHandler(
-    IRunbookRepository runbookRepository)
+    IRunbookRepository runbookRepository,
+    IRunbookChunkStore runbookChunkStore)
 {
     /// <summary>
     /// Handles the deletion of a runbook.
@@ -28,6 +29,13 @@ public sealed class DeleteRunbookHandler(
             throw new RunbookNotFoundException(id);
         }
 
+        // Remove the derived vector-search representation first. If this fails, the source Runbook remains and can be retried safely.
+        await runbookChunkStore.ReplaceForRunbookAsync(
+            id,
+            [], // empty vectorised chunks, meaning it will effectively remove all existing chunks then replace them with nothing.
+            cancellationToken);
+
+        // Delete the runbook itself after successfully removing its derived representation.
         await runbookRepository.DeleteAsync(
             id,
             cancellationToken);

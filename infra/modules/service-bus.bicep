@@ -1,4 +1,4 @@
-// Azure Service Bus namespace, AnalyseIncident queue and Worker messaging RBAC.
+// Azure Service Bus namespace, application queues and Worker messaging RBAC.
 targetScope = 'resourceGroup'
 
 param location string
@@ -8,6 +8,8 @@ param tags object
 param workerPrincipalId string
 
 param analyseIncidentQueueName string = 'analyse-incident'
+param indexRunbookQueueName string = 'index-runbook'
+
 param maxDeliveryCount int = 5
 
 var namespaceName = 'sb-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
@@ -26,32 +28,26 @@ resource serviceBusNamespace 'Microsoft.ServiceBus/namespaces@2026-01-01' = {
     minimumTlsVersion: '1.2'
     publicNetworkAccess: 'Enabled'
 
-    // Keep SAS available while Managed Identity/RBAC is being verified end-to-end.
-    // This can be disabled during the later security-hardening stage.
+    // Keep SAS available while the local emulator/development configuration
+    // still uses connection-string authentication.
     disableLocalAuth: false
 
     zoneRedundant: false
   }
 }
 
+// Durable queue used by the asynchronous Incident analysis workflow.
 resource analyseIncidentQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' = {
   parent: serviceBusNamespace
   name: analyseIncidentQueueName
 
   properties: {
-    // PeekLock initially owns a delivery for one minute. The Worker SDK can renew
-    // the lock while a longer-running analysis is still being processed.
     lockDuration: 'PT1M'
-
-    // Service Bus moves a message to the DLQ after the configured delivery limit.
-    // The same value is also passed to the Worker application configuration.
     maxDeliveryCount: maxDeliveryCount
 
-    // Analysis commands should not remain actionable indefinitely.
     defaultMessageTimeToLive: 'P1D'
     deadLetteringOnMessageExpiration: true
 
-    // Suppress repeated MessageIds published within the duplicate-detection window.
     requiresDuplicateDetection: true
     duplicateDetectionHistoryTimeWindow: 'PT10M'
 
@@ -62,14 +58,47 @@ resource analyseIncidentQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01
   }
 }
 
-// Built-in Azure Service Bus Data Sender role. Required by IncidentOutboxWorker.
+// Durable queue used to asynchronously generate and persist vectorised
+// representations of Runbooks.
+resource indexRunbookQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' = {
+  parent: serviceBusNamespace
+  name: indexRunbookQueueName
+
+  properties: {
+    lockDuration: 'PT1M'
+    maxDeliveryCount: maxDeliveryCount
+
+    defaultMessageTimeToLive: 'P1D'
+    deadLetteringOnMessageExpiration: true
+
+    // The publisher uses RunbookId + source update timestamp as MessageId,
+    // allowing repeated publication of the same Runbook revision to be suppressed.
+    requiresDuplicateDetection: true
+    duplicateDetectionHistoryTimeWindow: 'PT10M'
+
+    requiresSession: false
+    enableBatchedOperations: true
+    enablePartitioning: false
+    status: 'Active'
+  }
+}
+
+// Built-in Azure Service Bus Data Sender role.
 var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
   '69a216fc-b8fb-44d8-bc22-1f3c2cd27a39'
 )
 
-resource workerSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+// Built-in Azure Service Bus Data Receiver role.
+var serviceBusDataReceiverRoleDefinitionId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0'
+)
+
+// Incident outbox relay publishes AnalyseIncident commands.
+resource workerAnalyseIncidentSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(analyseIncidentQueue.id, workerPrincipalId, serviceBusDataSenderRoleDefinitionId)
+
   scope: analyseIncidentQueue
 
   properties: {
@@ -79,15 +108,37 @@ resource workerSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' =
   }
 }
 
-// Built-in Azure Service Bus Data Receiver role. Required by AnalyseIncidentWorker.
-var serviceBusDataReceiverRoleDefinitionId = subscriptionResourceId(
-  'Microsoft.Authorization/roleDefinitions',
-  '4f6d3b9b-027b-4f4c-9142-0e5a2a2247e0'
-)
-
-resource workerReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+// AnalyseIncidentWorker consumes AnalyseIncident commands.
+resource workerAnalyseIncidentReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(analyseIncidentQueue.id, workerPrincipalId, serviceBusDataReceiverRoleDefinitionId)
+
   scope: analyseIncidentQueue
+
+  properties: {
+    principalId: workerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataReceiverRoleDefinitionId
+  }
+}
+
+// Runbook Change Feed relay publishes IndexRunbook commands.
+resource workerIndexRunbookSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(indexRunbookQueue.id, workerPrincipalId, serviceBusDataSenderRoleDefinitionId)
+
+  scope: indexRunbookQueue
+
+  properties: {
+    principalId: workerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataSenderRoleDefinitionId
+  }
+}
+
+// IndexRunbookWorker will consume IndexRunbook commands.
+resource workerIndexRunbookReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(indexRunbookQueue.id, workerPrincipalId, serviceBusDataReceiverRoleDefinitionId)
+
+  scope: indexRunbookQueue
 
   properties: {
     principalId: workerPrincipalId
@@ -99,3 +150,4 @@ resource workerReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01'
 output namespaceName string = serviceBusNamespace.name
 output fullyQualifiedNamespace string = '${serviceBusNamespace.name}.servicebus.windows.net'
 output analyseIncidentQueueName string = analyseIncidentQueue.name
+output indexRunbookQueueName string = indexRunbookQueue.name
