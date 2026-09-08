@@ -225,15 +225,15 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 
 ### 11B — Runbook Vector Retrieval
 
-* [ ] Define Runbook retrieval abstraction/result model.
-* [ ] Generate embeddings for retrieval queries.
-* [ ] Implement Cosmos `VectorDistance` Runbook chunk retrieval.
-* [ ] Return top-K relevant Runbook chunks.
-* [ ] Add metadata filtering, including service filtering.
-* [ ] Handle empty/no-result retrieval scenarios.
-* [ ] Add retrieval tests.
+* [x] Define Runbook retrieval abstraction/result model.
+* [x] Generate embeddings for retrieval queries.
+* [x] Implement Cosmos `VectorDistance` Runbook chunk retrieval.
+* [x] Return top-K relevant Runbook chunks.
+* [x] Add metadata filtering, including service filtering.
+* [x] Handle empty/no-result retrieval scenarios.
+* [x] Add retrieval tests.
 * [ ] Measure retrieval latency.
-* [ ] Measure Cosmos RU usage.
+* [ ] Measure Cosmos RU usage (response units which we are costed on).
 * [ ] Verify vector retrieval in Azure.
 * [ ] Update documentation and architecture notes.
 

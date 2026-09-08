@@ -1,6 +1,8 @@
 ﻿using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using Microsoft.Azure.Cosmos;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 
 namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
 {
@@ -11,11 +13,14 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
     {
 
         private readonly Container _container;
+        private readonly ILogger<CosmosRunbookChunkRetriever> _logger;
 
         public CosmosRunbookChunkRetriever(
             CosmosClient cosmosClient,
-            IOptions<CosmosOptions> options)
+            IOptions<CosmosOptions> options,
+            ILogger<CosmosRunbookChunkRetriever> logger)
         {
+            _logger = logger;
             var cosmosOptions = options.Value;
 
             _container = cosmosClient.GetContainer(
@@ -26,13 +31,18 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
 
         public async Task<IReadOnlyList<RunbookChunkMatch>> RetrieveAsync(IReadOnlyList<float> queryEmbedding, string? service, int topK, CancellationToken cancellationToken = default)
         {
+            // Validation
             ArgumentNullException.ThrowIfNull(queryEmbedding);
             if (queryEmbedding.Count == 0) throw new ArgumentException("Query embedding cannot be empty.", nameof(queryEmbedding));
             ArgumentOutOfRangeException.ThrowIfNegativeOrZero(topK);
 
-            var WhereClause = !string.IsNullOrEmpty(service) ? "WHERE c.service = @service" : string.Empty;
+            // Begin measuring
+            var stopwatch = Stopwatch.StartNew();
+            var totalRequestCharge = 0d;
 
             // Construct the SQL query to retrieve the top K Runbook chunks based on vector similarity
+            var WhereClause = !string.IsNullOrEmpty(service) ? "WHERE c.service = @service" : string.Empty;
+
             var query = new QueryDefinition(
                 $"""
                 SELECT TOP @topK
@@ -48,6 +58,7 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
                 """)
                 .WithParameter("@topK", topK)
                 .WithParameter("@embedding", queryEmbedding.ToArray()); // safer as we want to ensure the Cosmos DSK receives the vector as an ordinary numeric array
+
             if (!string.IsNullOrEmpty(service))
                 query.WithParameter("@service", service);
 
@@ -74,9 +85,23 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
                     chunk.Content,
                     chunk.Distance
                 )));
+                totalRequestCharge += response.RequestCharge; // track how many request units were used
             }
 
+            // end monitoring
+            stopwatch.Stop();
+            // Log the request
+            _logger.LogInformation(
+                "Retrieved {ResultCount} Runbook chunks using vector search in {DurationMs} ms. " +
+                "Cosmos request charge: {RequestCharge} RU. TopK: {TopK}. Service: {Service}.",
+                chunks.Count,
+                stopwatch.ElapsedMilliseconds, // latency
+                totalRequestCharge, // request units used (what we are paying for)
+                topK,
+                service ?? "all");
+
             return chunks;
+
         }
     }
 }
