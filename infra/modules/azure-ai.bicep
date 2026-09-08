@@ -127,6 +127,10 @@ resource embeddingModelDeployment 'Microsoft.CognitiveServices/accounts/deployme
 
     versionUpgradeOption: 'OnceNewDefaultVersionAvailable'
   }
+
+  dependsOn: [
+    analysisModelDeployment // Ensure these deployments are not run in parallel, as whilst this does not truly depend on the analysis deployment, Azure OpenAI doesn't allow concurrent deployments of the same model so without this it throws RequestConflict exception.
+  ]
 }
 
 resource workerOpenAiUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
