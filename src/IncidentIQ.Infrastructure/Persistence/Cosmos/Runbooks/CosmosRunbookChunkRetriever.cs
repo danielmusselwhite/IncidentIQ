@@ -41,25 +41,25 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
             var totalRequestCharge = 0d;
 
             // Construct the SQL query to retrieve the top K Runbook chunks based on vector similarity
-            var WhereClause = !string.IsNullOrEmpty(service) ? "WHERE c.service = @service" : string.Empty;
+            var whereClause = !string.IsNullOrEmpty(service) ? "WHERE c.service = @service" : string.Empty;
 
-            var query = new QueryDefinition(
+            var query = new QueryDefinition( // Alias the projected Cosmos fields to ensure they line up with the MatchResult properties we cast them to later
                 $"""
                 SELECT TOP @topK
-                    c.runbookId,
-                    c.chunkIndex,
-                    c.title,
-                    c.service,
-                    c.content,
-                    VectorDistance(c.embedding, @embedding) AS distance
+                c.runbookId AS RunbookId,
+                c.chunkIndex AS ChunkIndex,
+                c.title AS Title,
+                c.service AS Service,
+                c.content AS Content,
+                VectorDistance(c.embedding, @embedding) AS Distance
                 FROM c
-                {WhereClause}
+                {whereClause}
                 ORDER BY VectorDistance(c.embedding, @embedding)
                 """)
                 .WithParameter("@topK", topK)
                 .WithParameter("@embedding", queryEmbedding.ToArray()); // safer as we want to ensure the Cosmos DSK receives the vector as an ordinary numeric array
 
-            if (!string.IsNullOrEmpty(service))
+            if (!string.IsNullOrWhiteSpace(service))
                 query.WithParameter("@service", service);
 
             // Create an iterator to execute the query and retrieve the results as CosmosRunbookChunkMatchResult objects
@@ -96,7 +96,7 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
                 "Cosmos request charge: {RequestCharge} RU. TopK: {TopK}. Service: {Service}.",
                 chunks.Count,
                 stopwatch.ElapsedMilliseconds, // latency
-                totalRequestCharge, // request units used (what we are paying for)
+                totalRequestCharge, // cosmos request units consumed
                 topK,
                 service ?? "all");
 
