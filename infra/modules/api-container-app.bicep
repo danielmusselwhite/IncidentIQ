@@ -14,12 +14,23 @@ param apiIdentityClientId string
 param acrLoginServer string
 param image string
 
+// Cosmos DB
 param cosmosEndpoint string
 param cosmosDatabaseName string
 param cosmosIncidentsContainerName string
 param cosmosRunbooksContainerName string
 param cosmosRunbookChunksContainerName string
 param cosmosChangeFeedLeasesContainerName string
+
+// Azure OpenAI
+param azureAiEndpoint string
+param azureAiDeploymentName string
+param azureAiModelName string
+
+// Runbook embeddings
+param azureAiEmbeddingDeploymentName string
+param azureAiEmbeddingModelName string
+param azureAiEmbeddingDimensions int
 
 param applicationInsightsConnectionString string
 
@@ -109,11 +120,43 @@ resource apiContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
               value: cosmosChangeFeedLeasesContainerName
             }
 
+            // Shared Azure OpenAI configuration.
+            // DeploymentName and ModelName are also supplied because they are
+            // required by AzureAIOptions validation.
+            {
+              name: 'AzureAI__Endpoint'
+              value: azureAiEndpoint
+            }
+            {
+              name: 'AzureAI__DeploymentName'
+              value: azureAiDeploymentName
+            }
+            {
+              name: 'AzureAI__ModelName'
+              value: azureAiModelName
+            }
+
+            // Runbook semantic-search embedding configuration.
+            {
+              name: 'AzureAI__Embedding__DeploymentName'
+              value: azureAiEmbeddingDeploymentName
+            }
+            {
+              name: 'AzureAI__Embedding__ModelName'
+              value: azureAiEmbeddingModelName
+            }
+            {
+              name: 'AzureAI__Embedding__Dimensions'
+              value: string(azureAiEmbeddingDimensions)
+            }
+
+            // Observability
             {
               name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
               value: applicationInsightsConnectionString
             }
 
+            // Frontend
             {
               name: 'Frontend__Origin'
               value: frontendOrigin

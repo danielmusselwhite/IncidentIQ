@@ -46,8 +46,8 @@ param azureAiEmbeddingDeploymentName string = 'runbook-embedding'
 param azureAiEmbeddingDeploymentSkuName string = 'GlobalStandard'
 param azureAiEmbeddingDeploymentCapacity int = 10
 
-// One value is shared with Cosmos and the Worker so the stored vector policy and
-// generated embedding dimensions cannot accidentally become inconsistent.
+// One value is shared with Cosmos and the application workloads so the stored
+// vector policy and generated embedding dimensions cannot become inconsistent.
 param azureAiEmbeddingDimensions int = 1536
 
 // -----------------------------------------------------------------------------
@@ -107,8 +107,6 @@ module applicationInsights './modules/application-insights.bicep' = {
 // Messaging
 // -----------------------------------------------------------------------------
 
-// Service Bus currently carries durable AnalyseIncident commands.
-// The IndexRunbook queue is added later when the ingestion messaging flow is built.
 module serviceBus './modules/service-bus.bicep' = {
   name: 'serviceBus'
 
@@ -197,6 +195,41 @@ module frontend './modules/frontend.bicep' = {
 }
 
 // -----------------------------------------------------------------------------
+// Azure OpenAI
+// -----------------------------------------------------------------------------
+
+// Both model deployments live under one Azure OpenAI account.
+// The API uses embeddings for semantic Runbook search, while the Worker uses
+// embeddings for indexing and the chat deployment for incident analysis.
+module azureAi './modules/azure-ai.bicep' = {
+  name: 'azureAi'
+
+  params: {
+    location: azureAiLocation
+    projectName: projectName
+    environmentName: environmentName
+    tags: tags
+
+    apiPrincipalId: apiIdentity.outputs.principalId
+    workerPrincipalId: workerIdentity.outputs.principalId
+
+    // Incident analysis
+    modelName: azureAiModelName
+    modelVersion: azureAiModelVersion
+    deploymentName: azureAiDeploymentName
+    deploymentSkuName: azureAiDeploymentSkuName
+    deploymentCapacity: azureAiDeploymentCapacity
+
+    // Runbook embeddings
+    embeddingModelName: azureAiEmbeddingModelName
+    embeddingModelVersion: azureAiEmbeddingModelVersion
+    embeddingDeploymentName: azureAiEmbeddingDeploymentName
+    embeddingDeploymentSkuName: azureAiEmbeddingDeploymentSkuName
+    embeddingDeploymentCapacity: azureAiEmbeddingDeploymentCapacity
+  }
+}
+
+// -----------------------------------------------------------------------------
 // API Container App
 // -----------------------------------------------------------------------------
 
@@ -217,6 +250,7 @@ module apiContainerApp './modules/api-container-app.bicep' = {
     acrLoginServer: acr.outputs.acrLoginServer
     image: apiImage
 
+    // Cosmos
     cosmosEndpoint: cosmos.outputs.endpoint
     cosmosDatabaseName: cosmos.outputs.databaseName
     cosmosIncidentsContainerName: cosmos.outputs.incidentsContainerName
@@ -224,42 +258,20 @@ module apiContainerApp './modules/api-container-app.bicep' = {
     cosmosRunbookChunksContainerName: cosmos.outputs.runbookChunksContainerName
     cosmosChangeFeedLeasesContainerName: cosmos.outputs.changeFeedLeasesContainerName
 
+    // Shared Azure OpenAI configuration
+    azureAiEndpoint: azureAi.outputs.endpoint
+    azureAiDeploymentName: azureAi.outputs.analysisDeploymentName
+    azureAiModelName: azureAi.outputs.analysisModelName
+
+    // Runbook embedding AI
+    azureAiEmbeddingDeploymentName: azureAi.outputs.embeddingDeploymentName
+    azureAiEmbeddingModelName: azureAi.outputs.embeddingModelName
+    azureAiEmbeddingDimensions: azureAiEmbeddingDimensions
+
+    // Observability
     applicationInsightsConnectionString: applicationInsights.outputs.connectionString
 
     frontendOrigin: frontend.outputs.url
-  }
-}
-
-// -----------------------------------------------------------------------------
-// Azure OpenAI
-// -----------------------------------------------------------------------------
-
-// Both model deployments live under one Azure OpenAI account and are accessed
-// by the Worker's existing managed identity.
-module azureAi './modules/azure-ai.bicep' = {
-  name: 'azureAi'
-
-  params: {
-    location: azureAiLocation
-    projectName: projectName
-    environmentName: environmentName
-    tags: tags
-
-    workerPrincipalId: workerIdentity.outputs.principalId
-
-    // Incident analysis
-    modelName: azureAiModelName
-    modelVersion: azureAiModelVersion
-    deploymentName: azureAiDeploymentName
-    deploymentSkuName: azureAiDeploymentSkuName
-    deploymentCapacity: azureAiDeploymentCapacity
-
-    // Runbook embeddings
-    embeddingModelName: azureAiEmbeddingModelName
-    embeddingModelVersion: azureAiEmbeddingModelVersion
-    embeddingDeploymentName: azureAiEmbeddingDeploymentName
-    embeddingDeploymentSkuName: azureAiEmbeddingDeploymentSkuName
-    embeddingDeploymentCapacity: azureAiEmbeddingDeploymentCapacity
   }
 }
 
