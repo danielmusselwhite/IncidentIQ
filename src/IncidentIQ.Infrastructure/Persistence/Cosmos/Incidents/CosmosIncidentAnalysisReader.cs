@@ -5,7 +5,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
 using System.Net;
 
-namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
+namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents;
 
 /// <summary>
 /// Reads persisted incident analysis results from Cosmos DB.

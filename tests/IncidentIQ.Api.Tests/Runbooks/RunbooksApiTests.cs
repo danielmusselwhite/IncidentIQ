@@ -1,7 +1,8 @@
 ﻿using IncidentIQ.Api.Contracts.Runbooks;
+using IncidentIQ.Api.Tests.Fakes;
 using IncidentIQ.Api.Tests.Infrastructure;
+using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using System.Net;
-using System.Net.Http.Json;
 
 namespace IncidentIQ.Api.Tests.Runbooks;
 
@@ -122,5 +123,96 @@ public sealed class RunbooksApiTests(
             await _client.GetAsync($"/api/runbooks/{created.Id}");
 
         Assert.Equal(HttpStatusCode.NotFound, getResponse.StatusCode);
+    }
+
+
+
+
+    [Fact]
+    public async Task Search_WhenQueryIsValid_ReturnsMatchingChunks()
+    {
+        // Arrange
+        var runbookId = Guid.NewGuid();
+
+        var retriever = factory.RunbookChunkRetriever;
+
+        retriever.Clear();
+
+        retriever.SetResults(
+            new RunbookChunkMatch(
+                runbookId,
+                0,
+                "Payment Gateway Recovery",
+                "Payments",
+                "Check connectivity to the external payment gateway.",
+                0.12));
+
+        // Act
+        var response = await _client.GetAsync(
+            "/api/runbooks/search?query=payment%20gateway%20timeout&service=Payments&topK=5");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var matches = await response.Content
+            .ReadFromJsonAsync<RunbookChunkMatchResponse[]>();
+
+        Assert.NotNull(matches);
+        Assert.Single(matches);
+
+        var match = matches[0];
+
+        Assert.Equal(runbookId, match.RunbookId);
+        Assert.Equal(0, match.ChunkIndex);
+        Assert.Equal("Payment Gateway Recovery", match.Title);
+        Assert.Equal("Payments", match.Service);
+        Assert.Equal("Check connectivity to the external payment gateway.", match.Content);
+        Assert.Equal(0.12, match.Distance);
+    }
+
+    [Fact]
+    public async Task Search_WhenNoChunksMatch_ReturnsEmptyArray()
+    {
+        // Arrange
+        var retriever = factory.RunbookChunkRetriever;
+
+        retriever.Clear();
+
+        // Act
+        var response = await _client.GetAsync(
+            "/api/runbooks/search?query=unknown%20failure");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var matches = await response.Content
+            .ReadFromJsonAsync<RunbookChunkMatchResponse[]>();
+
+        Assert.NotNull(matches);
+        Assert.Empty(matches);
+    }
+
+    [Fact]
+    public async Task Search_WhenQueryIsEmpty_ReturnsBadRequest()
+    {
+        // Act
+        var response = await _client.GetAsync(
+            "/api/runbooks/search?query=&topK=5");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(21)]
+    public async Task Search_WhenTopKIsOutsideAllowedRange_ReturnsBadRequest(int topK)
+    {
+        // Act
+        var response = await _client.GetAsync(
+            $"/api/runbooks/search?query=payment%20timeout&topK={topK}");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
 }

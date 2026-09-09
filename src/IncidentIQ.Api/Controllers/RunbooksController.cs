@@ -3,6 +3,7 @@ using IncidentIQ.Application.Runbooks.Create;
 using IncidentIQ.Application.Runbooks.Delete;
 using IncidentIQ.Application.Runbooks.GetAll;
 using IncidentIQ.Application.Runbooks.GetById;
+using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using IncidentIQ.Application.Runbooks.Update;
 using Microsoft.AspNetCore.Mvc;
 
@@ -15,7 +16,8 @@ public sealed class RunbooksController(
     GetRunbookByIdHandler getRunbookByIdHandler,
     GetAllRunbooksHandler getAllRunbooksHandler,
     UpdateRunbookHandler updateRunbookHandler,
-    DeleteRunbookHandler deleteRunbookHandler)
+    DeleteRunbookHandler deleteRunbookHandler,
+    RetrieveRunbookChunksHandler retrieveRunbookChunksHandler)
     : ControllerBase
 {
 
@@ -137,5 +139,33 @@ public sealed class RunbooksController(
             cancellationToken);
 
         return NoContent();
+    }
+
+    /// <summary>
+    /// Searches indexed Runbook chunks using semantic vector similarity.
+    /// </summary>
+    /// <param name="query">Natural-language text describing the operational guidance to find.</param>
+    /// <param name="service">Optional service used to restrict matching Runbook chunks.</param>
+    /// <param name="topK">Maximum number of matching chunks to return.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The most semantically similar Runbook chunks, ordered by vector distance.</returns>
+    [HttpGet("search")]
+    [ProducesResponseType<IReadOnlyCollection<RunbookChunkMatchResponse>>(StatusCodes.Status200OK)]
+    [ProducesResponseType(StatusCodes.Status400BadRequest)]
+    public async Task<ActionResult<IReadOnlyCollection<RunbookChunkMatchResponse>>> Search(
+        [FromQuery] string query,
+        [FromQuery] string? service = null,
+        [FromQuery] int topK = 5,
+        CancellationToken cancellationToken = default)
+    {
+        var results = await retrieveRunbookChunksHandler.HandleAsync(
+            new RetrieveRunbookChunksQuery(query, service, topK),
+            cancellationToken);
+
+        var response = results
+            .Select(RunbookChunkMatchResponse.FromApplication)
+            .ToArray();
+
+        return Ok(response);
     }
 }

@@ -24,3 +24,16 @@ export interface UpdateRunbookRequest {
   service: string;
   content: string;
 }
+
+/**
+ * Represents a Runbook chunk returned by semantic vector search.
+ * Lower distance values indicate a closer semantic match.
+ */
+export interface RunbookChunkMatch {
+    runbookId: string;
+    chunkIndex: number;
+    title: string;
+    service: string;
+    content: string;
+    distance: number;
+}

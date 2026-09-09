@@ -12,6 +12,9 @@ param environmentName string
 @description('Tags applied to the Azure OpenAI resource.')
 param tags object = {}
 
+@description('Principal ID of the API managed identity that will call Azure OpenAI for semantic Runbook search.')
+param apiPrincipalId string
+
 @description('Principal ID of the Worker managed identity that will call Azure OpenAI.')
 param workerPrincipalId string
 
@@ -56,8 +59,8 @@ param embeddingDeploymentCapacity int = 10
 var accountName = 'oai-${projectName}-${environmentName}-${uniqueString(resourceGroup().id)}'
 
 // Built-in Cognitive Services OpenAI User role.
-// The assignment is made at account scope, so the Worker can invoke both the
-// incident-analysis and runbook-embedding deployments without another role.
+// Assignments are made at account scope so the API and Worker can invoke
+// the model deployments required by their workloads.
 var cognitiveServicesOpenAIUserRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
   '5e0bd9bd-7b93-4f28-af87-19fc36ad61bd'
@@ -77,7 +80,7 @@ resource openAiAccount 'Microsoft.CognitiveServices/accounts@2025-12-01' = {
     // Managed Identity / Microsoft Entra authentication only.
     disableLocalAuth: true
 
-    // Public access is acceptable for the current development environment.
+    // Public access is acceptable for the development environment.
     // Authentication is still enforced through Microsoft Entra ID/RBAC.
     publicNetworkAccess: 'Enabled'
 
@@ -86,7 +89,7 @@ resource openAiAccount 'Microsoft.CognitiveServices/accounts@2025-12-01' = {
   }
 }
 
-// Existing Stage 10 deployment used to generate structured incident analysis.
+// Deployment used to generate structured incident analysis.
 resource analysisModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-12-01' = {
   name: deploymentName
   parent: openAiAccount
@@ -107,8 +110,8 @@ resource analysisModelDeployment 'Microsoft.CognitiveServices/accounts/deploymen
   }
 }
 
-// Embedding deployment used to convert Runbook chunks into numeric vectors.
-// These vectors are later persisted in Cosmos DB for similarity search.
+// Embedding deployment used to convert Runbook chunks and semantic-search
+// queries into vectors.
 resource embeddingModelDeployment 'Microsoft.CognitiveServices/accounts/deployments@2025-12-01' = {
   name: embeddingDeploymentName
   parent: openAiAccount
@@ -129,10 +132,27 @@ resource embeddingModelDeployment 'Microsoft.CognitiveServices/accounts/deployme
   }
 
   dependsOn: [
-    analysisModelDeployment // Ensure these deployments are not run in parallel, as whilst this does not truly depend on the analysis deployment, Azure OpenAI doesn't allow concurrent deployments of the same model so without this it throws RequestConflict exception.
+    // Serialize model deployments because Azure OpenAI can reject concurrent
+    // deployment operations against the same account with RequestConflict.
+    analysisModelDeployment
   ]
 }
 
+// The API requires Azure OpenAI access to generate embeddings for semantic
+// Runbook search requests.
+resource apiOpenAiUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(openAiAccount.id, apiPrincipalId, cognitiveServicesOpenAIUserRoleDefinitionId)
+  scope: openAiAccount
+
+  properties: {
+    roleDefinitionId: cognitiveServicesOpenAIUserRoleDefinitionId
+    principalId: apiPrincipalId
+    principalType: 'ServicePrincipal'
+  }
+}
+
+// The Worker requires Azure OpenAI access for incident analysis and Runbook
+// indexing embeddings.
 resource workerOpenAiUserRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(openAiAccount.id, workerPrincipalId, cognitiveServicesOpenAIUserRoleDefinitionId)
   scope: openAiAccount

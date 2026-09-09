@@ -218,23 +218,27 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Generate and persist vectorised Runbook chunks.
 * [x] Verify create/update indexing end-to-end locally.
 * [x] Remove indexed chunks before deleting a Runbook.
-* [ ] Add final ingestion tests and edge-case coverage.
-* [ ] Deploy Runbook ingestion changes to Azure.
-* [ ] Verify real Azure embeddings, re-indexing, and deletion cleanup in Azure.
+* [x] Add final ingestion tests and edge-case coverage.
+* [x] Deploy Runbook ingestion changes to Azure.
+* [x] Verify real Azure embeddings, re-indexing, and deletion cleanup in Azure.
 * [x] Update ingestion documentation and architecture notes.
 
 ### 11B — Runbook Vector Retrieval
 
-* [ ] Define Runbook retrieval abstraction/result model.
-* [ ] Generate embeddings for retrieval queries.
-* [ ] Implement Cosmos `VectorDistance` Runbook chunk retrieval.
-* [ ] Return top-K relevant Runbook chunks.
-* [ ] Add metadata filtering, including service filtering.
-* [ ] Handle empty/no-result retrieval scenarios.
-* [ ] Add retrieval tests.
-* [ ] Measure retrieval latency.
-* [ ] Measure Cosmos RU usage.
-* [ ] Verify vector retrieval in Azure.
+* [x] Define Runbook retrieval abstraction/result model.
+* [x] Generate embeddings for retrieval queries.
+* [x] Implement Cosmos `VectorDistance` Runbook chunk retrieval.
+* [x] Return top-K relevant Runbook chunks.
+* [x] Add metadata filtering, including service filtering.
+* [x] Handle empty/no-result retrieval scenarios.
+* [x] Add retrieval tests.
+* [x] Measure retrieval latency.
+* [x] Measure Cosmos RU usage (response units which we are costed on).
+* [x] Verify vector retrieval in Azure.
+* [ ] Configure API Managed Identity/RBAC for Azure AI embedding access.
+* [ ] Pass Azure AI embedding configuration into the API Container App through Bicep.
+* [ ] Deploy Stage 11B infrastructure changes to Azure.
+* [ ] Verify vector retrieval end-to-end in Azure.
 * [ ] Update documentation and architecture notes.
 
 ## Stage 12 — Historical Incident Retrieval & RAG

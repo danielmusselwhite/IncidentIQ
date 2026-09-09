@@ -5,7 +5,7 @@ using IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
 
-namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
+namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents;
 
 /// <summary>
 /// Stores a completed incident and its generated analysis atomically in the same Cosmos logical partition.

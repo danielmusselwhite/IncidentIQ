@@ -1,6 +1,7 @@
 import type {
     CreateRunbookRequest,
     Runbook,
+    RunbookChunkMatch,
     UpdateRunbookRequest,
 } from "../types/runbook";
 import { ApiError, type ApiProblemDetails } from "./apiError";
@@ -127,4 +128,32 @@ async function throwApiError(response: Response): Promise<never> {
         response.status,
         problem?.errors,
     );
+}
+
+/**
+ * Searches indexed Runbook chunks using semantic vector similarity.
+ */
+export async function searchRunbookChunks(
+    query: string,
+    service?: string,
+    topK = 5,
+): Promise<RunbookChunkMatch[]> {
+    const params = new URLSearchParams({
+        query,
+        topK: topK.toString(),
+    });
+
+    if (service?.trim()) {
+        params.set("service", service.trim());
+    }
+
+    const response = await fetch(
+        `${apiBaseUrl}/api/runbooks/search?${params.toString()}`,
+    );
+
+    if (!response.ok) {
+        await throwApiError(response);
+    }
+
+    return response.json();
 }
