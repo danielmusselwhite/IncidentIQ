@@ -1,44 +1,62 @@
-import { useEffect, useMemo, useState } from "react";
+import {
+    useEffect,
+    useMemo,
+    useState,
+    type FormEvent,
+} from "react";
 import { Link } from "react-router-dom";
 
 import { ApiError } from "../../api/apiError";
-import { getRunbooks } from "../../api/runbooksApi";
-import type { Runbook } from "../../types/runbook";
+import {
+    getRunbooks,
+    searchRunbookChunks,
+} from "../../api/runbooksApi";
+import type {
+    Runbook,
+    RunbookChunkMatch,
+} from "../../types/runbook";
 
 import "./RunbooksPage.css";
 
 /**
- * Displays the runbook management page.
+ * Displays the Runbook management page.
  *
- * The page loads all runbooks from the API, allows the user to search them,
- * and displays the available runbooks in a table.
+ * The page supports:
+ * - normal client-side filtering of loaded Runbooks;
+ * - semantic vector search over indexed Runbook chunks;
+ * - navigation to individual Runbook details.
  */
 export default function Runbooks() {
-    // Stores the runbooks returned by the API.
+    // Stores the Runbooks returned by the API.
     const [runbooks, setRunbooks] = useState<Runbook[]>([]);
 
-    // Stores the current search value entered by the user.
+    // Client-side text used to filter the normal Runbook table.
     const [search, setSearch] = useState("");
 
-    // Tracks whether the initial API request is still in progress.
+    // Semantic search state.
+    const [semanticQuery, setSemanticQuery] = useState("");
+    const [semanticService, setSemanticService] = useState("");
+    const [semanticResults, setSemanticResults] =
+        useState<RunbookChunkMatch[]>([]);
+    const [isSemanticSearching, setIsSemanticSearching] =
+        useState(false);
+    const [semanticSearchError, setSemanticSearchError] =
+        useState<string | null>(null);
+    const [hasSemanticSearched, setHasSemanticSearched] =
+        useState(false);
+
+    // Tracks whether the initial Runbook request is still in progress.
     const [isLoading, setIsLoading] = useState(true);
 
     // Stores a user-friendly error message if loading fails.
     const [error, setError] = useState<string | null>(null);
 
     /**
-     * Loads the runbook list when the component first appears.
-     *
-     * The empty dependency array means this effect only runs when the
-     * component is first mounted.
+     * Loads the Runbook list when the component first appears.
      */
     useEffect(() => {
-        /**
-         * Retrieves runbooks from the API and updates the page state.
-         */
         async function loadRunbooks() {
             try {
-                // Reset the page state before starting the request.
                 setIsLoading(true);
                 setError(null);
 
@@ -52,27 +70,65 @@ export default function Runbooks() {
                     setError("Unable to load runbooks.");
                 }
             } finally {
-                // Stop showing the loading state regardless of success/failure.
                 setIsLoading(false);
             }
         }
 
-        // useEffect itself cannot be async, so the asynchronous work is
-        // performed by loadRunbooks() instead.
         void loadRunbooks();
     }, []);
 
     /**
-     * Produces the list of runbooks matching the current search text.
+     * Searches indexed Runbook chunks using semantic vector similarity.
      *
-     * Runbooks can be searched by title, service, description, or content.
+     * The query is sent only when the form is submitted so embedding and
+     * Cosmos vector-search requests are not generated on every keystroke.
+     */
+    async function handleSemanticSearch(event: FormEvent) {
+        event.preventDefault();
+
+        const query = semanticQuery.trim();
+        const service = semanticService.trim();
+
+        if (!query) {
+            return;
+        }
+
+        try {
+            setIsSemanticSearching(true);
+            setSemanticSearchError(null);
+            setHasSemanticSearched(true);
+
+            const results = await searchRunbookChunks(
+                query,
+                service || undefined,
+                5,
+            );
+
+            setSemanticResults(results);
+        } catch (error) {
+            setSemanticResults([]);
+
+            if (error instanceof ApiError) {
+                setSemanticSearchError(error.message);
+            } else {
+                setSemanticSearchError(
+                    "Unable to perform semantic Runbook search.",
+                );
+            }
+        } finally {
+            setIsSemanticSearching(false);
+        }
+    }
+
+    /**
+     * Produces the list of Runbooks matching the normal table search.
+     *
+     * This is a simple client-side text filter and is separate from semantic
+     * vector search.
      */
     const filteredRunbooks = useMemo(() => {
-        // Normalise the value so matching is case-insensitive and leading
-        // or trailing whitespace does not affect the result.
         const value = search.trim().toLowerCase();
 
-        // An empty search should display all runbooks.
         if (!value) {
             return runbooks;
         }
@@ -105,7 +161,6 @@ export default function Runbooks() {
                     </p>
                 </div>
 
-                {/* Navigate to the form for creating a new runbook. */}
                 <Link
                     className="button button--primary"
                     to="/runbooks/new"
@@ -113,6 +168,123 @@ export default function Runbooks() {
                     New Runbook
                 </Link>
             </header>
+
+            {/* Semantic vector search over indexed Runbook chunks. */}
+            <section className="runbooks-semantic-card">
+                <div className="runbooks-semantic-card__header">
+                    <div>
+                        <p className="runbooks-semantic-card__eyebrow">
+                            Semantic Search
+                        </p>
+
+                        <h2>Find relevant operational guidance</h2>
+
+                        <p>
+                            Describe an incident or symptom in natural language
+                            to find semantically related Runbook guidance.
+                        </p>
+                    </div>
+                </div>
+
+                <form
+                    className="runbooks-semantic-form"
+                    onSubmit={handleSemanticSearch}
+                >
+                    <input
+                        className="runbooks-semantic-form__query"
+                        type="search"
+                        placeholder="e.g. customers cannot checkout because the payment provider keeps timing out"
+                        value={semanticQuery}
+                        onChange={(event) =>
+                            setSemanticQuery(event.target.value)
+                        }
+                    />
+
+                    <input
+                        className="runbooks-semantic-form__service"
+                        type="text"
+                        placeholder="Service (optional)"
+                        value={semanticService}
+                        onChange={(event) =>
+                            setSemanticService(event.target.value)
+                        }
+                    />
+
+                    <button
+                        className="button button--primary"
+                        type="submit"
+                        disabled={
+                            isSemanticSearching ||
+                            !semanticQuery.trim()
+                        }
+                    >
+                        {isSemanticSearching
+                            ? "Searching..."
+                            : "Semantic Search"}
+                    </button>
+                </form>
+
+                {semanticSearchError && (
+                    <div className="runbooks-semantic-card__error">
+                        {semanticSearchError}
+                    </div>
+                )}
+
+                {!isSemanticSearching &&
+                    !semanticSearchError &&
+                    hasSemanticSearched &&
+                    semanticResults.length === 0 && (
+                        <div className="runbooks-semantic-card__empty">
+                            No matching Runbook chunks were found.
+                        </div>
+                    )}
+
+                {semanticResults.length > 0 && (
+                    <div className="runbooks-semantic-results">
+                        <div className="runbooks-semantic-results__header">
+                            <h3>Relevant Runbook Chunks</h3>
+
+                            <span>
+                                {semanticResults.length} result
+                                {semanticResults.length === 1 ? "" : "s"}
+                            </span>
+                        </div>
+
+                        <div className="runbooks-semantic-results__list">
+                            {semanticResults.map((result) => (
+                                <Link
+                                    key={`${result.runbookId}-${result.chunkIndex}`}
+                                    className="runbooks-semantic-result"
+                                    to={`/runbooks/${result.runbookId}`}
+                                >
+                                    <div className="runbooks-semantic-result__header">
+                                        <div>
+                                            <h3>{result.title}</h3>
+
+                                            <span className="runbooks-semantic-result__service">
+                                                {result.service}
+                                            </span>
+                                        </div>
+
+                                        <span className="runbooks-semantic-result__distance">
+                                            Distance{" "}
+                                            {result.distance.toFixed(3)}
+                                        </span>
+                                    </div>
+
+                                    <p className="runbooks-semantic-result__content">
+                                        {result.content}
+                                    </p>
+
+                                    <span className="runbooks-semantic-result__chunk">
+                                        Chunk {result.chunkIndex + 1}
+                                    </span>
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </section>
 
             <section className="runbooks-table-card">
                 <div className="runbooks-table-card__header">
@@ -128,30 +300,26 @@ export default function Runbooks() {
                     <input
                         className="runbooks-search"
                         type="search"
-                        placeholder="Search runbooks..."
+                        placeholder="Filter runbooks..."
                         value={search}
-                        onChange={(event) => setSearch(event.target.value)}
+                        onChange={(event) =>
+                            setSearch(event.target.value)
+                        }
                     />
                 </div>
 
-                {/* Show while the API request is still running. */}
                 {isLoading && (
                     <div className="runbooks-page__state">
                         Loading runbooks...
                     </div>
                 )}
 
-                {/* Show an error only after loading has finished. */}
                 {!isLoading && error && (
                     <div className="runbooks-page__error">
                         {error}
                     </div>
                 )}
 
-                {/*
-                 * Show an empty state when loading succeeds but there are
-                 * either no runbooks or no runbooks matching the search.
-                 */}
                 {!isLoading &&
                     !error &&
                     filteredRunbooks.length === 0 && (
@@ -179,10 +347,6 @@ export default function Runbooks() {
                         </div>
                     )}
 
-                {/*
-                 * Only render the table once loading is complete, there is no
-                 * error, and at least one runbook matches the current search.
-                 */}
                 {!isLoading &&
                     !error &&
                     filteredRunbooks.length > 0 && (
@@ -214,9 +378,7 @@ export default function Runbooks() {
 }
 
 /**
- * Displays a single runbook within the runbook table.
- *
- * @param runbook - Runbook data to display.
+ * Displays a single Runbook within the Runbook table.
  */
 function RunbookRow({ runbook }: { runbook: Runbook }) {
     return (
@@ -247,9 +409,6 @@ function RunbookRow({ runbook }: { runbook: Runbook }) {
 
 /**
  * Converts a date string returned by the API into a readable UK date.
- *
- * @param value - Date string to format.
- * @returns The formatted date.
  */
 function formatDate(value: string) {
     return new Intl.DateTimeFormat("en-GB", {
