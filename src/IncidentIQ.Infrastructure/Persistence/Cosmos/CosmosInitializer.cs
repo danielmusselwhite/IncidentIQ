@@ -98,7 +98,7 @@ public sealed class CosmosInitializer
                     new()
                     {
                         Path = "/embedding",
-                        Type = VectorIndexType.QuantizedFlat
+                        Type = VectorIndexType.DiskANN // quantizedFlat in prod/live but the initializer is only used in local dev and only DiskANN is supported for local emulated cosmos
                     }
                 }
             }
