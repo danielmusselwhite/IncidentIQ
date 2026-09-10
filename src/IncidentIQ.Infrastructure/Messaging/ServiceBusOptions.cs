@@ -10,6 +10,8 @@ public sealed class ServiceBusOptions
 
     public required string IndexRunbookQueueName { get; init; }
 
+    public required string IndexHistoricalIncidentQueueName { get; init; }
+
     /// <summary>
     /// Connection string is optional as the Service Bus client can also be authenticated using Azure AD credentials.
     /// So in production it is done via API Managed Identity, but in development it is done via connection string. 

@@ -25,6 +25,7 @@ param cosmosChangeFeedLeasesContainerName string
 param serviceBusFullyQualifiedNamespace string
 param analyseIncidentQueueName string
 param indexRunbookQueueName string
+param indexHistoricalIncidentQueueName string
 param maxDeliveryCount int = 5
 
 param applicationInsightsConnectionString string
@@ -125,6 +126,10 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'ServiceBus__IndexRunbookQueueName'
               value: indexRunbookQueueName
+            }
+            {
+              name: 'ServiceBus__IndexHistoricalIncidentQueueName'
+              value: indexHistoricalIncidentQueueName
             }
             {
               name: 'ServiceBus__MaxDeliveryCount'

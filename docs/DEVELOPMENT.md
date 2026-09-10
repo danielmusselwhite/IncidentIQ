@@ -248,6 +248,7 @@ Worker Service Bus settings:
 ServiceBus:FullyQualifiedNamespace
 ServiceBus:AnalyseIncidentQueueName
 ServiceBus:IndexRunbookQueueName
+ServiceBus:IndexHistoricalIncidentQueueName
 ServiceBus:MaxDeliveryCount
 ```
 
