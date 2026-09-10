@@ -9,11 +9,11 @@ namespace IncidentIQ.Infrastructure.Messaging;
 /// <summary>
 /// Publishes historical Incident indexing commands to Azure Service Bus.
 /// </summary>
-public sealed class ServiceBusHistoricalIncidentIndexQueue: IHistoricalIncidentIndexQueue
+public sealed class AzureServiceBusHistoricalIncidentIndexQueue: IHistoricalIncidentIndexQueue
 {
     private readonly ServiceBusSender _sender;
 
-    public ServiceBusHistoricalIncidentIndexQueue(ServiceBusClient serviceBusClient, IOptions<ServiceBusOptions> options)
+    public AzureServiceBusHistoricalIncidentIndexQueue(ServiceBusClient serviceBusClient, IOptions<ServiceBusOptions> options)
     {
         var serviceBusOptions = options.Value;
 
