@@ -15,6 +15,8 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
         private readonly Container _container;
         private readonly ILogger<CosmosRunbookChunkRetriever> _logger;
 
+        private const float minimumDistanceThreshold = 0.1f;
+
         public CosmosRunbookChunkRetriever(
             CosmosClient cosmosClient,
             IOptions<CosmosOptions> options,
@@ -41,8 +43,8 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
             var totalRequestCharge = 0d;
 
             // Construct the SQL query to retrieve the top K Runbook chunks based on vector similarity
-            var whereClause = !string.IsNullOrEmpty(service) ? "WHERE c.service = @service" : string.Empty;
-
+            var whereClause = "WHERE VectorDistance(c.embedding, @embedding) > @minimumDistanceThreshold";
+            if (!string.IsNullOrEmpty(service)) whereClause += " AND c.service = @service"; // add service filter if provided
             var query = new QueryDefinition(
                 $"""
                 SELECT TOP @topK
@@ -57,7 +59,8 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
                 ORDER BY VectorDistance(c.embedding, @embedding)
                 """)
                 .WithParameter("@topK", topK)
-                .WithParameter("@embedding", queryEmbedding.ToArray()); // safer as we want to ensure the Cosmos SDK receives the vector as an ordinary numeric array
+                .WithParameter("@embedding", queryEmbedding.ToArray()) // safer as we want to ensure the Cosmos SDK receives the vector as an ordinary numeric array
+                .WithParameter("@minimumDistanceThreshold", minimumDistanceThreshold);
 
             if (!string.IsNullOrWhiteSpace(service))
                 query.WithParameter("@service", service);
@@ -93,12 +96,14 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
             // Log the request
             _logger.LogInformation(
                 "Retrieved {ResultCount} Runbook chunks using vector search in {DurationMs} ms. " +
-                "Cosmos request charge: {RequestCharge} RU. TopK: {TopK}. Service: {Service}.",
+                "Cosmos request charge: {RequestCharge} RU. TopK: {TopK}. Service: {Service}." +
+                "Minimum relevance threshold: {Threshold}.",
                 chunks.Count,
                 stopwatch.ElapsedMilliseconds, // latency
                 totalRequestCharge, // cosmos request units consumed
                 topK,
-                service ?? "all");
+                service ?? "all",
+                minimumDistanceThreshold);
 
             return chunks;
 
