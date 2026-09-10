@@ -4,6 +4,7 @@ using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
 using IncidentIQ.Application.Incidents.GetAnalysisById;
 using IncidentIQ.Application.Incidents.GetById;
+using IncidentIQ.Application.Incidents.HistoricalSearch.Retrieve;
 using IncidentIQ.Application.Runbooks.Create;
 using IncidentIQ.Application.Runbooks.Delete;
 using IncidentIQ.Application.Runbooks.GetAll;
@@ -36,6 +37,7 @@ public static class DependencyInjection
 
         services.AddSingleton<RunbookChunker>();
         services.AddScoped<RetrieveRunbookChunksHandler>();
+        services.AddScoped<RetrieveHistoricalIncidentsHandler>();
 
         return services;
     }

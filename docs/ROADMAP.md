@@ -267,7 +267,7 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 * [ ] Verify historical Incident indexing and retrieval end-to-end in Azure.
 * [ ] Update historical Incident retrieval documentation and architecture notes.
 
-### 12B — Combined RAG Context & Grounded Analysis
+### 12B — Combined RAG Context & Grounded Incident Analysis
 
 * [ ] Keep historical Incident evidence and Runbook evidence separate in the retrieval model.
 * [ ] Define the combined RAG context supplied to Incident analysis.
@@ -277,13 +277,41 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 * [ ] Apply relevance gating before retrieved evidence is supplied to the AI.
 * [ ] Build combined RAG context from historical Incidents and Runbook chunks.
 * [ ] Generate evidence-backed Incident analysis.
-* [ ] Include similar Incident and Runbook references in the structured analysis result.
-* [ ] Validate returned references/citations against retrieved evidence.
-* [ ] Persist grounded analysis evidence.
-* [ ] Display similar Incidents and supporting evidence in the frontend.
+* [ ] Include historical Incident and Runbook references in the structured analysis result.
+* [ ] Validate returned references/citations against the evidence actually retrieved.
+* [ ] Persist the grounded analysis and the evidence used to generate it.
+* [ ] Display the persisted analysis, similar-Incident evidence and Runbook evidence in the frontend.
 * [ ] Add RAG orchestration and evidence-validation tests.
+* [ ] Verify grounded Incident analysis end-to-end locally.
 * [ ] Verify grounded Incident analysis end-to-end in Azure.
 * [ ] Update RAG documentation and architecture diagrams.
+
+### 12C — Live Similar Incident Discovery
+
+* [ ] Add an endpoint for retrieving current similar Incidents for an existing Incident.
+* [ ] Reuse the Incident's persisted embedding rather than generating a new embedding on every request.
+* [ ] Exclude the current Incident from its own similarity results.
+* [ ] Display current similar Incidents on the Incident details page.
+* [ ] Keep current similarity results separate from the historical evidence used by the original AI analysis.
+* [ ] Add caching TODO/design notes for Azure Cache for Redis.
+* [ ] Add endpoint/retrieval tests.
+* [ ] Verify live similar-Incident discovery in Azure.
+
+### 12D — Interactive Grounded RAG Assistant
+
+* [ ] Define a grounded operational question/answer request and response model.
+* [ ] Accept natural-language operational questions such as payment gateway failures or service errors.
+* [ ] Generate an embedding for the user's question.
+* [ ] Retrieve relevant historical Incidents.
+* [ ] Retrieve relevant Runbook chunks.
+* [ ] Build grounded conversational RAG context.
+* [ ] Generate an answer constrained to the retrieved operational evidence.
+* [ ] Return supporting historical Incident and Runbook references with the answer.
+* [ ] Validate returned references against retrieved evidence.
+* [ ] Add an operational assistant/chat interface to the frontend.
+* [ ] Add conversational RAG tests and grounding checks.
+* [ ] Verify the interactive assistant end-to-end in Azure.
+* [ ] Update architecture and RAG documentation.
 
 ## Stage 13 — AI Evaluation
 
@@ -389,19 +417,4 @@ Provision Event Grid and Functions before integrating them.
 
 - [x] Add architecture and create-incident message-flow diagrams. 
 - [ ] See about integrating with repo eg github so it can analyse for potentially breaking changes. (Eg if payments fail it may notice that a commit changed the payment service just before these related incidents started rolling in)
-
-## Stage 20 — Optional AI-200 Experiments
-
-Keep experiments isolated from the primary architecture and document the trade-offs discovered.
-
-* [ ] PostgreSQL + pgvector retriever.
-* [ ] Azure Managed Redis experiment.
-
-* [ ] AKS Worker deployment.
-* [ ] App Service API container deployment.
-
-* [ ] Cosmos Change Feed Runbook indexing experiment.
-* [ ] Define experiment infrastructure through Bicep.
-
-* [ ] Compare each experiment against the primary architecture.
-* [ ] Document findings and architectural trade-offs.
+- [ ] Add redis cache on the similar incidents for faster retrieval and reduced load on the primary datastore.
