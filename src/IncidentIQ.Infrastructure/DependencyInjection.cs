@@ -1,6 +1,7 @@
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using IncidentIQ.Application.Common.Abstractions;
+using IncidentIQ.Application.Incidents.Retrieve;
 using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using IncidentIQ.Infrastructure.Messaging;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
@@ -60,6 +61,7 @@ public static class DependencyInjection
         services.AddScoped<IIncidentAnalysisStore, CosmosIncidentAnalysisStore>();
         services.AddScoped<IIncidentAnalysisReader, CosmosIncidentAnalysisReader>();
         services.AddScoped<IRunbookChunkRetriever, CosmosRunbookChunkRetriever>();
+        services.AddScoped<IHistoricalIncidentRetriever, CosmosHistoricalIncidentRetriever>();
         services.AddScoped<IHistoricalIncidentVectorStore, CosmosHistoricalIncidentVectorStore>();
 
         #endregion

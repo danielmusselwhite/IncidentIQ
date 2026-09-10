@@ -15,7 +15,7 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks
         private readonly Container _container;
         private readonly ILogger<CosmosRunbookChunkRetriever> _logger;
 
-        private const float minimumDistanceThreshold = 0.1f;
+        private const float minimumDistanceThreshold = 0.04f;
 
         public CosmosRunbookChunkRetriever(
             CosmosClient cosmosClient,
