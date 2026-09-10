@@ -81,7 +81,7 @@ rg-incidentiq-dev
 └── Log Analytics
 ```
 
-Bicep defines the `RunbookChunks` vector container, `index-runbook` queue, and Runbook embedding deployment.
+Bicep defines the `RunbookChunks` vector container, `index-runbook` queue, Runbook embedding deployment, and the API/Worker permissions and configuration required to use that embedding deployment.
 
 The repository root [README](../ReadMe.md) contains Mermaid diagrams for the infrastructure, internal application architecture, and asynchronous message flows.
 
@@ -109,6 +109,8 @@ Complete Analysis
 Both use Cosmos transactional batches inside one logical partition.
 
 `RunbookChunks` is configured with a `/embedding` `float32` vector policy using cosine distance and a `quantizedFlat` index. The embedding path is excluded from the ordinary Cosmos index. Grouping chunks by `/runbookId` lets re-indexing replace stale chunks inside one logical partition.
+
+Stage 11B queries this container through `VectorDistance`, returning top-K chunk matches with optional service metadata filtering. The Infrastructure retriever records query latency and Cosmos request-unit (RU) consumption; lower returned distance values are stronger semantic matches.
 
 See [Design Decisions & Trade-offs](../docs/DESIGN-DECISIONS.md) for the reasoning behind the outbox and partition-key change.
 
@@ -139,9 +141,18 @@ incident-analysis → gpt-5-mini
 runbook-embedding → text-embedding-3-small (1536 dimensions)
 ```
 
-The Worker receives the Azure AI endpoint plus analysis/embedding deployment configuration through Container App environment variables and authenticates with its managed identity.
+Both backend hosts receive the Azure AI configuration they need through Container App environment variables and authenticate with managed identity:
 
-The Worker identity is assigned `Cognitive Services OpenAI User` on the Azure OpenAI resource.
+```text
+API
+└── runbook-embedding configuration for semantic Runbook search
+
+Worker
+├── incident-analysis configuration
+└── runbook-embedding configuration for Runbook ingestion
+```
+
+Both the API and Worker identities are assigned `Cognitive Services OpenAI User` on the Azure OpenAI resource. The API needs this role for query embeddings; the Worker needs it for Incident analysis and Runbook ingestion embeddings.
 
 Application-level resilience settings such as bounded SDK retries and request/network timeouts live in the Worker/Infrastructure configuration; they do not require extra Azure resources.
 
@@ -154,7 +165,8 @@ API Container App
 ├── external HTTPS ingress
 ├── scale-to-zero enabled
 ├── API managed identity
-└── Cosmos + ACR access
+├── Cosmos + ACR access
+└── Azure OpenAI embedding access
 
 Worker Container App
 ├── no ingress
@@ -192,7 +204,7 @@ The React/Vite frontend is hosted in Azure Static Web Apps. Bicep provisions the
 
 ### API Identity
 
-The API uses Managed Identity for Cosmos DB and ACR. With the transactional outbox architecture, it does not publish directly to Service Bus.
+The API uses Managed Identity for Cosmos DB, ACR, and Azure OpenAI. With the transactional outbox architecture, it does not publish directly to Service Bus. Stage 11B adds Azure OpenAI access because semantic Runbook search generates its query embedding synchronously in the API path.
 
 ### Worker Identity
 
@@ -225,12 +237,12 @@ It therefore requires Cosmos DB Data Contributor, queue-scoped Service Bus Data 
 Deployment authentication uses GitHub OIDC and the `development` GitHub Environment.
 
 ```text
-Pull request → main
+Pull request → master
 → tests
 → Bicep validation
 → Azure What-If
 
-Push → main / manual trigger
+Push → master / manual trigger
 → tests
 → Bicep validation + What-If
 → provision/update Azure infrastructure
@@ -270,7 +282,7 @@ For startup commands and local URLs, see the [Development Guide](../docs/DEVELOP
 | Deployment RBAC | `bootstrap/deployment-role.bicep` |
 | Cosmos DB / containers / Cosmos RBAC | `modules/cosmos.bicep` |
 | Service Bus / queue / messaging RBAC | `modules/service-bus.bicep` |
-| Azure OpenAI / model deployment / Worker AI RBAC | `modules/azure-ai.bicep` |
+| Azure OpenAI / model deployments / API + Worker AI RBAC | `modules/azure-ai.bicep` |
 | Azure Container Registry / workload pull RBAC | `modules/acr.bicep` |
 | Container Apps Environment | `modules/container-apps-environment.bicep` |
 | API Container App | `modules/api-container-app.bicep` |

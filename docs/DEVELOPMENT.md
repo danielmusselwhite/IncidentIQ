@@ -41,7 +41,7 @@ docker compose up --build
 
 The compose environment starts the API, Worker, React frontend, Cosmos DB Emulator, Service Bus Emulator, and the SQL Server dependency used by the Service Bus Emulator.
 
-The Worker must run with:
+The API and Worker run with `Development` for normal local work:
 
 ```text
 DOTNET_ENVIRONMENT=Development
@@ -57,7 +57,7 @@ IEmbeddingGenerator
 └── DevelopmentDummyEmbeddingGenerator
 ```
 
-so both Incident analysis and Runbook vector ingestion remain deterministic and local.
+so Incident analysis, Runbook vector ingestion, and Runbook vector-search query embeddings remain deterministic and local.
 
 The Service Bus Emulator queue is defined in:
 
@@ -139,6 +139,26 @@ RunbookChunks
 ```
 
 The dummy embedding generator returns deterministic 1536-dimensional vectors so the vector persistence pipeline can be verified without Azure OpenAI.
+
+After the Change Feed/Worker has created `RunbookChunks`, the retrieval path can be exercised through Swagger or the API:
+
+```text
+GET /api/Runbooks/search
+      ↓
+IEmbeddingGenerator
+      ↓
+DevelopmentDummyEmbeddingGenerator
+      ↓
+IRunbookChunkRetriever
+      ↓
+CosmosRunbookChunkRetriever
+      ↓
+VectorDistance over RunbookChunks
+      ↓
+Top-K RunbookChunkMatch results
+```
+
+An optional service filter can restrict matches to the same service. `Distance` is cosine distance, so lower values represent stronger matches.
 
 ### 5. Local Cosmos Data Explorer
 
@@ -230,12 +250,18 @@ ServiceBus:IndexRunbookQueueName
 ServiceBus:MaxDeliveryCount
 ```
 
-Azure AI settings:
+Azure AI is used by both hosts in non-Development environments, but for different Stage 11 responsibilities:
 
 ```text
-AzureAI:Endpoint
-AzureAI:DeploymentName
-AzureAI:ModelName
+API
+├── AzureAI:Endpoint
+└── AzureAI:Embedding:*       # Runbook search query embeddings
+
+Worker
+├── AzureAI:Endpoint
+├── AzureAI:DeploymentName   # Incident analysis
+├── AzureAI:ModelName
+└── AzureAI:Embedding:*      # Runbook ingestion embeddings
 ```
 
 The analyzer also has bounded-resilience options with application defaults:
@@ -256,9 +282,9 @@ AzureAI:Embedding:Dimensions
 
 These can be overridden through normal configuration if needed.
 
-To use the real Azure analyzer while running the Worker locally, run the Worker in a **non-Development** environment and provide the Azure AI settings. `Development` intentionally selects the deterministic analyzer.
+To use real Azure AI locally, run the relevant host in a **non-Development** environment and provide its Azure configuration. `Development` intentionally selects deterministic AI. The API requires real embeddings for Azure-backed Runbook search; the Worker requires real embeddings for Runbook indexing and the chat deployment for Incident analysis.
 
-The signed-in Azure identity must have the permissions required by the resources it accesses, including `Cognitive Services OpenAI User` for Azure OpenAI.
+The signed-in Azure identity must have the permissions required by the resources it accesses, including `Cognitive Services OpenAI User` for Azure OpenAI. In the deployed environment, these permissions are assigned to the API/Worker managed identities through Bicep.
 
 If SAS authentication is being used instead of `DefaultAzureCredential` for Service Bus:
 
@@ -276,8 +302,17 @@ For exact Azure CLI commands and values that may need refreshing after redeploym
 
 ### 4. Start the API
 
+For normal local Development/dummy embeddings:
+
 ```powershell
 dotnet run --project src\IncidentIQ.Api
+```
+
+For real Azure embedding verification, use a non-Development environment and bypass the Development launch profile after supplying the required configuration:
+
+```powershell
+$env:DOTNET_ENVIRONMENT = "Production"
+dotnet run --project src\IncidentIQ.Api --no-launch-profile
 ```
 
 ### 5. Start the Worker
@@ -292,7 +327,7 @@ For real Azure AI verification, set the Worker environment to a non-Development 
 
 ```powershell
 $env:DOTNET_ENVIRONMENT = "Production"
-dotnet run --project src\IncidentIQ.Worker
+dotnet run --project src\IncidentIQ.Worker --no-launch-profile
 ```
 
 The Worker runs four hosted services:
@@ -350,9 +385,9 @@ The analyzer does not swallow Azure failures. This allows the existing Worker/Se
 
 ## Which Mode Should I Use?
 
-Use **Docker Compose + DevelopmentDummyIncidentAnalyzer** for normal feature development and local end-to-end testing.
+Use **Docker Compose + deterministic Development AI** for normal feature development and local end-to-end testing.
 
-Use **Azure-connected execution** when verifying real Azure OpenAI, Cosmos DB, Service Bus, Managed Identity/RBAC, or telemetry behaviour.
+Use **Azure-connected execution** when verifying real Azure OpenAI analysis/embeddings, Cosmos DB vector search, Service Bus, Managed Identity/RBAC, or telemetry behaviour.
 
 For automated and manual testing, see [tests/ReadMe.md](../tests/ReadMe.md).
 

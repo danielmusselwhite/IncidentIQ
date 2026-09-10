@@ -142,3 +142,50 @@ Runbooks Change Feed
 ## RunbookChunks delete fails with partition-key mismatch
 
 `RunbookChunks` is partitioned by `/runbookId`. Deleting a chunk therefore uses the Runbook ID as the `PartitionKey`, not the chunk document ID. Prefer the existing replace/cleanup store operation so all derived chunks for a Runbook are handled consistently.
+
+## Runbook vector search returns rows with empty/default fields
+
+If Cosmos reports matching rows but the API returns empty `RunbookId`, `Title`, `Content`, or zero/default values, check the vector-query projection contract rather than the vector index first.
+
+Stage 11B uses an explicit Infrastructure projection (`CosmosRunbookChunkMatchResult`) for fields such as `runbookId`, `chunkIndex`, `title`, `service`, `content`, and `vectordistance`. The JSON property names/aliases in the query result must match the deserialization model.
+
+A valid Cosmos query can otherwise look like a retrieval failure even though the failure is only in result materialisation.
+
+## Runbook vector search returns no useful matches
+
+Check the pipeline in this order:
+
+```text
+Source Runbook exists
+→ RunbookChunks exist for that runbookId
+→ stored embedding length = 1536
+→ query embedding length = 1536
+→ /embedding vector policy uses cosine distance
+→ vector index is present
+→ optional service filter matches stored metadata
+→ topK is greater than zero
+```
+
+In local `Development`, both indexing and query embeddings must use the deterministic `DevelopmentDummyEmbeddingGenerator`. Mixing vectors produced by different embedding implementations makes local similarity results meaningless even when the dimensions match.
+
+## Runbook search works locally but fails in Azure
+
+The Stage 11B search path runs in the API, so the deployed API now needs Azure OpenAI embedding configuration and permission; giving Azure OpenAI access only to the Worker is no longer sufficient.
+
+Verify the API Container App receives:
+
+```text
+AzureAI:Endpoint
+AzureAI:Embedding:DeploymentName
+AzureAI:Embedding:ModelName
+AzureAI:Embedding:Dimensions = 1536
+```
+
+and that the API managed identity can invoke the Azure OpenAI embedding deployment. Also confirm the API can read the `RunbookChunks` Cosmos container.
+
+## Runbook vector search looks expensive or slow
+
+`CosmosRunbookChunkRetriever` records retrieval latency and Cosmos request-unit (RU) consumption. Use those measurements together with top-K and metadata filters before changing the index strategy.
+
+Do not interpret `Distance` as a confidence percentage: it is cosine distance used for ordering, where lower is more similar.
+

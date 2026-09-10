@@ -202,6 +202,8 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
 
+Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are indexed asynchronously into derived vector chunks, and the API can retrieve semantically related chunks through Cosmos vector search.
+
 ### 11A — Runbook Vector Ingestion
 
 * [x] Define `IndexRunbookCommand` and the indexing workflow.
@@ -218,42 +220,47 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Generate and persist vectorised Runbook chunks.
 * [x] Verify create/update indexing end-to-end locally.
 * [x] Remove indexed chunks before deleting a Runbook.
-* [x] Add final ingestion tests and edge-case coverage.
+* [x] Add ingestion tests and edge-case coverage.
 * [x] Deploy Runbook ingestion changes to Azure.
 * [x] Verify real Azure embeddings, re-indexing, and deletion cleanup in Azure.
 * [x] Update ingestion documentation and architecture notes.
 
 ### 11B — Runbook Vector Retrieval
 
-* [x] Define Runbook retrieval abstraction/result model.
-* [x] Generate embeddings for retrieval queries.
-* [x] Implement Cosmos `VectorDistance` Runbook chunk retrieval.
+* [x] Define `IRunbookChunkRetriever` and the `RunbookChunkMatch` result model.
+* [x] Generate embeddings for retrieval queries through `IEmbeddingGenerator`.
+* [x] Implement Cosmos `VectorDistance` retrieval in `CosmosRunbookChunkRetriever`.
 * [x] Return top-K relevant Runbook chunks.
 * [x] Add metadata filtering, including service filtering.
 * [x] Handle empty/no-result retrieval scenarios.
-* [x] Add retrieval tests.
+* [x] Add retrieval and API coverage.
 * [x] Measure retrieval latency.
-* [x] Measure Cosmos RU usage (response units which we are costed on).
-* [x] Verify vector retrieval in Azure.
-* [ ] Configure API Managed Identity/RBAC for Azure AI embedding access.
-* [ ] Pass Azure AI embedding configuration into the API Container App through Bicep.
-* [ ] Deploy Stage 11B infrastructure changes to Azure.
-* [ ] Verify vector retrieval end-to-end in Azure.
-* [ ] Update documentation and architecture notes.
+* [x] Measure Cosmos request-unit (RU) usage.
+* [x] Expose Runbook vector retrieval through `GET /api/Runbooks/search`.
+* [x] Fix Cosmos vector-query projection/deserialization into `CosmosRunbookChunkMatchResult`.
+* [x] Configure API Managed Identity/RBAC for Azure OpenAI embedding access.
+* [x] Pass Azure OpenAI embedding configuration into the API Container App through Bicep.
+* [x] Deploy Stage 11B infrastructure/application changes to Azure.
+* [x] Verify Runbook vector retrieval end-to-end locally and in Azure.
+* [x] Update retrieval documentation and architecture notes.
 
-## Stage 12 — Historical Incident Retrieval & RAG
+## Stage 12 — Historical Incident Retrieval & Grounded RAG
 
-* [ ] Define searchable historical Incident representation/vector persistence.
-* [ ] Generate historical Incident embeddings.
+### 12A — Historical Incident Vector Retrieval
 
-* [ ] Implement similar-Incident retrieval.
-* [ ] Keep historical Incident and Runbook evidence separate.
+* [ ] Define the searchable historical Incident representation/vector persistence model.
+* [ ] Generate embeddings for historical Incidents.
+* [ ] Implement similar-Incident vector retrieval.
+* [ ] Add appropriate Incident metadata filtering and top-K retrieval behaviour.
+* [ ] Verify historical Incident retrieval locally and in Azure.
 
-* [ ] Build combined RAG context.
-* [ ] Generate evidence-backed analysis.
+### 12B — Combined RAG Context & Grounded Analysis
 
-* [ ] Validate citations against retrieved evidence.
-* [ ] Display similar Incidents and supporting evidence.
+* [ ] Keep historical Incident evidence and Runbook evidence separate in the retrieval model.
+* [ ] Build combined RAG context from retrieved Incidents and Runbook chunks.
+* [ ] Generate evidence-backed Incident analysis.
+* [ ] Validate returned references/citations against the retrieved evidence.
+* [ ] Display similar Incidents and supporting evidence in the frontend.
 
 ## Stage 13 — AI Evaluation
 

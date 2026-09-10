@@ -1,146 +1,58 @@
 # IncidentIQ
 
-IncidentIQ is an AI-powered incident analysis platform for engineers. Users submit technical incidents through a React frontend, and the system processes them asynchronously through Cosmos DB, Azure Service Bus, a .NET Worker, and Azure OpenAI.
+**AI-powered incident analysis built with React, .NET, Azure, and vector search.**
 
-The project is being built incrementally as a practical Azure/AI engineering project. The current system includes Incident and Runbook management, a transactional outbox, Service Bus reliability/DLQ handling, structured AI analysis, persisted analysis retrieval, frontend analysis display, bounded AI resilience, and asynchronous Runbook vector ingestion. Runbooks are chunked, embedded, and stored in a dedicated Cosmos vector container for the retrieval/RAG work that follows. Local development uses deterministic analysis and embedding implementations so the complete workflow can run without Azure OpenAI credentials.
+IncidentIQ helps engineers submit technical incidents, process analysis asynchronously, manage operational Runbooks, and search indexed Runbook content semantically. The deployed development environment uses Azure OpenAI for structured analysis and embeddings, with Cosmos DB for persistence and vector retrieval.
 
-## Architecture
+> **Current status:** Runbook ingestion and semantic vector search are complete. The next stage adds historical-Incident retrieval and combines both evidence sources into grounded RAG analysis.
 
-### Clean Architecture
+## What It Can Do
 
-IncidentIQ follows a lightweight Clean Architecture approach: business rules sit at the centre, Application defines the use cases and abstractions around them, and the outer adapters connect those use cases to HTTP, background processing, persistence, messaging, and Azure services.
+- Submit, browse, search, and inspect Incidents through the React frontend.
+- Track analysis through `Queued → Processing → Completed / Failed`.
+- Review persisted AI summaries, likely causes, confidence scores, recommended actions, model metadata, and analysis time.
+- Create, view, edit, and delete operational Runbooks.
+- Index Runbooks asynchronously and search their content semantically with top-K vector retrieval and optional service filtering.
+- Retry failed Incident analysis through the backend retry/requeue flow.
 
-![Clean Architecture Diagram](./docs/images/clean-architecture.png)
+## Core Stack
 
-### 1. Azure Infrastructure Architecture
+| Area              | Technology                                                        |
+| ----------------- | ----------------------------------------------------------------- |
+| **Frontend**      | React, TypeScript, Vite                                           |
+| **Backend**       | ASP.NET Core API, .NET Worker, Clean Architecture                 |
+| **Data**          | Azure Cosmos DB for NoSQL, Change Feed, vector search             |
+| **Messaging**     | Azure Service Bus, transactional outbox, retries and DLQs         |
+| **AI**            | Azure OpenAI structured analysis and embeddings                   |
+| **Cloud**         | Azure Container Apps, Static Web Apps, ACR, Managed Identity/RBAC |
+| **Observability** | OpenTelemetry, Application Insights, Log Analytics                |
+| **Delivery**      | Bicep, GitHub Actions, OIDC                                       |
 
-The development environment is defined and provisioned with Bicep. The main runtime, data, AI, identity, observability, and delivery components are grouped below so the Azure boundary is easier to read.
+## Architecture at a Glance
 
-```mermaid
-flowchart LR
+IncidentIQ separates synchronous HTTP work from asynchronous background processing. The diagrams below use the same colours and arrow styles throughout.
 
-    subgraph WhiteBackground[" "]
-        direction LR
-
-    User["Engineer / Browser"]:::external
-    GitHub["GitHub Actions<br/>OIDC"]:::delivery
-
-    subgraph Azure["Azure Development Environment"]
-        direction LR
-
-        subgraph Frontend["Frontend"]
-            SWA["Static Web Apps<br/>React + Vite"]:::frontend
-        end
-
-        subgraph Compute["Compute"]
-            API["API Container App<br/>ASP.NET Core"]:::compute
-            Worker["Worker Container App<br/>.NET Worker"]:::compute
-        end
-
-        subgraph Platform["Data, Messaging & AI"]
-            Cosmos["Cosmos DB<br/>Incidents • Runbooks • RunbookChunks • Analysis"]:::data
-            ServiceBus["Service Bus<br/>analyse-incident • index-runbook<br/>+ DLQs"]:::messaging
-            OpenAI["Azure OpenAI<br/>Incident Analysis • Runbook Embeddings"]:::ai
-        end
-
-        subgraph Observability["Observability"]
-            Insights["Application Insights"]:::observe
-            Logs["Log Analytics"]:::observe
-        end
-
-        subgraph Delivery["Images & Identity"]
-            ACR["Container Registry"]:::delivery
-            ApiMI["API Managed Identity"]:::identity
-            WorkerMI["Worker Managed Identity"]:::identity
-        end
-    end
-
-    User --> SWA
-    SWA -->|HTTPS| API
-
-    API --> Cosmos
-    Worker --> Cosmos
-    Worker --> ServiceBus
-    Worker --> OpenAI
-
-    API -. telemetry .-> Insights
-    Worker -. telemetry .-> Insights
-    Insights --> Logs
-
-    ACR -. image .-> API
-    ACR -. image .-> Worker
-    GitHub -. deploy .-> SWA
-    GitHub -. deploy .-> API
-    GitHub -. deploy .-> Worker
-    GitHub -. push .-> ACR
-
-    ApiMI -. RBAC .-> Cosmos
-    WorkerMI -. RBAC .-> Cosmos
-    WorkerMI -. RBAC .-> ServiceBus
-    WorkerMI -. RBAC .-> OpenAI
-
-    end
-
-    classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
-    classDef frontend fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
-    classDef compute fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
-    classDef data fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
-    classDef messaging fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
-    classDef ai fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
-    classDef observe fill:#ffedd5,stroke:#ea580c,color:#7c2d12,stroke-width:2px;
-    classDef identity fill:#fce7f3,stroke:#db2777,color:#831843,stroke-width:2px;
-    classDef delivery fill:#f1f5f9,stroke:#475569,color:#0f172a,stroke-width:2px;
-
-    style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
-
-    style Azure fill:#ffffff,stroke:#64748b,stroke-width:3px
-    style Frontend fill:#f8fafc,stroke:#bae6fd,stroke-width:2px
-    style Compute fill:#f8fafc,stroke:#bfdbfe,stroke-width:2px
-    style Platform fill:#f8fafc,stroke:#cbd5e1,stroke-width:2px
-    style Observability fill:#f8fafc,stroke:#fed7aa,stroke-width:2px
-    style Delivery fill:#f8fafc,stroke:#e2e8f0,stroke-width:2px
-```
-
-### 2. Internal Application Architecture
-
-At code level, the solution keeps responsibilities separated by project. This diagram intentionally stays above individual classes and shows the important *types* of code each layer contains and the direction of dependencies.
+### Diagram Key
 
 ```mermaid
-flowchart LR
-
-    subgraph WhiteBackground[" "]
+flowchart TB
+    subgraph Components["Component colours"]
         direction LR
-
-    Web["IncidentIQ.Web<br/>Pages • Components • API Clients"]:::web
-
-    subgraph Hosts["Application Hosts"]
-        API["IncidentIQ.Api<br/>Controllers • DTOs • Middleware"]:::host
-        Worker["IncidentIQ.Worker<br/>Hosted Services • Message Consumers"]:::host
+        UI["Web / UI"]:::web
+        HOST["API / Worker"]:::host
+        APP["Application"]:::application
+        DOMAIN["Domain"]:::domain
+        INFRA["Infrastructure"]:::infra
+        DATA["Data"]:::data
+        MSG["Messaging"]:::messaging
+        AI["AI"]:::ai
     end
 
-    subgraph Application["IncidentIQ.Application"]
-        AppTypes["Commands & Queries<br/>Handlers<br/>Validators<br/>Interfaces / Abstractions"]:::application
-    end
-
-    subgraph Domain["IncidentIQ.Domain"]
-        DomainTypes["Entities / Aggregates<br/>Enums & Value Objects<br/>Business Rules"]:::domain
-    end
-
-    subgraph Infrastructure["IncidentIQ.Infrastructure"]
-        InfraTypes["Repositories & Stores<br/>Messaging Adapters<br/>Azure AI / SDK Clients"]:::infra
-    end
-
-    Web -->|HTTP| API
-    API --> AppTypes
-    Worker --> AppTypes
-    AppTypes --> DomainTypes
-
-    InfraTypes -->|implements abstractions| AppTypes
-    InfraTypes --> DomainTypes
-
-    API -. composition root .-> InfraTypes
-    Worker -. composition root .-> InfraTypes
-
+    subgraph Connections["Connection examples"]
+        direction LR
+        S1["Caller"] -->|"direct / synchronous"| S2["Receiver"]
+        A1["Producer"] ==>|"asynchronous hand-off"| A2["Consumer"]
+        W1["Interface"] -. "implementation / wiring" .-> W2["Adapter"]
     end
 
     classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
@@ -148,417 +60,505 @@ flowchart LR
     classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
     classDef domain fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
     classDef infra fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
+    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+    classDef messaging fill:#fff7ed,stroke:#d97706,color:#7c2d12,stroke-width:2px;
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
 
-    style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
-
-    style Hosts fill:#f8fafc,stroke:#93c5fd,stroke-width:2px
-    style Application fill:#f0fdf4,stroke:#86efac,stroke-width:2px
-    style Domain fill:#fffbeb,stroke:#fbbf24,stroke-width:2px
-    style Infrastructure fill:#faf5ff,stroke:#d8b4fe,stroke-width:2px
+    linkStyle 0 stroke:#2563eb,stroke-width:2px;
+    linkStyle 1 stroke:#d97706,stroke-width:3px;
+    linkStyle 2 stroke:#9333ea,stroke-width:2px;
 ```
 
-### 3. Example Message Flow — Submit an Incident
+- **Solid arrow** — the caller waits for the operation or result.
+- **Thick arrow** — asynchronous delivery through Change Feed or Service Bus.
+- **Dotted arrow** — implementation, dependency-injection, deployment, telemetry, or RBAC relationship.
 
-A submitted Incident is persisted before it is queued. The API writes the Incident and outbox record atomically, then the asynchronous pipeline moves the command through Change Feed and Service Bus to the analysis Worker.
+### System Overview
 
-```mermaid id="0kbx15"
-flowchart TD
+The API and Workers do **not** call Cosmos DB, Service Bus, or Azure OpenAI directly. They invoke Application handlers/use cases, which depend on Application interfaces; Infrastructure supplies the Azure-specific implementations through dependency injection.
 
-    subgraph WhiteBackground[" "]
-        direction TD
+The external Azure services are shown as separate boundaries below so the synchronous API path and asynchronous background paths are easy to follow.
 
-        Web["React Web<br/>Submit Incident"]:::web
+```mermaid
+flowchart TB
+    User["Engineer"]:::external -->|"uses"| Web["React Web"]:::web
 
-        subgraph Request["Synchronous Request"]
-            direction TD
+    subgraph Sync["Synchronous API path"]
+        direction LR
+        API["ASP.NET Core API<br/>Controllers"]:::host
+        ApiHandlers["Application<br/>handlers / use cases"]:::application
+        ApiPorts["Application interfaces<br/>repositories • stores • retrievers • AI"]:::application
+        ApiAdapters["Infrastructure adapters"]:::infra
 
-            API["API<br/>POST /api/incidents"]:::host
-
-            Command["Application<br/>CreateIncidentCommand"]:::application
-
-            CreateHandler["Create Incident Handler"]:::application
-
-            SubmissionStore["Incident Submission Store"]:::infra
-
-            InitialWrite["Cosmos Transactional Batch<br/>Incident + Outbox"]:::data
-
-            Created["201 Created<br/>Incident is Queued"]:::result
-        end
-
-        QueuedView["React Web<br/>Shows Queued Incident"]:::web
-
-        subgraph Async["Asynchronous Processing"]
-            direction TD
-
-            ChangeFeed["Cosmos Change Feed"]:::data
-
-            OutboxWorker["Outbox Worker"]:::host
-
-            Queue["Service Bus<br/>AnalyseIncidentCommand"]:::messaging
-
-            AnalyseWorker["Analysis Worker"]:::host
-
-            AnalyseHandler["Analyse Incident Handler"]:::application
-
-            Analyzer["Incident Analyzer"]:::application
-
-            AI["Azure OpenAI<br/>or local dummy analyzer"]:::ai
-
-            FinalWrite["Cosmos Transactional Batch<br/>Completed Incident + Analysis"]:::data
-        end
-
-        Result["Frontend polls status<br/>then requests persisted analysis"]:::result
-
-        CompletedView["React Web<br/>Displays Analysis"]:::web
-
-        Web --> API
-
-        API --> Command
-
-        Command --> CreateHandler
-
-        CreateHandler --> SubmissionStore
-
-        SubmissionStore --> InitialWrite
-
-        InitialWrite --> Created
-
-        Created --> QueuedView
-
-        InitialWrite --> ChangeFeed
-
-        ChangeFeed --> OutboxWorker
-
-        OutboxWorker --> Queue
-
-        Queue --> AnalyseWorker
-
-        AnalyseWorker --> AnalyseHandler
-
-        AnalyseHandler --> Analyzer
-
-        Analyzer --> AI
-
-        AI --> AnalyseHandler
-
-        AnalyseHandler --> FinalWrite
-
-        FinalWrite --> Result
-
-        Result --> CompletedView
+        API -->|"command / query"| ApiHandlers
+        ApiHandlers -->|"calls"| ApiPorts
+        ApiPorts -. "implemented by" .-> ApiAdapters
     end
 
+    Web -->|"HTTPS"| API
+
+    subgraph Cosmos["Azure Cosmos DB"]
+        direction LR
+        Incidents["Incidents<br/>+ analysis outbox"]:::data
+        Runbooks["Runbooks"]:::data
+        Chunks["RunbookChunks<br/>vector index"]:::data
+        IncidentFeed["Incidents<br/>Change Feed"]:::data
+        RunbookFeed["Runbooks<br/>Change Feed"]:::data
+
+        Incidents ==>|"committed changes"| IncidentFeed
+        Runbooks ==>|"committed changes"| RunbookFeed
+    end
+
+    AI["Azure OpenAI<br/>analysis + embeddings"]:::ai
+
+    ApiAdapters -->|"Incident reads / writes"| Incidents
+    ApiAdapters -->|"Runbook CRUD"| Runbooks
+    ApiAdapters -->|"vector retrieval"| Chunks
+    ApiAdapters -->|"query embeddings"| AI
+
+    subgraph Relay["Change Feed relays — Worker host"]
+        direction LR
+        IncidentRelay["IncidentOutboxWorker"]:::host
+        IncidentQueuePort["IIncidentAnalysisQueue"]:::application
+        RunbookRelay["RunbookIndexChangeFeedWorker"]:::host
+        RunbookQueuePort["IRunbookIndexQueue"]:::application
+
+        IncidentRelay -->|"publish command"| IncidentQueuePort
+        RunbookRelay -->|"publish command"| RunbookQueuePort
+    end
+
+    IncidentFeed ==>|"outbox item"| IncidentRelay
+    RunbookFeed ==>|"Runbook change"| RunbookRelay
+
+    subgraph Bus["Azure Service Bus"]
+        direction LR
+        AnalyseQueue["analyse-incident"]:::messaging
+        IndexQueue["index-runbook"]:::messaging
+    end
+
+    IncidentQueuePort ==>|"AzureServiceBusIncidentAnalysisQueue"| AnalyseQueue
+    RunbookQueuePort ==>|"AzureServiceBusRunbookIndexQueue"| IndexQueue
+
+    subgraph Consumers["Service Bus consumers — Worker host"]
+        direction LR
+        AnalyseWorker["AnalyseIncidentWorker"]:::host
+        AnalyseHandler["AnalyseIncidentHandler"]:::application
+        IndexWorker["IndexRunbookWorker"]:::host
+        IndexHandler["IndexRunbookHandler"]:::application
+
+        AnalyseWorker -->|"dispatch command"| AnalyseHandler
+        IndexWorker -->|"dispatch command"| IndexHandler
+    end
+
+    AnalyseQueue ==>|"AnalyseIncidentCommand"| AnalyseWorker
+    IndexQueue ==>|"IndexRunbookCommand"| IndexWorker
+
+    AnalyseHandler -->|"repositories / analyzer / store"| WorkerAdapters["Infrastructure adapters"]:::infra
+    IndexHandler -->|"repository / embeddings / chunk store"| WorkerAdapters
+
+    WorkerAdapters -->|"Incident state + analysis"| Incidents
+    WorkerAdapters -->|"load source Runbook"| Runbooks
+    WorkerAdapters -->|"replace vector chunks"| Chunks
+    WorkerAdapters -->|"analysis / embeddings"| AI
+
+    classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
     classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
-
     classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
-
     classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
+    classDef infra fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
+    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+    classDef messaging fill:#fff7ed,stroke:#d97706,color:#7c2d12,stroke-width:2px;
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
 
+    style Sync fill:#fbfdff,stroke:#2563eb,stroke-width:2px;
+    style Cosmos fill:#f6fffb,stroke:#059669,stroke-width:2px;
+    style Relay fill:#fbfdff,stroke:#2563eb,stroke-width:2px;
+    style Bus fill:#fffaf0,stroke:#d97706,stroke-width:2px;
+    style Consumers fill:#fbfdff,stroke:#2563eb,stroke-width:2px;
+
+    linkStyle 0,4 stroke:#0284c7,stroke-width:2px;
+    linkStyle 1,2,11,12,17,18 stroke:#16a34a,stroke-width:2px;
+    linkStyle 3,21,22 stroke:#9333ea,stroke-width:2px;
+    linkStyle 5,6,7,8,9,13,14,23,24,25 stroke:#059669,stroke-width:2px;
+    linkStyle 5,6,13,14 stroke:#059669,stroke-width:3px;
+    linkStyle 10,26 stroke:#7c3aed,stroke-width:2px;
+    linkStyle 15,16,19,20 stroke:#d97706,stroke-width:3px;
+```
+
+The key architectural boundary is now visible in both directions: **HTTP work reaches Azure services only through Application interfaces and Infrastructure adapters**, while background work starts from Cosmos Change Feed or Service Bus and then enters the same Application layer.
+
+
+### Clean Architecture
+
+IncidentIQ uses a lightweight Clean Architecture approach. Domain and Application code stay independent of Azure SDKs and persistence technologies; Infrastructure provides the concrete adapters, and the API/Worker hosts wire them together with dependency injection.
+
+<p align="center">
+  <img src="./docs/images/clean-architecture.png" alt="IncidentIQ Clean Architecture diagram" width="480" />
+</p>
+
+```mermaid
+flowchart LR
+    Host["API / Worker host"]:::host -->|"command / query"| Handler["Application handler"]:::application
+    Handler -->|"business rules"| Domain["Domain model"]:::domain
+    Handler -->|"calls interface"| Port["Application interface"]:::application
+    Infra["Infrastructure adapter"]:::infra -. "implements" .-> Port
+    Host -. "DI wires adapter" .-> Infra
+    Infra -->|"SDK / protocol"| External["Cosmos / Service Bus / Azure OpenAI"]:::external
+
+    classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
+    classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
+    classDef domain fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
     classDef infra fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
 
-    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
-
-    classDef messaging fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
-
-    classDef ai fill:#f3e8ff,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
-
-    classDef result fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
-
-    style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
-
-    style Request fill:#f8fafc,stroke:#94a3b8,stroke-width:2px
-
-    style Async fill:#f8fafc,stroke:#94a3b8,stroke-width:2px
+    linkStyle 0,2 stroke:#16a34a,stroke-width:2px;
+    linkStyle 1 stroke:#d97706,stroke-width:2px;
+    linkStyle 3,4,5 stroke:#9333ea,stroke-width:2px;
 ```
 
+For example, an Application handler can depend on `IRunbookChunkRetriever` without knowing that the deployed implementation is `CosmosRunbookChunkRetriever`.
+
+| Abstraction            | Responsibility                            | Examples                                                                   |
+| ---------------------- | ----------------------------------------- | -------------------------------------------------------------------------- |
+| **Repository**         | Persistence around a source/domain entity | `IIncidentRepository`, `IRunbookRepository`                                |
+| **Store**              | Purpose-specific write boundary           | `IIncidentSubmissionStore`, `IIncidentAnalysisStore`, `IRunbookChunkStore` |
+| **Reader / Retriever** | Purpose-specific read or search           | `IIncidentAnalysisReader`, `IRunbookChunkRetriever`                        |
+| **Queue**              | Messaging boundary                        | `IIncidentAnalysisQueue`, `IRunbookIndexQueue`                             |
+| **AI abstraction**     | Provider-independent AI capability        | `IIncidentAnalyzer`, `IEmbeddingGenerator`                                 |
+
+## Key Workflows
+
+These diagrams show the runtime flow only. The component READMEs contain the implementation-level class and configuration details.
+
+### 1. Submit and Analyse an Incident
+
+Incident submission is synchronous only until the Incident and its analysis outbox entry are committed to Cosmos. The HTTP request can then return; dispatch and AI analysis continue independently.
 
 ```mermaid
-sequenceDiagram
+flowchart TB
+    subgraph Submit["1 · Synchronous HTTP request"]
+        direction LR
+        Web["React UI"]:::web
+        Controller["IncidentsController"]:::host
+        Command["CreateIncidentCommand"]:::application
+        Create["CreateIncidentHandler"]:::application
+        Submission["IIncidentSubmissionStore"]:::application
+        Response["201 Created<br/>Incident = Queued"]:::external
 
-    autonumber
-
-    box rgb(248,250,252) External
-        actor User as Engineer
+        Web -->|"POST /api/incidents"| Controller
+        Controller -->|"map request"| Command
+        Command -->|"HandleAsync"| Create
+        Create -->|"Incident + AnalyseIncidentCommand"| Submission
     end
 
-    box rgb(224,242,254) Presentation Layer - IncidentIQ.Web
-        participant Web as React Web
+    subgraph Cosmos["Azure Cosmos DB"]
+        direction LR
+        Incidents["Incidents container<br/>Incident + analysis outbox<br/>written atomically"]:::data
+        IncidentFeed["Incidents Change Feed"]:::data
+        Incidents ==>|"committed outbox observed"| IncidentFeed
     end
 
-    box rgb(219,234,254) API Host - IncidentIQ.Api
-        participant API as IncidentsController
+    Submission -->|"CosmosIncidentSubmissionStore<br/>TransactionalBatch"| Incidents
+    Incidents -->|"commit succeeds"| Response
+    Response -->|"HTTP response"| Web
+
+    subgraph Dispatch["2 · Asynchronous outbox relay"]
+        direction LR
+        Relay["IncidentOutboxWorker"]:::host
+        QueuePort["IIncidentAnalysisQueue"]:::application
+        Relay -->|"publish AnalyseIncidentCommand"| QueuePort
     end
 
-    box rgb(220,252,231) Application Layer - IncidentIQ.Application
-        participant CreateHandler as CreateIncidentHandler
-        participant AnalyseHandler as AnalyseIncidentHandler
+    IncidentFeed ==>|"outbox document"| Relay
+
+    subgraph ServiceBus["Azure Service Bus"]
+        AnalyseQueue["analyse-incident queue"]:::messaging
     end
 
-    box rgb(243,232,255) Infrastructure Layer - IncidentIQ.Infrastructure
-        participant SubmissionStore as CosmosIncidentSubmissionStore
-        participant IncidentRepo as CosmosIncidentRepository
-        participant AnalysisStore as CosmosIncidentAnalysisStore
-        participant Analyzer as AzureIncidentAnalyzer
+    QueuePort ==>|"AzureServiceBusIncidentAnalysisQueue"| AnalyseQueue
+
+    subgraph Process["3 · Asynchronous analysis"]
+        direction LR
+        Worker["AnalyseIncidentWorker"]:::host
+        Handler["AnalyseIncidentHandler"]:::application
+
+        subgraph Orchestration["Handler orchestration"]
+            direction LR
+            Repo["IIncidentRepository<br/>load + update Processing"]:::application
+            Analyzer["IIncidentAnalyzer<br/>generate analysis"]:::application
+            Store["IIncidentAnalysisStore<br/>persist Completed + Analysis"]:::application
+            Repo -->|"then"| Analyzer -->|"then"| Store
+        end
+
+        Worker -->|"dispatch command"| Handler
+        Handler -->|"orchestrates"| Repo
     end
 
-    box rgb(236,253,245) Data Platform
-        participant Cosmos as Azure Cosmos DB
-    end
+    AnalyseQueue ==>|"AnalyseIncidentCommand"| Worker
 
-    box rgb(219,234,254) Worker Host - IncidentIQ.Worker
-        participant OutboxWorker as IncidentOutboxWorker
-        participant AnalyseWorker as AnalyseIncidentWorker
-    end
+    Repo -->|"CosmosIncidentRepository"| Incidents
+    Analyzer -->|"AzureIncidentAnalyzer"| AI["Azure OpenAI<br/>structured analysis"]:::ai
+    Store -->|"CosmosIncidentAnalysisStore<br/>transactional batch"| Incidents
 
-    box rgb(254,243,199) Messaging Platform
-        participant Bus as Azure Service Bus
-    end
-
-    box rgb(243,232,255) AI Platform
-        participant AI as Azure OpenAI
-    end
-
-    %% ---------------------------
-    %% Synchronous submission path
-    %% ---------------------------
-
-    User->>Web: Submit incident form
-
-    Web->>API: HTTP POST /api/incidents<br/>CreateIncidentRequest
-
-    Note over API,CreateHandler: API maps HTTP contract into an Application command
-
-    API->>CreateHandler: HandleAsync(CreateIncidentCommand)
-
-    Note over CreateHandler,SubmissionStore: Application depends on IIncidentSubmissionStore<br/>Infrastructure provides CosmosIncidentSubmissionStore
-
-    CreateHandler->>SubmissionStore: CreateAsync(Incident, AnalyseIncidentCommand)
-
-    SubmissionStore->>Cosmos: Transactional batch<br/>Incident + Outbox document containing AnalyseIncidentCommand
-
-    Cosmos-->>SubmissionStore: Persisted atomically
-    SubmissionStore-->>CreateHandler: Incident created
-    CreateHandler-->>API: Created Incident
-    API-->>Web: HTTP 201 Created<br/>IncidentResponse
-    Web-->>User: Show Queued incident
-
-    %% ---------------------------
-    %% Transactional outbox path
-    %% ---------------------------
-
-    Note over Cosmos,OutboxWorker: Asynchronous processing begins after the API request has completed
-
-    Cosmos-->>OutboxWorker: Change Feed notification<br/>Outbox document
-
-    OutboxWorker->>Bus: Service Bus message<br/>AnalyseIncidentCommand
-
-    Bus-->>AnalyseWorker: ServiceBusReceivedMessage<br/>payload = AnalyseIncidentCommand
-
-    Note over AnalyseWorker,AnalyseHandler: Worker deserializes the command<br/>and resolves a scoped AnalyseIncidentHandler
-
-    AnalyseWorker->>AnalyseHandler: HandleAsync(AnalyseIncidentCommand)
-
-    %% ---------------------------
-    %% Analysis path
-    %% ---------------------------
-
-    AnalyseHandler->>IncidentRepo: GetByIdAsync(incidentId)
-    IncidentRepo->>Cosmos: Point read Incident
-    Cosmos-->>IncidentRepo: Incident
-    IncidentRepo-->>AnalyseHandler: Incident
-
-    AnalyseHandler->>IncidentRepo: Persist Processing state
-    IncidentRepo->>Cosmos: Update Incident<br/>Status = Processing
-
-    Note over AnalyseHandler,Analyzer: Application depends on IIncidentAnalyzer<br/>Infrastructure provides AzureIncidentAnalyzer
-
-    AnalyseHandler->>Analyzer: AnalyzeIncidentAsync(IncidentAnalysisInput)
-
-    Analyzer->>AI: Chat request<br/>Structured Output schema
-    AI-->>Analyzer: Structured JSON analysis
-
-    Analyzer-->>AnalyseHandler: IncidentAnalysisResult
-
-    Note over AnalyseHandler,AnalysisStore: Completed state and analysis are persisted atomically
-
-    AnalyseHandler->>AnalysisStore: SaveAsync(Incident, IncidentAnalysisResult)
-    AnalysisStore->>Cosmos: Transactional batch<br/>Completed Incident + IncidentAnalysisDocument
-    Cosmos-->>AnalysisStore: Persisted atomically
-    AnalysisStore-->>AnalyseHandler: Saved
-
-    AnalyseHandler-->>AnalyseWorker: Analysis completed
-    AnalyseWorker->>Bus: CompleteMessageAsync()
-
-    %% ---------------------------
-    %% Frontend result retrieval
-    %% ---------------------------
-
-    Note over Web,Cosmos: Frontend polls while the incident is Queued or Processing
-
-    Web->>API: GET /api/incidents/{id}
-    API->>IncidentRepo: GetByIdAsync(id)
-    IncidentRepo->>Cosmos: Read Incident
-    Cosmos-->>IncidentRepo: Status = Completed
-    IncidentRepo-->>API: Incident
-    API-->>Web: IncidentResponse<br/>Status = Completed
-
-    Web->>API: GET /api/incidents/{id}/analysis
-
-    Note over API,Cosmos: Analysis read path uses IIncidentAnalysisReader<br/>with its Cosmos implementation
-
-    API->>Cosmos: Point read<br/>IncidentAnalysisDocument
-    Cosmos-->>API: Persisted analysis
-    API-->>Web: IncidentAnalysisResponse
-
-    Web-->>User: Display summary, likely causes<br/>confidence scores and recommended actions
-```
-
-### 4. Example Message Flow — Index a Runbook
-
-Runbook CRUD remains independent from AI indexing. A Runbook is persisted first; the Worker then observes the `Runbooks` Change Feed, queues an `IndexRunbookCommand`, chunks the latest content, generates embeddings, and replaces the derived vector index.
-
-```mermaid
-flowchart TD
-
-    subgraph WhiteBackground[" "]
-        direction TD
-
-    API["API<br/>Create / Update Runbook"]:::host
-    CrudHandler["Create / Update Runbook Handler"]:::application
-    Repo["IRunbookRepository"]:::application
-    Runbooks["Cosmos DB<br/>Runbooks /id"]:::data
-    ChangeFeed["Cosmos Change Feed"]:::data
-    Relay["RunbookIndexChangeFeedWorker"]:::host
-    Queue["Service Bus<br/>index-runbook"]:::messaging
-    Consumer["IndexRunbookWorker"]:::host
-    Handler["IndexRunbookHandler"]:::application
-    Chunker["RunbookChunker"]:::application
-    Embedder["IEmbeddingGenerator"]:::application
-    AI["text-embedding-3-small<br/>or deterministic local embedding"]:::ai
-    Store["IRunbookChunkStore"]:::application
-    Chunks["Cosmos DB<br/>RunbookChunks /runbookId<br/>1536-dim cosine vectors"]:::data
-
-    API --> CrudHandler
-    CrudHandler --> Repo
-    Repo --> Runbooks
-    Runbooks --> ChangeFeed
-    ChangeFeed --> Relay
-    Relay --> Queue
-    Queue --> Consumer
-    Consumer --> Handler
-    Handler --> Repo
-    Handler --> Chunker
-    Handler --> Embedder
-    Embedder --> AI
-    Handler --> Store
-    Store --> Chunks
-
-    end
-
+    classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
+    classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
     classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
     classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
     classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
-    classDef messaging fill:#fef3c7,stroke:#d97706,color:#78350f,stroke-width:2px;
-    classDef ai fill:#f3e8ff,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
+    classDef messaging fill:#fff7ed,stroke:#d97706,color:#7c2d12,stroke-width:2px;
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
 
-    style WhiteBackground fill:#ffffff,stroke:#ffffff,color:#ffffff
+    style Submit fill:#fbfdff,stroke:#2563eb,stroke-width:2px;
+    style Cosmos fill:#f6fffb,stroke:#059669,stroke-width:2px;
+    style Dispatch fill:#fffaf0,stroke:#d97706,stroke-width:2px;
+    style ServiceBus fill:#fffaf0,stroke:#d97706,stroke-width:2px;
+    style Process fill:#f7fff9,stroke:#16a34a,stroke-width:2px;
+    style Orchestration fill:#f7fff9,stroke:#16a34a,stroke-width:1px;
+
+    linkStyle 0,7 stroke:#0284c7,stroke-width:2px;
+    linkStyle 1,2,3,8,11,12,13,14 stroke:#16a34a,stroke-width:2px;
+    linkStyle 4,5,6,16,18 stroke:#059669,stroke-width:2px;
+    linkStyle 9,10,15 stroke:#d97706,stroke-width:3px;
+    linkStyle 17 stroke:#7c3aed,stroke-width:2px;
 ```
 
-## Current Functionality
+The transactional outbox is what makes this reliable: the Incident and `AnalyseIncidentCommand` outbox record succeed or fail together. `IncidentOutboxWorker` later relays that durable request to Service Bus; it does **not** perform the analysis itself.
 
-Engineers can currently:
+The frontend can poll the Incident while it is `Queued` or `Processing`, then retrieve the persisted analysis once processing completes.
 
-- Submit, browse, search, and inspect Incidents.
-- Track `Queued → Processing → Completed / Failed` without manually refreshing the page.
-- View persisted AI-generated summaries, likely causes/confidence scores, recommended actions, model metadata, and analysis time.
-- Create, view, edit, and delete operational Runbooks.
-- Retry failed analysis through the backend retry/requeue capability.
 
-Reliability, AI, and ingestion features currently include:
+### 2. Index a Runbook
 
-- Cosmos transactional outbox for Incident submission.
-- Cosmos Change Feed relay to Service Bus.
-- Stable command/message IDs and Service Bus duplicate detection.
-- Basic state-based idempotency.
-- Bounded Service Bus redelivery and DLQ handling.
-- Atomic persistence of `Completed` Incident state + structured analysis.
-- Separate analysis read path using `IIncidentAnalysisReader`.
-- Deterministic local analyzer in `Development`.
-- Azure OpenAI structured output outside `Development`.
-- Bounded Azure AI SDK retries plus an overall request timeout.
-- Failure classification for timeout, throttling, service/client failures, and invalid model responses.
-- Structured AI success/failure logs with duration, model, deployment, and failure category.
-- Dedicated `RunbookChunks` Cosmos container partitioned by `/runbookId` with a 1536-dimension cosine `quantizedFlat` vector index.
-- `text-embedding-3-small` deployment configuration plus deterministic local embedding generation.
-- Deterministic overlapping Runbook chunking and replace-based vector persistence.
-- Asynchronous Runbook indexing through the `Runbooks` Change Feed, `index-runbook` Service Bus queue, and `IndexRunbookWorker`.
-- Runbook deletion cleans up derived vector chunks before deleting the source Runbook.
+Runbook CRUD and vector indexing are deliberately separate. The editable Runbook is saved synchronously first; Cosmos Change Feed then starts the asynchronous indexing pipeline.
+
+```mermaid
+flowchart TB
+    subgraph Save["1 · Synchronous Runbook save"]
+        direction LR
+        Web["React Runbook UI"]:::web
+        Controller["RunbooksController"]:::host
+        Handler["Create / Update Runbook Handler"]:::application
+        Repo["IRunbookRepository"]:::application
+        Response["HTTP success<br/>saved Runbook"]:::external
+
+        Web -->|"POST / PUT"| Controller
+        Controller -->|"command"| Handler
+        Handler -->|"save Runbook"| Repo
+    end
+
+    subgraph Cosmos["Azure Cosmos DB"]
+        direction LR
+        Runbooks["Runbooks container<br/>editable source of truth"]:::data
+        RunbookFeed["Runbooks Change Feed"]:::data
+        Chunks["RunbookChunks container<br/>derived vector index"]:::data
+        Runbooks ==>|"committed change observed"| RunbookFeed
+    end
+
+    Repo -->|"CosmosRunbookRepository"| Runbooks
+    Runbooks -->|"commit succeeds"| Response
+    Response -->|"HTTP response"| Web
+
+    subgraph Dispatch["2 · Asynchronous indexing dispatch"]
+        direction LR
+        Relay["RunbookIndexChangeFeedWorker"]:::host
+        QueuePort["IRunbookIndexQueue"]:::application
+        Relay -->|"publish IndexRunbookCommand"| QueuePort
+    end
+
+    RunbookFeed ==>|"Runbook change"| Relay
+
+    subgraph ServiceBus["Azure Service Bus"]
+        IndexQueue["index-runbook queue"]:::messaging
+    end
+
+    QueuePort ==>|"AzureServiceBusRunbookIndexQueue"| IndexQueue
+
+    subgraph Indexing["3 · Asynchronous indexing"]
+        direction LR
+        Worker["IndexRunbookWorker"]:::host
+        IndexHandler["IndexRunbookHandler"]:::application
+
+        subgraph Orchestration["Handler orchestration"]
+            direction LR
+            SourceRepo["IRunbookRepository<br/>load latest source"]:::application
+            Chunker["RunbookChunker"]:::application
+            Embedder["IEmbeddingGenerator"]:::application
+            Store["IRunbookChunkStore"]:::application
+            SourceRepo -->|"then"| Chunker -->|"then"| Embedder -->|"then"| Store
+        end
+
+        Worker -->|"dispatch command"| IndexHandler
+        IndexHandler -->|"orchestrates"| SourceRepo
+    end
+
+    IndexQueue ==>|"IndexRunbookCommand"| Worker
+
+    SourceRepo -->|"CosmosRunbookRepository"| Runbooks
+    Embedder -->|"AzureEmbeddingGenerator"| AI["Azure OpenAI<br/>text-embedding-3-small"]:::ai
+    Store -->|"CosmosRunbookChunkStore<br/>replace derived chunks"| Chunks
+
+    classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
+    classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
+    classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
+    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+    classDef messaging fill:#fff7ed,stroke:#d97706,color:#7c2d12,stroke-width:2px;
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
+
+    style Save fill:#fbfdff,stroke:#2563eb,stroke-width:2px;
+    style Cosmos fill:#f6fffb,stroke:#059669,stroke-width:2px;
+    style Dispatch fill:#fffaf0,stroke:#d97706,stroke-width:2px;
+    style ServiceBus fill:#fffaf0,stroke:#d97706,stroke-width:2px;
+    style Indexing fill:#f7fff9,stroke:#16a34a,stroke-width:2px;
+    style Orchestration fill:#f7fff9,stroke:#16a34a,stroke-width:1px;
+
+    linkStyle 0,6 stroke:#0284c7,stroke-width:2px;
+    linkStyle 1,2,7,10,11,12,13,14 stroke:#16a34a,stroke-width:2px;
+    linkStyle 3,4,5,8,16,18 stroke:#059669,stroke-width:2px;
+    linkStyle 3,8 stroke:#059669,stroke-width:3px;
+    linkStyle 9,15 stroke:#d97706,stroke-width:3px;
+    linkStyle 17 stroke:#7c3aed,stroke-width:2px;
+```
+
+`IndexRunbookCommand` carries the Runbook identity rather than the full document. `IndexRunbookHandler` reloads the current Runbook, chunks it, generates embeddings, then replaces that Runbook's derived vector-search chunks.
+
+`RunbookChunks` are search data rather than the editable source of truth. Re-indexing replaces stale chunks, and deleting a Runbook also removes its derived chunks.
+
+
+### 3. Search Runbooks Semantically
+
+Semantic search is different from indexing: it is a **fully synchronous** request/response path. The API still does not query Cosmos or Azure OpenAI directly; it works through Application abstractions whose implementations live in Infrastructure.
+
+```mermaid
+flowchart TB
+    subgraph Request["Synchronous search request"]
+        direction LR
+        Web["React / API client"]:::web
+        API["Runbooks search endpoint"]:::host
+        Embedder["IEmbeddingGenerator"]:::application
+        Vector["Query embedding<br/>float[1536]"]:::application
+        Retriever["IRunbookChunkRetriever"]:::application
+        Results["RunbookChunkMatch[]<br/>top-K + distance"]:::external
+
+        Web -->|"GET /api/runbooks/search<br/>query + service? + topK"| API
+        API -->|"GenerateAsync(query)"| Embedder
+        Vector -->|"RetrieveAsync(vector, service?, topK)"| Retriever
+        Results -->|"200 OK"| Web
+    end
+
+    AI["Azure OpenAI<br/>text-embedding-3-small"]:::ai
+
+    subgraph Cosmos["Azure Cosmos DB"]
+        Chunks["RunbookChunks<br/>VectorDistance + optional service filter"]:::data
+    end
+
+    Embedder -->|"AzureEmbeddingGenerator"| AI
+    AI -->|"1536-d vector"| Vector
+    Retriever -->|"CosmosRunbookChunkRetriever"| Chunks
+    Chunks -->|"ranked rows + cosine distance"| Results
+
+    classDef external fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
+    classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
+    classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef application fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
+    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
+
+    style Request fill:#fbfdff,stroke:#2563eb,stroke-width:2px;
+    style Cosmos fill:#f6fffb,stroke:#059669,stroke-width:2px;
+
+    linkStyle 0 stroke:#0284c7,stroke-width:2px;
+    linkStyle 1,2,3 stroke:#16a34a,stroke-width:2px;
+    linkStyle 4,5 stroke:#7c3aed,stroke-width:2px;
+    linkStyle 6,7 stroke:#059669,stroke-width:2px;
+```
+
+There is **no Change Feed or Service Bus hop** in search. The caller waits for both embedding generation and Cosmos vector retrieval before receiving the response. Smaller cosine distance means a stronger match; retrieval also records latency and Cosmos Request Unit (RU) consumption.
+
+
+## Engineering Highlights
+
+- **Clean Architecture + dependency inversion** — Application owns use cases and interfaces; Infrastructure owns Azure-specific implementations.
+- **Durable asynchronous processing** — Cosmos transactional outbox, Change Feed relays, Service Bus commands, duplicate detection, bounded retries, and DLQs.
+- **Structured AI analysis** — persisted summaries, likely causes, confidence scores, recommended actions, and model metadata.
+- **Runbook ingestion pipeline** — deterministic overlapping chunking, embeddings, replace-based re-indexing, and stale-data cleanup.
+- **Vector search** — Cosmos `VectorDistance`, 1536-dimension `float32` cosine vectors, top-K retrieval, service filtering, latency, and RU telemetry.
+- **Cloud-native security** — Managed Identity/RBAC for workloads and GitHub OIDC for deployments.
+- **Observability** — OpenTelemetry, Application Insights, Log Analytics, correlation IDs, and operational telemetry.
+- **Local-first development** — Cosmos/Service Bus emulators and deterministic AI implementations allow the main workflows to run without Azure OpenAI credentials.
 
 ## Projects
 
-| Project                                                       | Responsibility                                                                     |
-| ------------------------------------------------------------- | ---------------------------------------------------------------------------------- |
-| [`IncidentIQ.Web`](src/IncidentIQ.Web/)                       | React frontend for Incidents, Runbooks, and persisted AI analysis                  |
-| [`IncidentIQ.Api`](src/IncidentIQ.Api/)                       | ASP.NET Core HTTP API and Problem Details boundary                                 |
-| [`IncidentIQ.Worker`](src/IncidentIQ.Worker/)                 | Change Feed relays plus Service Bus Incident-analysis and Runbook-indexing processing |
-| [`IncidentIQ.Domain`](src/IncidentIQ.Domain/)                 | Core business models and lifecycle rules                                           |
-| [`IncidentIQ.Application`](src/IncidentIQ.Application/)       | Use cases, handlers, validation, and external-service abstractions                 |
-| [`IncidentIQ.Infrastructure`](src/IncidentIQ.Infrastructure/) | Cosmos DB/vector persistence, Service Bus, Azure OpenAI, local AI, and SDK adapters |
-| [`infra`](infra/)                                             | Bicep, identities/RBAC, deployment configuration, and local emulator configuration |
-| [`tests`](tests/)                                             | Application, API, Worker, and reliability tests                                    |
+The summaries below are intentionally high-level. Each project name links to its own README for implementation details.
+
+| Project                                                                | High-level responsibility                                                                                                |
+| ---------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
+| [`IncidentIQ.Web`](src/IncidentIQ.Web/README.md)                       | **Engineer UI** — React pages and API clients for Incidents, analysis, and Runbooks.                                     |
+| [`IncidentIQ.Api`](src/IncidentIQ.Api/ReadMe.md)                       | **HTTP host** — controllers, HTTP contracts, validation/error presentation, synchronous search, and DI composition root. |
+| [`IncidentIQ.Worker`](src/IncidentIQ.Worker/ReadMe.md)                 | **Async host** — Change Feed relays and Service Bus consumers for Incident analysis and Runbook indexing.                |
+| [`IncidentIQ.Domain`](src/IncidentIQ.Domain/ReadMe.md)                 | **Business core** — domain entities, lifecycle/state rules, and invariants with no Azure or persistence dependency.      |
+| [`IncidentIQ.Application`](src/IncidentIQ.Application/ReadMe.md)       | **Use-case layer** — commands/queries, handlers, validation, application models, and provider-independent interfaces.    |
+| [`IncidentIQ.Infrastructure`](src/IncidentIQ.Infrastructure/ReadMe.md) | **External adapters** — Cosmos DB, Service Bus, Azure OpenAI, and deterministic local implementations.                   |
+| [`infra`](infra/ReadMe.md)                                             | **Infrastructure as Code** — Bicep, Azure resources, Managed Identity/RBAC, monitoring, and deployment configuration.    |
+| [`tests`](tests/ReadMe.md)                                             | **Verification** — Application/API/Worker tests plus reliability, indexing, and vector-retrieval coverage.               |
 
 ## Documentation
 
-| Document                                                      | Purpose                                                                               |
-| ------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| [Development Guide](docs/DEVELOPMENT.md)                      | Run IncidentIQ locally with emulators/dummy AI or locally against Azure               |
-| [Design Decisions & Trade-offs](docs/DESIGN-DECISIONS.md)     | Messaging, reliability, outbox, idempotency, AI resilience, and persistence decisions |
-| [Azure Dev Lifecycle](docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md) | Create, tear down, recreate, and reconfigure the Azure dev environment                |
-| [Infrastructure](infra/ReadMe.md)                             | Bicep structure, Azure resources, identities, RBAC, and resource ownership            |
-| [Testing](tests/ReadMe.md)                                    | Automated test boundaries and manual end-to-end verification                          |
-| [Roadmap](docs/ROADMAP.md)                                    | Completed stages and planned work                                                     |
-| [Troubleshooting](docs/TROUBLESHOOTING.md)                    | Common local Docker, Cosmos, Service Bus, DI, and AI configuration issues             |
-
-Each main project also has its own README for implementation-specific responsibilities.
+| Document                                                      | Purpose                                                                                |
+| ------------------------------------------------------------- | -------------------------------------------------------------------------------------- |
+| [Development Guide](docs/DEVELOPMENT.md)                      | Local development and Azure-connected verification                                     |
+| [Design Decisions & Trade-offs](docs/DESIGN-DECISIONS.md)     | Architecture rationale for messaging, persistence, AI, ingestion, and vector retrieval |
+| [Azure Dev Lifecycle](docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md) | Create, tear down, recreate, configure, and verify the Azure dev environment           |
+| [Infrastructure](infra/ReadMe.md)                             | Bicep structure, Azure resources, identities, RBAC, and ownership                      |
+| [Testing](tests/ReadMe.md)                                    | Automated test boundaries and end-to-end verification                                  |
+| [Roadmap](docs/ROADMAP.md)                                    | Completed stages and planned work                                                      |
+| [Troubleshooting](docs/TROUBLESHOOTING.md)                    | Common Docker, Cosmos, Service Bus, AI, ingestion, and vector-search issues            |
 
 ## Quick Start
 
 ### Docker Compose — normal local development
 
-IncidentIQ has Visual Studio Container/Compose support. Select the appropriate Docker Compose debug target and start debugging, or run from the repository root:
+IncidentIQ supports Visual Studio Docker Compose debugging. From the repository root:
 
 ```powershell
 docker compose up --build
 ```
 
-The local Worker runs with `DOTNET_ENVIRONMENT=Development`, so `IIncidentAnalyzer` resolves to `DevelopmentDummyIncidentAnalyzer` and `IEmbeddingGenerator` resolves to `DevelopmentDummyEmbeddingGenerator`. Incident analysis and Runbook vector ingestion therefore work locally without Azure OpenAI credentials.
+In `Development`, deterministic local AI implementations are used, so Incident analysis, Runbook ingestion, and semantic search can be exercised without Azure OpenAI credentials.
 
 Typical local endpoints:
 
-- API Swagger: `https://localhost:7156/swagger`
-- Web: `http://localhost:5173`
-- Cosmos DB Emulator/Data Explorer: `http://localhost:1234/`
+```text
+Web:                  http://localhost:5173
+API Swagger:          https://localhost:7156/swagger
+Cosmos Data Explorer: http://localhost:1234
+```
 
-Local `.env` values are used for emulator credentials. See the [Development Guide](docs/DEVELOPMENT.md) for the exact setup.
+See the [Development Guide](docs/DEVELOPMENT.md) for configuration and verification steps.
 
 ### Azure-connected development
 
-Use the Azure-connected mode when you specifically want to verify real Cosmos DB, Service Bus, Azure OpenAI, Managed Identity/RBAC, or Application Insights behaviour. Configuration and login instructions are in the [Development Guide](docs/DEVELOPMENT.md) and [Azure Dev Lifecycle](docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
+Use Azure-connected execution to verify real Cosmos DB, Service Bus, Azure OpenAI, Managed Identity/RBAC, Application Insights, or deployed vector-search behaviour.
+
+See the [Development Guide](docs/DEVELOPMENT.md) and [Azure Dev Lifecycle](docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
 
 ## Testing
 
 Run the backend test suite from the repository root:
 
 ```powershell
-dotnet test
+dotnet test .\IncidentIQ.slnx
 ```
 
-See [tests/ReadMe.md](tests/ReadMe.md) for the testing strategy and reliability checks.
-
-## Troubleshooting
-
-See the [Troubleshooting Guide](docs/TROUBLESHOOTING.md) for common development issues and resolutions.
+See [`tests/ReadMe.md`](tests/ReadMe.md) for the testing strategy.
 
 ## Roadmap
+
+**Stage 11 — Runbook ingestion and vector search — is complete.**
+
+Stage 12 adds:
+
+1. **Historical Incident Vector Retrieval** — searchable historical Incident embeddings and similar-Incident retrieval.
+2. **Grounded RAG Analysis** — combine retrieved Incident and Runbook evidence and feed it into the AI analysis pipeline.
 
 See the full [Development Roadmap](docs/ROADMAP.md).
