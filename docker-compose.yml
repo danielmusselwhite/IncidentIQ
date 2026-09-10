@@ -33,6 +33,7 @@ services:
       Cosmos__Key: "${COSMOS_EMULATOR_KEY}"
       Cosmos__DatabaseName: "IncidentIQ"
       Cosmos__IncidentsContainerName: "Incidents"
+      Cosmos__HistoricalIncidentVectorsContainerName: "HistoricalIncidentVectors"
       Cosmos__RunbooksContainerName: "Runbooks"
       Cosmos__RunbookChunksContainerName: "RunbookChunks"
       Cosmos__ChangeFeedLeasesContainerName: "ChangeFeedLeases"

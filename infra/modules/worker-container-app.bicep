@@ -17,6 +17,7 @@ param image string
 param cosmosEndpoint string
 param cosmosDatabaseName string
 param cosmosIncidentsContainerName string
+param cosmosHistoricalIncidentVectorsContainerName string
 param cosmosRunbooksContainerName string
 param cosmosRunbookChunksContainerName string
 param cosmosChangeFeedLeasesContainerName string
@@ -94,6 +95,10 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'Cosmos__IncidentsContainerName'
               value: cosmosIncidentsContainerName
+            }
+            {
+              name: 'Cosmos__HistoricalIncidentVectorsContainerName'
+              value: cosmosHistoricalIncidentVectorsContainerName
             }
             {
               name: 'Cosmos__RunbooksContainerName'

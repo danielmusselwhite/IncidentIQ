@@ -236,6 +236,7 @@ Cosmos:Endpoint
 Cosmos:Key
 Cosmos:DatabaseName
 Cosmos:IncidentsContainerName
+Cosmos:HistoricalIncidentVectorsContainerName
 Cosmos:RunbooksContainerName
 Cosmos:RunbookChunksContainerName
 Cosmos:ChangeFeedLeasesContainerName

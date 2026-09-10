@@ -146,6 +146,7 @@ Common Cosmos configuration:
 Cosmos:Endpoint
 Cosmos:DatabaseName = IncidentIQ
 Cosmos:IncidentsContainerName = Incidents
+Cosmos:HistoricalIncidentVectorsContainerName = HistoricalIncidentVectors
 Cosmos:RunbooksContainerName = Runbooks
 Cosmos:RunbookChunksContainerName = RunbookChunks
 Cosmos:ChangeFeedLeasesContainerName = ChangeFeedLeases

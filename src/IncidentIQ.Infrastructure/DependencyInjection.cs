@@ -59,6 +59,7 @@ public static class DependencyInjection
         services.AddScoped<IIncidentAnalysisStore, CosmosIncidentAnalysisStore>();
         services.AddScoped<IIncidentAnalysisReader, CosmosIncidentAnalysisReader>();
         services.AddScoped<IRunbookChunkRetriever, CosmosRunbookChunkRetriever>();
+        services.AddScoped<IHistoricalIncidentVectorStore, CosmosHistoricalIncidentVectorStore>();
 
         #endregion
 
