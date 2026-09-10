@@ -9,59 +9,115 @@ namespace IncidentIQ.Infrastructure.Persistence.Cosmos;
 /// </summary>
 public sealed class CosmosInitializer
 {
-    private const int embeddingDimensions = 1536;
+    private const int EmbeddingDimensions = 1536;
 
     private readonly CosmosClient _client;
     private readonly CosmosOptions _options;
 
     /// <summary>
-    /// Initializes a new instance of the <see cref="CosmosInitializer"/> class with the specified <see cref="CosmosClient"/> and <see cref="IOptions{CosmosOptions}"/>.
+    /// Initializes a new instance of the <see cref="CosmosInitializer"/>.
     /// </summary>
-    /// <param name="client">The <see cref="CosmosClient"/> used to interact with Cosmos DB.</param>
-    /// <param name="options">The <see cref="IOptions{CosmosOptions}"/> containing the Cosmos DB configuration.</param>
-    public CosmosInitializer(CosmosClient client, IOptions<CosmosOptions> options)
+    public CosmosInitializer(
+        CosmosClient client,
+        IOptions<CosmosOptions> options)
     {
         _client = client;
         _options = options.Value;
     }
 
     /// <summary>
-    /// Initializes the Cosmos DB database and containers if they do not already exist.
+    /// Initializes the Cosmos DB database and required application containers.
     /// </summary>
-    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
-    /// <returns>A <see cref="Task"/> representing the asynchronous operation.</returns>
-    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    public async Task InitializeAsync(
+        CancellationToken cancellationToken = default)
     {
         var databaseResponse = await _client.CreateDatabaseIfNotExistsAsync(
             _options.DatabaseName,
             cancellationToken: cancellationToken);
 
-        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
+        var database = databaseResponse.Database;
+
+        await database.CreateContainerIfNotExistsAsync(
             _options.IncidentsContainerName,
             "/incidentId",
             cancellationToken: cancellationToken);
 
-        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
-            _options.HistoricalIncidentVectorsContainerName,
-            "/incidentId",
+        await database.CreateContainerIfNotExistsAsync(
+            CreateVectorContainerProperties(
+                _options.HistoricalIncidentVectorsContainerName,
+                "/incidentId"),
             cancellationToken: cancellationToken);
 
-        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
+        await database.CreateContainerIfNotExistsAsync(
             new ContainerProperties(
                 _options.RunbooksContainerName,
                 "/id"),
             cancellationToken: cancellationToken);
 
-        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
-            new ContainerProperties(
+        await database.CreateContainerIfNotExistsAsync(
+            CreateVectorContainerProperties(
                 _options.RunbookChunksContainerName,
                 "/runbookId"),
             cancellationToken: cancellationToken);
 
-        await databaseResponse.Database.CreateContainerIfNotExistsAsync(
+        await database.CreateContainerIfNotExistsAsync(
             new ContainerProperties(
                 _options.ChangeFeedLeasesContainerName,
                 "/id"),
             cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Creates Cosmos container properties for documents containing semantic
+    /// embeddings used by vector search.
+    /// </summary>
+    private static ContainerProperties CreateVectorContainerProperties(
+        string containerName,
+        string partitionKeyPath)
+    {
+        var embeddings = new Collection<Embedding>
+        {
+            new()
+            {
+                Path = "/embedding",
+                DataType = VectorDataType.Float32,
+                DistanceFunction = DistanceFunction.Cosine,
+                Dimensions = EmbeddingDimensions
+            }
+        };
+
+        var properties = new ContainerProperties(
+            containerName,
+            partitionKeyPath)
+        {
+            VectorEmbeddingPolicy = new VectorEmbeddingPolicy(embeddings),
+            IndexingPolicy = new IndexingPolicy
+            {
+                VectorIndexes = new Collection<VectorIndexPath>
+                {
+                    new()
+                    {
+                        Path = "/embedding",
+                        Type = VectorIndexType.QuantizedFlat
+                    }
+                }
+            }
+        };
+
+        // Keep normal metadata indexed for filtering while excluding the large
+        // embedding array from the ordinary Cosmos index.
+        properties.IndexingPolicy.IncludedPaths.Add(
+            new IncludedPath
+            {
+                Path = "/*"
+            });
+
+        properties.IndexingPolicy.ExcludedPaths.Add(
+            new ExcludedPath
+            {
+                Path = "/embedding/*"
+            });
+
+        return properties;
     }
 }
