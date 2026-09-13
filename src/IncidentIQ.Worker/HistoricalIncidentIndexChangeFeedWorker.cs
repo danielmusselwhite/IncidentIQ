@@ -96,14 +96,17 @@ public sealed class HistoricalIncidentIndexChangeFeedWorker : BackgroundService
     /// in the Incidents Change Feed.
     /// </summary>
     private async Task HandleChangesAsync(
-        ChangeFeedProcessorContext context,
-        IReadOnlyCollection<JsonElement> changes,
-        CancellationToken cancellationToken)
+    ChangeFeedProcessorContext context,
+    IReadOnlyCollection<JsonElement> changes,
+    CancellationToken cancellationToken)
     {
+        _logger.LogInformation(
+            "Historical Incident indexing Change Feed received {ChangeCount} changed document(s) from lease {LeaseToken}.",
+            changes.Count,
+            context.LeaseToken);
+
         foreach (var change in changes)
         {
-            // The Incidents container also contains outbox documents, and
-            // Incidents pass through several states before becoming searchable.
             if (!IsCompletedIncidentDocument(change))
             {
                 continue;
@@ -112,15 +115,33 @@ public sealed class HistoricalIncidentIndexChangeFeedWorker : BackgroundService
             var incidentId = GetIncidentId(change);
             var commandId = Guid.NewGuid();
 
+            _logger.LogInformation(
+                "Completed Incident {IncidentId} observed in Change Feed. Publishing historical indexing command {CommandId}.",
+                incidentId,
+                commandId);
+
             var command = new IndexHistoricalIncidentCommand(
                 CommandId: commandId,
                 IncidentId: incidentId,
                 CorrelationId: commandId.ToString(),
                 QueuedAtUtc: DateTimeOffset.UtcNow);
 
-            await _historicalIncidentIndexQueue.EnqueueAsync(
-                command,
-                cancellationToken);
+            try
+            {
+                await _historicalIncidentIndexQueue.EnqueueAsync(
+                    command,
+                    cancellationToken);
+            }
+            catch (Exception exception)
+            {
+                _logger.LogError(
+                    exception,
+                    "Failed to publish historical Incident indexing command {CommandId} for Incident {IncidentId}.",
+                    command.CommandId,
+                    command.IncidentId);
+
+                throw;
+            }
 
             _logger.LogInformation(
                 "Published historical Incident indexing command {CommandId} for Incident {IncidentId} from Change Feed lease {LeaseToken}.",

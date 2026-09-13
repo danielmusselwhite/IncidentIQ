@@ -169,7 +169,20 @@ resource workerIndexRunbookReceiverRole 'Microsoft.Authorization/roleAssignments
   }
 }
 
-// IndexHistoricalIncidentWorker will consume IndexHistoricalIncident commands.
+// Historical Incident Change Feed relay publishes IndexHistoricalIncident commands.
+resource workerIndexHistoricalIncidentSenderRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(indexHistoricalIncidentQueue.id, workerPrincipalId, serviceBusDataSenderRoleDefinitionId)
+
+  scope: indexHistoricalIncidentQueue
+
+  properties: {
+    principalId: workerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataSenderRoleDefinitionId
+  }
+}
+
+// IndexHistoricalIncidentWorker consumes IndexHistoricalIncident commands.
 resource workerIndexHistoricalIncidentReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
   name: guid(indexHistoricalIncidentQueue.id, workerPrincipalId, serviceBusDataReceiverRoleDefinitionId)
 

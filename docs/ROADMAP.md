@@ -285,7 +285,7 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 * [x] Display the persisted analysis, similar-Incident evidence and Runbook evidence in the frontend.
 * [x] Add RAG orchestration and evidence-validation tests.
 * [x] Verify grounded Incident analysis end-to-end locally.
-* [ ] Verify grounded Incident analysis end-to-end in Azure.
+* [x] Verify grounded Incident analysis end-to-end in Azure.
 * [ ] Update RAG documentation and architecture diagrams.
 
 ### 12C — Live Similar Incident Discovery
