@@ -1,18 +1,21 @@
-﻿using IncidentIQ.Application.Incidents.Analyse.Grounding;
-
-namespace IncidentIQ.Infrastructure.AzureAI;
+﻿namespace IncidentIQ.Application.Incidents.Analyse.Grounding;
 
 /// <summary>
-/// Validates that evidence references returned by Azure AI refer only to
-/// evidence supplied in the corresponding grounded analysis context.
+/// Validates that evidence references returned from an analysis refer only
+/// to evidence that was supplied in the corresponding grounding context.
 /// </summary>
-internal static class EvidenceReferenceValidator
+public static class EvidenceReferenceValidator
 {
+    /// <summary>
+    /// Validates that the given evidence references are all valid for the given context.
+    /// </summary>
+    /// <param name="evidenceReferences">The evidence references to validate.</param>
+    /// <param name="context">The incident analysis context containing the valid evidence references.</param>
     public static void Validate(
-        AzureIncidentAnalysisResponse response,
+        IEnumerable<string> evidenceReferences,
         IncidentAnalysisContext context)
     {
-        ArgumentNullException.ThrowIfNull(response);
+        ArgumentNullException.ThrowIfNull(evidenceReferences);
         ArgumentNullException.ThrowIfNull(context);
 
         var validReferences = new HashSet<string>(StringComparer.Ordinal);
@@ -23,12 +26,7 @@ internal static class EvidenceReferenceValidator
         for (var i = 0; i < context.RunbookChunks.Count; i++)
             validReferences.Add(EvidenceReferenceId.RunbookChunk(i));
 
-        var returnedReferences = response.LikelyCauses
-            .SelectMany(cause => cause.EvidenceReferences)
-            .Concat(response.RecommendedActions
-                .SelectMany(action => action.EvidenceReferences));
-
-        var invalidReferences = returnedReferences
+        var invalidReferences = evidenceReferences
             .Where(reference => !validReferences.Contains(reference))
             .Distinct(StringComparer.Ordinal)
             .ToList();
@@ -36,7 +34,7 @@ internal static class EvidenceReferenceValidator
         if (invalidReferences.Count > 0)
         {
             throw new InvalidOperationException(
-                $"Azure AI returned evidence references that were not supplied: " +
+                $"Analysis returned evidence references that were not supplied: " +
                 $"{string.Join(", ", invalidReferences)}.");
         }
     }

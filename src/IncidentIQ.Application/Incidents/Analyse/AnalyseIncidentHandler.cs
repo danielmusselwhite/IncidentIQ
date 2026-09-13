@@ -42,12 +42,16 @@ public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepositor
             analysisContext,
             cancellationToken);
 
+        // Build the durable snapshot from the exact evidence supplied to this analysis. This ensures that the evidence is persisted in the same state as it was when the analysis was performed, even if the underlying data changes later.
+        var analysisEvidence = IncidentAnalysisEvidenceBuilder.Build(analysisContext);
+
         // Do not persist Completed separately: the store atomically commits the completed Incident and its IncidentAnalysis document.
         incident.MarkCompleted();
 
         await incidentAnalysisStore.StoreCompletedAnalysisAsync(
             incident,
             analysisResult,
+            analysisEvidence,
             cancellationToken);
     }
 

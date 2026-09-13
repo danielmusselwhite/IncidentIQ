@@ -72,6 +72,7 @@ public sealed class AnalyseIncidentHandlerTests
             .Setup(store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -99,6 +100,7 @@ public sealed class AnalyseIncidentHandlerTests
             store => store.StoreCompletedAnalysisAsync(
                 incident,
                 analysisResult,
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -143,6 +145,7 @@ public sealed class AnalyseIncidentHandlerTests
             store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -194,6 +197,7 @@ public sealed class AnalyseIncidentHandlerTests
             store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -226,6 +230,7 @@ public sealed class AnalyseIncidentHandlerTests
             .Setup(store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -250,6 +255,7 @@ public sealed class AnalyseIncidentHandlerTests
             store => store.StoreCompletedAnalysisAsync(
                 incident,
                 analysisResult,
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()),
             Times.Once);
     }
@@ -282,6 +288,7 @@ public sealed class AnalyseIncidentHandlerTests
             .Setup(store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -357,6 +364,7 @@ public sealed class AnalyseIncidentHandlerTests
             .Setup(store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -401,6 +409,7 @@ public sealed class AnalyseIncidentHandlerTests
             .Setup(store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()))
             .Returns(Task.CompletedTask);
 
@@ -455,6 +464,7 @@ public sealed class AnalyseIncidentHandlerTests
             store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -497,6 +507,7 @@ public sealed class AnalyseIncidentHandlerTests
             store => store.StoreCompletedAnalysisAsync(
                 It.IsAny<Incident>(),
                 It.IsAny<IncidentAnalysisResult>(),
+                It.IsAny<IncidentAnalysisEvidence>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }

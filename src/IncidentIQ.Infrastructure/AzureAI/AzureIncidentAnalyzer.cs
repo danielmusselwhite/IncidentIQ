@@ -190,8 +190,15 @@ public sealed class AzureIncidentAnalyzer(
             // Structured Outputs validate the JSON shape. This additionally checks semantic constraints such as required values and confidence ranges.
             response.Validate();
 
+            // Get all evidence references returned by the model, including those in likely causes and recommended actions.
+            var evidenceReferences = response.LikelyCauses
+                .SelectMany(cause => cause.EvidenceReferences)
+                .Concat(
+                    response.RecommendedActions
+                        .SelectMany(action => action.EvidenceReferences));
+
             // Ensure every evidence reference returned by the model refers to evidence that was actually supplied in this analysis request.
-            EvidenceReferenceValidator.Validate(response, context);
+            EvidenceReferenceValidator.Validate(evidenceReferences, context);
         }
         catch (Exception exception)
             when (exception is InvalidOperationException or ArgumentException)

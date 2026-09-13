@@ -1,4 +1,5 @@
 using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Grounding;
 using IncidentIQ.Domain.Incidents;
 using System.Text.Json.Serialization;
 
@@ -29,6 +30,11 @@ internal sealed class IncidentAnalysisDocument
 
     public required DateTimeOffset AnalysedAtUtc { get; init; }
 
+    public IReadOnlyList<HistoricalIncidentEvidenceDocument> HistoricalIncidentEvidence { get; init; } = [];
+
+    public IReadOnlyList<RunbookChunkEvidenceDocument> RunbookEvidence { get; init; } = [];
+
+
     /// <summary>
     /// Creates the stable Cosmos document ID used for an incident analysis.
     /// The document ID is different from the partition key: the document ID is
@@ -39,7 +45,7 @@ internal sealed class IncidentAnalysisDocument
     /// <summary>
     /// Maps the provider-independent Application result into its Cosmos representation.
     /// </summary>
-    internal static IncidentAnalysisDocument FromApplication(IncidentAnalysisResult analysis, Incident incident)
+    internal static IncidentAnalysisDocument FromApplication(IncidentAnalysisResult analysis, Incident incident, IncidentAnalysisEvidence evidence)
     {
         return new IncidentAnalysisDocument
         {
@@ -49,8 +55,16 @@ internal sealed class IncidentAnalysisDocument
             LikelyCauses = analysis.LikelyCauses.Select(LikelyCauseDocument.FromApplication).ToList(),
             RecommendedActions = analysis.RecommendedActions.Select(RecommendedActionDocument.FromApplication).ToList(),
             Model = analysis.Model,
-            AnalysedAtUtc = analysis.AnalysedAtUtc
+            AnalysedAtUtc = analysis.AnalysedAtUtc,
+            HistoricalIncidentEvidence = evidence.HistoricalIncidents
+                .Select(HistoricalIncidentEvidenceDocument.FromApplication)
+                .ToList(),
+            RunbookEvidence = evidence.RunbookChunks
+                .Select(RunbookChunkEvidenceDocument.FromApplication)
+                .ToList()
         };
+
+
     }
 
     /// <summary>
