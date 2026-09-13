@@ -290,6 +290,11 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 
 ### 12C — Live Similar Incident Discovery
 
+> Deferred — possible future enhancement.
+> The persisted analysis already exposes the historical Incidents used during
+> analysis. Live similarity could later provide a current view as new Incidents
+> are indexed, but it is not required for the core grounded RAG workflow.
+
 * [ ] Add an endpoint for retrieving current similar Incidents for an existing Incident.
 * [ ] Reuse the Incident's persisted embedding rather than generating a new embedding on every request.
 * [ ] Exclude the current Incident from its own similarity results.
@@ -298,21 +303,91 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 * [ ] Add caching TODO/design notes for Azure Cache for Redis.
 * [ ] Add endpoint/retrieval tests.
 * [ ] Verify live similar-Incident discovery in Azure.
+### 12C — Live Similar Incident Discovery
+
+> Deferred — possible future enhancement.
+>
+> Persisted grounded analyses already expose the historical Incidents used
+> during analysis. Live similarity could later provide a current view as new
+> Incidents are indexed, but it is not required for the core grounded RAG
+> workflow or the initial Operational Assistant.
+
+* [ ] Add an endpoint for retrieving current similar Incidents for an existing Incident.
+* [ ] Reuse the Incident's persisted embedding rather than generating a new embedding on every request.
+* [ ] Exclude the current Incident from its own similarity results.
+* [ ] Display current similar Incidents separately from the evidence used by the original analysis.
+* [ ] Add caching design notes for Azure Cache for Redis.
+* [ ] Add endpoint/retrieval tests.
+* [ ] Verify live similar-Incident discovery in Azure.
 
 ### 12D — Interactive Grounded RAG Assistant
 
-* [ ] Define a grounded operational question/answer request and response model.
-* [ ] Accept natural-language operational questions such as payment gateway failures or service errors.
-* [ ] Generate an embedding for the user's question.
+Build a dedicated Operational Assistant experience that answers natural-language
+engineering questions using historical Incidents and Runbooks as grounded evidence.
+
+The initial assistant is stateless on the backend. Conversation state is kept in
+the React application for the current browser session and is not persisted until
+authenticated user identity is available.
+
+#### 12D.1 — Assistant Contracts & Grounding
+
+* [ ] Define operational question, conversation-turn and answer contracts.
+* [ ] Add validation for assistant questions and optional metadata filters.
+* [ ] Build retrieval input from the current user question.
+* [ ] Generate one embedding per user question.
 * [ ] Retrieve relevant historical Incidents.
 * [ ] Retrieve relevant Runbook chunks.
-* [ ] Build grounded conversational RAG context.
-* [ ] Generate an answer constrained to the retrieved operational evidence.
-* [ ] Return supporting historical Incident and Runbook references with the answer.
-* [ ] Validate returned references against retrieved evidence.
-* [ ] Add an operational assistant/chat interface to the frontend.
-* [ ] Add conversational RAG tests and grounding checks.
-* [ ] Verify the interactive assistant end-to-end in Azure.
+* [ ] Support optional service/environment retrieval filters.
+* [ ] Build a combined operational grounding context.
+* [ ] Keep evidence identifiers request-scoped to each assistant answer.
+* [ ] Keep retrieval and AI generation provider-independent in the Application layer.
+
+#### 12D.2 — Grounded Assistant Generation
+
+* [ ] Add an `IOperationalAssistant` abstraction.
+* [ ] Implement the Azure OpenAI Operational Assistant.
+* [ ] Supply retrieved historical Incident and Runbook evidence to the model.
+* [ ] Treat retrieved evidence as data rather than instructions.
+* [ ] Generate natural-language answers constrained to supplied operational evidence.
+* [ ] Return supporting `HI-*` and `RB-*` evidence references with answer content.
+* [ ] Validate returned evidence references against the evidence actually supplied.
+* [ ] Handle questions where no relevant evidence is retrieved.
+* [ ] Add deterministic Development assistant behaviour for local development.
+* [ ] Add timeout, throttling and AI failure handling.
+
+#### 12D.3 — Stateless Conversational API
+
+* [ ] Add an Assistant API endpoint.
+* [ ] Accept the current question and optional recent conversation history.
+* [ ] Keep conversation history ephemeral and supplied by the client on each request.
+* [ ] Use prior conversation turns for conversational continuity without persisting them.
+* [ ] Keep semantic retrieval primarily based on the current operational question.
+* [ ] Return the grounded answer together with the evidence retrieved for that answer.
+* [ ] Add API validation and error handling.
+* [ ] Add Assistant API tests.
+
+#### 12D.4 — Operational Assistant Frontend
+
+* [ ] Add an `Assistant` item to the main navigation.
+* [ ] Add a dedicated `/assistant` page.
+* [ ] Build a conversational user/assistant message interface.
+* [ ] Keep the current conversation in React state only.
+* [ ] Add optional Service and Environment filters.
+* [ ] Add a desktop evidence/source panel alongside the conversation.
+* [ ] Display clickable `HI-*` and `RB-*` references with assistant answers.
+* [ ] Allow evidence references to preview/highlight their corresponding source.
+* [ ] Link historical Incident evidence to Incident details.
+* [ ] Link Runbook evidence to Runbook details.
+* [ ] Add responsive behaviour for smaller screens.
+* [ ] Add useful empty, loading and error states.
+* [ ] Do not persist conversation history before authenticated user identity exists.
+
+#### 12D.5 — Verification & Documentation
+
+* [ ] Add grounding, citation-validation and orchestration tests.
+* [ ] Verify multi-turn conversational behaviour locally.
+* [ ] Verify the Operational Assistant end-to-end in Azure.
+* [ ] Verify historical Incident and Runbook citations in real Azure responses.
 * [ ] Update architecture and RAG documentation.
 
 ## Stage 13 — AI Evaluation
@@ -349,6 +424,10 @@ Complete the application's production-style security and configuration model.
 
 * [ ] Add Engineer / Administrator authorization.
 * [ ] Apply authorization to administrative and operational functionality.
+
+* [ ] Add authenticated Assistant conversation ownership.
+* [ ] Persist Assistant conversations per authenticated user.
+* [ ] Add conversation history, resume and deletion functionality.
 
 ## Stage 15 — Scaling & Observability
 
