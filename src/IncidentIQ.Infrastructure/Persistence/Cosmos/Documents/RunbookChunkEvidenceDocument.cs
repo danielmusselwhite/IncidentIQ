@@ -32,4 +32,16 @@ internal sealed class RunbookChunkEvidenceDocument
             Distance = evidence.Distance
         };
     }
+
+    internal RunbookChunkEvidence ToApplication()
+    {
+        return new RunbookChunkEvidence(
+            ReferenceId,
+            RunbookId,
+            ChunkIndex,
+            Title,
+            Service,
+            Content,
+            Distance);
+    }
 }

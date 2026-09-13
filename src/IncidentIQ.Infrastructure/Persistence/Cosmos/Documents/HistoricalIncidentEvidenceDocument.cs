@@ -42,4 +42,19 @@ internal sealed class HistoricalIncidentEvidenceDocument
             Distance = evidence.Distance
         };
     }
+
+    internal HistoricalIncidentEvidence ToApplication()
+    {
+        return new HistoricalIncidentEvidence(
+            ReferenceId,
+            IncidentId,
+            Title,
+            Description,
+            Symptoms,
+            Service,
+            Environment,
+            Severity,
+            CompletedAtUtc,
+            Distance);
+    }
 }

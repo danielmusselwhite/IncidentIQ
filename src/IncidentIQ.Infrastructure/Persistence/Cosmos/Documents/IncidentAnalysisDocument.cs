@@ -70,13 +70,29 @@ internal sealed class IncidentAnalysisDocument
     /// <summary>
     /// Maps the Cosmos document back into the provider-independent Application result.
     /// </summary>
-    internal IncidentAnalysisResult ToApplication()
+    internal GroundedIncidentAnalysis ToApplication()
     {
-        return new IncidentAnalysisResult(
+        var analysis = new IncidentAnalysisResult(
             Summary,
-            LikelyCauses.Select(cause => cause.ToApplication()).ToList(),
-            RecommendedActions.Select(action => action.ToApplication()).ToList(),
+            LikelyCauses
+                .Select(cause => cause.ToApplication())
+                .ToList(),
+            RecommendedActions
+                .Select(action => action.ToApplication())
+                .ToList(),
             Model,
             AnalysedAtUtc);
+
+        var evidence = new IncidentAnalysisEvidence(
+            HistoricalIncidents: HistoricalIncidentEvidence
+                .Select(item => item.ToApplication())
+                .ToList(),
+            RunbookChunks: RunbookEvidence
+                .Select(item => item.ToApplication())
+                .ToList());
+
+        return new GroundedIncidentAnalysis(
+            Analysis: analysis,
+            Evidence: evidence);
     }
 }
