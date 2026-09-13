@@ -1,3 +1,4 @@
+using IncidentIQ.Application.Common.Grounding;
 using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Application.Incidents.Analyse.Grounding;
 using IncidentIQ.Application.Incidents.HistoricalSearch.Retrieve;
@@ -97,7 +98,7 @@ public sealed class AzureIncidentAnalyzer(
         {
             LogFailure(stopwatch, AzureAIFailureCategory.Timeout, exception);
 
-            throw new AzureAIAnalysisException(
+            throw new AzureAIOperationException(
                 AzureAIFailureCategory.Timeout,
                 $"Azure AI incident analysis exceeded the configured {_options.RequestTimeoutSeconds} second timeout.",
                 exception);
@@ -106,7 +107,7 @@ public sealed class AzureIncidentAnalyzer(
         {
             LogFailure(stopwatch, AzureAIFailureCategory.Throttled, exception);
 
-            throw new AzureAIAnalysisException(
+            throw new AzureAIOperationException(
                 AzureAIFailureCategory.Throttled,
                 "Azure AI throttled the incident analysis request.",
                 exception);
@@ -118,7 +119,7 @@ public sealed class AzureIncidentAnalyzer(
         {
             LogFailure(stopwatch, AzureAIFailureCategory.ServiceFailure, exception);
 
-            throw new AzureAIAnalysisException(
+            throw new AzureAIOperationException(
                 AzureAIFailureCategory.ServiceFailure,
                 $"Azure AI encountered a transient service failure. HTTP status: {exception.Status}.",
                 exception);
@@ -127,7 +128,7 @@ public sealed class AzureIncidentAnalyzer(
         {
             LogFailure(stopwatch, AzureAIFailureCategory.ClientFailure, exception);
 
-            throw new AzureAIAnalysisException(
+            throw new AzureAIOperationException(
                 AzureAIFailureCategory.ClientFailure,
                 $"Azure AI rejected the incident analysis request. HTTP status: {exception.Status}.",
                 exception);
@@ -143,7 +144,7 @@ public sealed class AzureIncidentAnalyzer(
         {
             LogFailure(stopwatch, AzureAIFailureCategory.InvalidResponse);
 
-            throw new AzureAIAnalysisException(
+            throw new AzureAIOperationException(
                 AzureAIFailureCategory.InvalidResponse,
                 "Azure AI returned an empty incident analysis response.");
         }
@@ -166,7 +167,7 @@ public sealed class AzureIncidentAnalyzer(
         {
             LogFailure(stopwatch, AzureAIFailureCategory.InvalidResponse, exception);
 
-            throw new AzureAIAnalysisException(
+            throw new AzureAIOperationException(
                 AzureAIFailureCategory.InvalidResponse,
                 "Azure AI returned an incident analysis response that could not be deserialized.",
                 exception);
@@ -176,7 +177,7 @@ public sealed class AzureIncidentAnalyzer(
         {
             LogFailure(stopwatch, AzureAIFailureCategory.InvalidResponse);
 
-            throw new AzureAIAnalysisException(
+            throw new AzureAIOperationException(
                 AzureAIFailureCategory.InvalidResponse,
                 "Azure AI returned a null incident analysis response.");
         }
@@ -205,7 +206,7 @@ public sealed class AzureIncidentAnalyzer(
         {
             LogFailure(stopwatch, AzureAIFailureCategory.InvalidResponse, exception);
 
-            throw new AzureAIAnalysisException(
+            throw new AzureAIOperationException(
                 AzureAIFailureCategory.InvalidResponse,
                 "Azure AI returned an incident analysis response that failed semantic validation.",
                 exception);

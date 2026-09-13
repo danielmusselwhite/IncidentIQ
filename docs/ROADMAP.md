@@ -382,13 +382,16 @@ authenticated user identity is available.
 * [ ] Add useful empty, loading and error states.
 * [ ] Do not persist conversation history before authenticated user identity exists.
 
-#### 12D.5 — Verification & Documentation
+#### 12D.5 — Verification
 
 * [ ] Add grounding, citation-validation and orchestration tests.
 * [ ] Verify multi-turn conversational behaviour locally.
 * [ ] Verify the Operational Assistant end-to-end in Azure.
 * [ ] Verify historical Incident and Runbook citations in real Azure responses.
-* [ ] Update architecture and RAG documentation.
+
+#### 12.E Documentation
+* [ ] Finally, Update architecture and RAG documentation.
+  * [ ] make new folder for important flows, make them more clear eg User -|POST api/incidents|-> IncidentController -|CreateIncidentCommand|->|CreateIncidentHandler| -> Analyse + blah blah -> ASYNC FLOWS | then just have high level colour coded one too of eg Api -> Command -> Handler -> blah blah, also can you add a section seomewhere to explain how to debug locally against a live resources of azure / cosmos/ api etc. if required instead of just our dummied ones, also mention azureincidentanalysisschema and its role, also the LLM flow
 
 ## Stage 13 — AI Evaluation
 

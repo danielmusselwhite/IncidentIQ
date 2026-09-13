@@ -1,4 +1,6 @@
-﻿namespace IncidentIQ.Application.Assistant.Grounding;
+﻿using IncidentIQ.Application.Common.Grounding;
+
+namespace IncidentIQ.Application.Assistant.Grounding;
 
 /// <summary>
 /// Validates that evidence references returned by the Assistant correspond
@@ -18,12 +20,12 @@ public static class OperationalEvidenceReferenceValidator
 
         for (var i = 0; i < context.HistoricalIncidents.Count; i++)
         {
-            validReferences.Add($"HI-{i + 1}");
+            validReferences.Add(EvidenceReferenceId.HistoricalIncident(i));
         }
 
         for (var i = 0; i < context.RunbookChunks.Count; i++)
         {
-            validReferences.Add($"RB-{i + 1}");
+            validReferences.Add(EvidenceReferenceId.RunbookChunk(i));
         }
 
         var invalidReferences = evidenceReferences

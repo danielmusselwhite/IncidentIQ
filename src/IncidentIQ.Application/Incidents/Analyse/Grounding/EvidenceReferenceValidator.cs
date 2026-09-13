@@ -1,4 +1,6 @@
-﻿namespace IncidentIQ.Application.Incidents.Analyse.Grounding;
+﻿using IncidentIQ.Application.Common.Grounding;
+
+namespace IncidentIQ.Application.Incidents.Analyse.Grounding;
 
 /// <summary>
 /// Validates that evidence references returned from an analysis refer only
