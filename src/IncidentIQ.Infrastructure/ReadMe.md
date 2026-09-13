@@ -1,228 +1,112 @@
 # IncidentIQ.Infrastructure
 
-`IncidentIQ.Infrastructure` contains the concrete implementations that connect IncidentIQ's Application abstractions to external systems.
+`IncidentIQ.Infrastructure` implements the external-service interfaces defined by Application.
 
-It owns provider-specific details for Cosmos DB, Service Bus and Azure OpenAI, plus deterministic Development implementations used to exercise AI/vector workflows locally.
+It contains Cosmos DB persistence/vector retrieval, Azure Service Bus adapters, Azure OpenAI implementations, and deterministic Development AI implementations.
 
 ## Responsibilities
 
-Current responsibilities include:
-
-- Cosmos DB client configuration and local initialization.
-- Incident persistence.
-- Atomic Incident + analysis-outbox persistence.
-- Atomic completed Incident + structured-analysis persistence.
-- Persisted analysis point reads.
-- Runbook source persistence.
-- Derived Runbook chunk/vector persistence.
-- Cosmos vector retrieval over Runbook chunks.
-- Mapping Cosmos vector-query projections into Application `RunbookChunkMatch` results.
-- Retrieval latency and Cosmos Request Unit (RU) telemetry.
-- Azure Service Bus client configuration plus `AnalyseIncidentCommand` and `IndexRunbookCommand` publishing.
-- Azure OpenAI structured Incident analysis.
-- Azure OpenAI Runbook/query embedding generation.
-- Deterministic Development Incident analysis and embedding generation.
-- Azure AI timeout/retry/failure classification and structured telemetry.
-- Azure authentication through `DefaultAzureCredential` where configured.
-- Infrastructure dependency-injection registration.
-
-## High-Level Structure
-
 ```text
-IncidentIQ.Infrastructure/
-├── AzureAI/
-│   ├── AzureIncidentAnalyzer.cs
-│   ├── DevelopmentDummyIncidentAnalyzer.cs
-│   └── Embedding/
-│       ├── AzureEmbeddingOptions.cs
-│       ├── AzureEmbeddingGenerator.cs
-│       └── DevelopmentDummyEmbeddingGenerator.cs
-├── Messaging/
-│   ├── AzureServiceBusIncidentAnalysisQueue.cs
-│   ├── AzureServiceBusRunbookIndexQueue.cs
-│   └── ServiceBusOptions.cs
-├── Persistence/
-│   └── Cosmos/
-│       ├── CosmosOptions.cs
-│       ├── CosmosInitializer.cs
-│       ├── CosmosIncidentRepository.cs
-│       ├── CosmosIncidentSubmissionStore.cs
-│       ├── CosmosIncidentAnalysisStore.cs
-│       ├── CosmosIncidentAnalysisReader.cs
-│       ├── CosmosRunbookRepository.cs
-│       ├── CosmosRunbookChunkStore.cs
-│       ├── CosmosRunbookChunkRetriever.cs
-│       ├── CosmosRunbookChunkMatchResult.cs
-│       └── Documents/
-└── DependencyInjection.cs
+Application interface
+      ↓
+Infrastructure implementation
+      ↓
+Cosmos / Service Bus / Azure OpenAI
 ```
 
-The exact folder placement of small persistence projection types is an implementation detail; the architectural point is that Cosmos-specific result mapping remains inside Infrastructure.
+Examples:
+
+```text
+IIncidentRepository              → CosmosIncidentRepository
+IRunbookChunkRetriever           → CosmosRunbookChunkRetriever
+IHistoricalIncidentRetriever     → CosmosHistoricalIncidentRetriever
+IHistoricalIncidentVectorStore   → CosmosHistoricalIncidentVectorStore
+IEmbeddingGenerator              → AzureEmbeddingGenerator
+IIncidentAnalyzer                → AzureIncidentAnalyzer
+IOperationalAssistant            → AzureOperationalAssistant
+```
 
 ## Cosmos DB
 
-IncidentIQ uses the native Azure Cosmos DB SDK.
+Important containers:
 
-```text
-IncidentIQ Database
-├── Incidents          /incidentId
-├── Runbooks           /id
-├── RunbookChunks      /runbookId   (vector-enabled)
-└── ChangeFeedLeases   /id
-```
+| Container | Partition key | Purpose |
+| --- | --- | --- |
+| `Incidents` | `/incidentId` | Incident state, outbox and persisted analysis/evidence |
+| `Runbooks` | `/id` | Editable Runbook source |
+| `RunbookChunks` | `/runbookId` | Derived Runbook chunk vectors |
+| `HistoricalIncidentVectors` | `/incidentId` | Derived completed-Incident vectors |
+| `ChangeFeedLeases` | `/id` | Change Feed processor checkpoints/ownership |
 
-### Incident Persistence
+Vector-query projection models remain inside Infrastructure and are explicitly mapped to Application retrieval models.
 
-The `Incidents` container stores multiple document types sharing the Incident partition:
-
-```text
-IncidentDocument
-IncidentAnalysisOutboxDocument
-IncidentAnalysisDocument
-```
-
-This supports two important transactional batches:
-
-```text
-submission/retry
-→ Incident + Outbox
-
-successful analysis
-→ Completed Incident + Analysis
-```
-
-`CosmosIncidentAnalysisReader` reads a persisted analysis using its deterministic ID (`analysis-{incidentId}`) and the raw Incident ID as partition key, giving an efficient point read.
-
-### Runbook Vector Index
-
-`CosmosRunbookChunkStore` persists the derived Runbook search index. Chunk IDs are deterministic, all chunks for one Runbook share `/runbookId`, and replacement removes stale chunks when a Runbook becomes shorter or is re-indexed.
-
-`RunbookChunks` is configured with:
-
-```text
-vector path        /embedding
-vector type        float32
-vector dimensions  1536
-distance function  cosine
-vector index       quantizedFlat
-```
-
-The source `Runbooks` container remains the editable system of record. `RunbookChunks` is rebuildable, derived search data.
-
-### Runbook Vector Retrieval
-
-`CosmosRunbookChunkRetriever` implements `IRunbookChunkRetriever` and translates a provider-independent query vector into a Cosmos vector query:
-
-```text
-IReadOnlyList<float> queryEmbedding
-        ↓
-Cosmos VectorDistance(c.embedding, @queryEmbedding)
-        ↓
-optional service metadata filter
-        ↓
-ORDER BY vector distance
-        ↓
-TOP @topK
-        ↓
-CosmosRunbookChunkMatchResult
-        ↓
-RunbookChunkMatch
-```
-
-The explicit projection/result mapping matters. Cosmos query rows are first materialised into `CosmosRunbookChunkMatchResult`, with JSON property mappings aligned to the query aliases, and are then converted to the Application model. This prevents a valid result row from silently producing empty/default `RunbookId`, `ChunkIndex`, `Title`, `Service`, `Content` or `Distance` values.
-
-The retriever measures query latency and accumulates Cosmos Request Units (RUs). The returned `Distance` is cosine distance: lower is more similar; it is not a probability or confidence score.
-
-## Transactional Outbox
-
-Incident creation and deliberate retry operations persist both Incident state and an `AnalyseIncident` outbox request through `CosmosIncidentSubmissionStore`.
-
-```text
-API/Application
-→ persist Incident + Outbox atomically
-→ Cosmos Change Feed
-→ IncidentOutboxWorker
-→ IIncidentAnalysisQueue
-→ Service Bus
-```
-
-This avoids the Cosmos + Service Bus dual-write failure mode.
+Raw vector ranking values are retrieval signals, not calibrated AI confidence scores.
 
 ## Service Bus
 
-`AzureServiceBusIncidentAnalysisQueue` implements `IIncidentAnalysisQueue` and publishes `AnalyseIncidentCommand` to `analyse-incident`.
-
-`AzureServiceBusRunbookIndexQueue` implements `IRunbookIndexQueue` and publishes `IndexRunbookCommand` to `index-runbook`.
-
-The API does not publish directly to Service Bus. Incident commands are relayed from the transactional outbox, while Runbook indexing commands are published by the Worker-side Runbooks Change Feed relay.
-
-## Azure AI
-
-### Incident Analysis
+Infrastructure publishes/consumes commands for:
 
 ```text
-IIncidentAnalyzer
-├── DevelopmentDummyIncidentAnalyzer
-└── AzureIncidentAnalyzer
-    ↓
-Azure OpenAI ChatClient
-    ↓
-incident-analysis / gpt-5-mini
+analyse-incident
+index-runbook
+index-historical-incident
 ```
 
-`AzureIncidentAnalyzer` builds structured messages, requests the strict response schema, validates the returned JSON, maps provider-specific data into `IncidentAnalysisResult`, classifies failures and records safe structured telemetry.
+The API does not publish Incident analysis directly to Service Bus. Incident submission uses the Cosmos transactional outbox and Worker-side Change Feed relay.
 
-The real analyzer has a bounded SDK retry policy and request timeout. Service Bus remains the durable outer retry mechanism for the asynchronous analysis workflow.
+## Azure OpenAI
 
-### Embeddings
+Three provider-independent capabilities are implemented here:
 
 ```text
 IEmbeddingGenerator
-├── DevelopmentDummyEmbeddingGenerator
-└── AzureEmbeddingGenerator
-    ↓
-Azure OpenAI EmbeddingClient
-    ↓
-runbook-embedding / text-embedding-3-small
+→ AzureEmbeddingGenerator
+
+IIncidentAnalyzer
+→ AzureIncidentAnalyzer
+
+IOperationalAssistant
+→ AzureOperationalAssistant
 ```
 
-`AzureEmbeddingGenerator` requests the configured 1536 dimensions and validates the returned vector length before returning a provider-independent float vector.
+The shared Azure client/dependency wiring is reused rather than constructing separate clients per feature.
 
-The same abstraction now serves two Stage 11 paths:
+### Structured generation
+
+`AzureIncidentAnalysisSchema` constrains Incident-analysis JSON output.
+
+`AzureOperationalAssistantSchema` constrains Assistant answer sections and their evidence-reference arrays.
+
+Infrastructure validates/deserialises the provider response, maps it to Application models, and leaves request-specific evidence-reference validation to Application.
+
+### Prompt boundary
+
+Retrieved Incident/Runbook content and previous conversation messages are treated as untrusted data. Azure prompts instruct the model not to follow embedded instructions or invent access to external operational systems.
+
+### Resilience
+
+Azure AI adapters use configured network/request timeouts, bounded SDK retry behaviour and failure classification for timeout, throttling, service/client failure and invalid responses.
+
+They do not log raw prompts, Incident descriptions, Runbook content or model responses.
+
+## Development implementations
+
+Normal `Development` uses deterministic replacements:
 
 ```text
-Worker → embed Runbook chunks during asynchronous indexing
-API    → embed search text before synchronous vector retrieval
+DevelopmentDummyIncidentAnalyzer
+DevelopmentDummyEmbeddingGenerator
+DevelopmentDummyOperationalAssistant
 ```
 
-In Development, the deterministic implementation is used by both sides so stored chunk vectors and query vectors are generated in the same vector space without Azure OpenAI cost.
+This keeps local orchestration deterministic while the rest of the application continues to use the same Application interfaces.
 
-## Authentication
+## Design approach
 
-```text
-Docker Compose Development
-→ emulator credentials / connection strings
-→ deterministic Development AI + embeddings
-```
+- Azure SDK details stop at the Infrastructure boundary.
+- Source documents remain separate from rebuildable vector documents.
+- Cosmos projection contracts are explicit and testable.
+- Durable Service Bus retry behaviour remains outside Azure AI adapters.
+- Static JSON schemas validate shape; Application validates request-specific evidence meaning.
 
-```text
-Azure / non-Development
-→ DefaultAzureCredential
-→ workload Managed Identity
-→ Cosmos / Service Bus / Azure OpenAI RBAC as required by each host
-```
-
-By the end of Stage 11:
-
-- The **Worker Managed Identity** accesses Cosmos, Service Bus and Azure OpenAI for Incident analysis and Runbook indexing.
-- The **API Managed Identity** accesses Cosmos and Azure OpenAI so `GET /api/runbooks/search` can generate query embeddings and execute vector retrieval.
-
-## Design Approach
-
-- Application defines abstractions; Infrastructure implements them.
-- Azure/Cosmos SDK types remain outside Domain/Application where practical.
-- External-service configuration is bound through options classes.
-- Long-lived SDK clients are registered and reused through dependency injection.
-- Source Runbook persistence is separate from derived vector-index storage/retrieval.
-- Provider-specific vector projection/deserialization is contained at the Infrastructure boundary.
-- Resilience logic classifies and propagates failures rather than hiding them from the appropriate HTTP/Worker retry boundary.
+See [Design Decisions](../../docs/DESIGN-DECISIONS.md) and [RAG & AI Design](../../docs/RAG-AND-AI.md).

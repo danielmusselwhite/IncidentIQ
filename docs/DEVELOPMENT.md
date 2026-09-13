@@ -1,80 +1,56 @@
 # IncidentIQ Development Guide
 
-IncidentIQ supports two main development modes:
+IncidentIQ supports two development modes:
 
-1. **Fully local application workflow** — Docker Compose with Cosmos DB and Service Bus emulators plus `DevelopmentDummyIncidentAnalyzer` and `DevelopmentDummyEmbeddingGenerator`. This is the normal day-to-day mode and does **not** require Azure OpenAI credentials.
-2. **Azure-connected verification** — API/Worker run against the Azure development environment when you specifically want to verify real Cosmos DB, Service Bus, Azure OpenAI, RBAC, or Application Insights behaviour.
+1. **Normal local development** — Docker Compose, local Cosmos/Service Bus, and deterministic AI implementations.
+2. **Targeted Azure-connected debugging** — run the API or Worker locally against real Azure resources when you specifically need to verify Azure OpenAI, Cosmos vector search, Service Bus, RBAC, or telemetry.
 
-For Azure resource creation, teardown, and secret refresh instructions, see [IncidentIQ Azure Dev Environment Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
+Use the first mode by default. Azure-connected debugging is deliberately opt-in because it can consume real cloud resources and, for Workers, can compete with deployed consumers.
+
+For provisioning/teardown, see [IncidentIQ Azure Dev Environment Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
 
 ---
 
-## Option 1 — Fully Local Development
+## Option 1 — Normal Local Development
 
 ### Prerequisites
 
 - Docker Desktop
-- Visual Studio with Container/Compose support, or Docker Compose CLI
+- Visual Studio with Docker Compose support, or Docker Compose CLI
 - .NET 10 SDK
 - Node.js / npm
 
-### 1. Configure `.env`
+### Configure `.env`
 
-Create a `.env` file in the repository root:
+Create a repository-root `.env` file:
 
 ```env
 COSMOS_EMULATOR_KEY=<COSMOS_EMULATOR_KEY>
 SERVICEBUS_SQL_PASSWORD=<LOCAL_SQL_PASSWORD>
 ```
 
-`.env` is used by Docker Compose and must remain outside source control.
+Do not commit `.env`.
 
-The SQL password must satisfy SQL Server password complexity requirements.
+### Start the stack
 
-### 2. Start the Application
-
-The project supports Visual Studio Docker Compose debugging. Select the Docker Compose debug target and start debugging, or run:
+From the repository root:
 
 ```powershell
 docker compose up --build
 ```
 
-The compose environment starts the API, Worker, React frontend, Cosmos DB Emulator, Service Bus Emulator, and the SQL Server dependency used by the Service Bus Emulator.
-
-The API and Worker run with `Development` for normal local work:
+The local stack includes:
 
 ```text
-DOTNET_ENVIRONMENT=Development
+React Web
+ASP.NET Core API
+.NET Worker
+Cosmos DB Emulator
+Service Bus Emulator
+SQL Server for the Service Bus Emulator
 ```
 
-In Development, dependency injection selects:
-
-```text
-IIncidentAnalyzer
-└── DevelopmentDummyIncidentAnalyzer
-
-IEmbeddingGenerator
-└── DevelopmentDummyEmbeddingGenerator
-```
-
-so Incident analysis, Runbook vector ingestion, and Runbook vector-search query embeddings remain deterministic and local.
-
-The Service Bus Emulator queue is defined in:
-
-```text
-infra/local/servicebus/Config.json
-```
-
-Current queues:
-
-```text
-analyse-incident
-index-runbook
-```
-
-### 3. Local URLs
-
-Typical local endpoints are:
+Typical URLs:
 
 ```text
 Web:                  http://localhost:5173
@@ -82,154 +58,157 @@ API Swagger:          https://localhost:7156/swagger
 Cosmos Data Explorer: http://localhost:1234
 ```
 
-The frontend uses `VITE_API_BASE_URL` to locate the API.
+### Deterministic Development AI
 
-In Development, the API avoids HTTPS redirection for the local HTTP frontend/API path where required by the Docker setup, preventing CORS problems caused by an HTTP → HTTPS redirect.
-
-### 4. Local Runtime Flow
+`DOTNET_ENVIRONMENT=Development` selects deterministic implementations:
 
 ```text
-React
-  ↓
-POST /api/incidents
-  ↓
-API / Application
-  ↓
-Cosmos transactional batch
-  ├── Incident (Queued)
-  └── AnalyseIncident Outbox
-          ↓
-     Cosmos Change Feed
-          ↓
-   IncidentOutboxWorker
-          ↓
- Service Bus Emulator
-          ↓
- AnalyseIncidentWorker
-          ↓
- DevelopmentDummyIncidentAnalyzer
-          ↓
- Completed Incident + structured analysis
-          ↓
-      Cosmos
-          ↓
-React polls status then fetches /analysis
-```
+IIncidentAnalyzer
+└── DevelopmentDummyIncidentAnalyzer
 
-The dummy analyzer still returns the same Application-level `IncidentAnalysisResult` shape used by Azure OpenAI, so API persistence/retrieval and frontend rendering are exercised locally.
-
-Runbook indexing is also exercised locally:
-
-```text
-Create / update Runbook
-      ↓
-Runbooks Change Feed
-      ↓
-RunbookIndexChangeFeedWorker
-      ↓
-Service Bus Emulator: index-runbook
-      ↓
-IndexRunbookWorker
-      ↓
-RunbookChunker
-      ↓
-DevelopmentDummyEmbeddingGenerator
-      ↓
-RunbookChunks
-```
-
-The dummy embedding generator returns deterministic 1536-dimensional vectors so the vector persistence pipeline can be verified without Azure OpenAI.
-
-After the Change Feed/Worker has created `RunbookChunks`, the retrieval path can be exercised through Swagger or the API:
-
-```text
-GET /api/Runbooks/search
-      ↓
 IEmbeddingGenerator
-      ↓
-DevelopmentDummyEmbeddingGenerator
-      ↓
-IRunbookChunkRetriever
-      ↓
-CosmosRunbookChunkRetriever
-      ↓
-VectorDistance over RunbookChunks
-      ↓
-Top-K RunbookChunkMatch results
+└── DevelopmentDummyEmbeddingGenerator
+
+IOperationalAssistant
+└── DevelopmentDummyOperationalAssistant
 ```
 
-An optional service filter can restrict matches to the same service. `Distance` is cosine distance, so lower values represent stronger matches.
+This lets the application exercise the same commands, handlers, persistence, messaging and response contracts without calling Azure OpenAI.
 
-### 5. Local Cosmos Data Explorer
+The current local Service Bus queues are:
 
-Useful containers include:
+```text
+analyse-incident
+index-runbook
+index-historical-incident
+```
+
+### Main local flows
+
+Incident processing:
+
+```text
+POST /api/incidents
+→ Incident + outbox in Cosmos
+→ Change Feed
+→ analyse-incident
+→ AnalyseIncidentWorker
+→ grounded analysis handler
+→ completed Incident + analysis
+```
+
+Runbook indexing:
+
+```text
+Runbook change
+→ Change Feed
+→ index-runbook
+→ IndexRunbookWorker
+→ chunk + embed
+→ RunbookChunks
+```
+
+Historical Incident indexing:
+
+```text
+Completed Incident
+→ Change Feed
+→ index-historical-incident
+→ IndexHistoricalIncidentWorker
+→ embed
+→ HistoricalIncidentVectors
+```
+
+Operational Assistant:
+
+```text
+React /assistant
+→ POST /api/assistant/questions
+→ retrieve historical Incidents + Runbook chunks
+→ DevelopmentDummyOperationalAssistant
+→ answer + evidence
+```
+
+Useful Cosmos containers:
 
 ```text
 IncidentIQ
 ├── Incidents
 ├── Runbooks
 ├── RunbookChunks
+├── HistoricalIncidentVectors
 └── ChangeFeedLeases
 ```
 
-`Incidents` uses `/incidentId` and contains:
+`Runbooks` and `Incidents` remain source records. `RunbookChunks` and `HistoricalIncidentVectors` are derived retrieval data.
 
-```text
-IncidentDocument
-IncidentAnalysisOutboxDocument
-IncidentAnalysisDocument
-```
+### Stop/reset
 
-
-`Runbooks` uses `/id` and remains the editable source of truth. `RunbookChunks` uses `/runbookId` and stores derived chunk content, retrieval metadata, and 1536-dimensional vectors under `/embedding`.
-
-`ChangeFeedLeases` is SDK-managed state used by the Cosmos Change Feed Processor.
-
-### Stop the Environment
-
-Stop containers while retaining persisted volumes:
+Keep local data:
 
 ```powershell
 docker compose down
 ```
 
-Remove containers and persisted volumes:
+Remove containers and volumes:
 
 ```powershell
 docker compose down -v
 ```
 
-Use `-v` only when you intentionally want to reset emulator state. If only the Service Bus SQL state is invalid, prefer recreating only its SQL data volume rather than wiping Cosmos data too.
+Use `-v` only when you intentionally want to reset emulator state.
 
 ---
 
-## Option 2 — Run Locally Against Azure
+## Option 2 — Targeted Azure-Connected Debugging
 
-Use this mode to verify real Azure dependencies and deployed-style authentication/telemetry.
+Use this when a local deterministic implementation cannot answer the question you are investigating, for example:
 
-### 1. Ensure the Dev Environment Exists
+- Does the real Azure OpenAI schema/prompt work?
+- Does Cosmos vector retrieval return the expected Azure results?
+- Does the workload identity have the correct RBAC role?
+- Can a real Service Bus sender/receiver publish or consume?
+- Does Application Insights receive telemetry?
 
-The disposable development environment is:
+### Before you start
+
+Ensure the dev environment exists:
 
 ```text
 rg-incidentiq-dev
 ```
 
-See [IncidentIQ Azure Dev Environment Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md) for deployment and recreation steps.
-
-### 2. Login
+Then sign in:
 
 ```powershell
 az login
 ```
 
-`DefaultAzureCredential` can then use your developer Azure identity where supported.
+The Azure AI clients use `DefaultAzureCredential`, so your signed-in developer identity needs the relevant Azure roles. Deployed API/Worker workloads use Managed Identity instead.
 
-### 3. Configure Local Settings
+### Important safety rules
 
-The API and Worker use separate .NET user-secrets stores.
+Running a local API against Azure is usually low risk because it is primarily request/response work.
 
-Common Cosmos settings:
+Running a local **Worker** against shared Azure resources needs more care:
+
+- A local Service Bus receiver can consume messages that the deployed Worker would otherwise process.
+- A local Change Feed processor using the same lease container/processor name can share partitions with the deployed Worker.
+- Local code can write real development data, complete messages, create vectors, or dead-letter failed work.
+
+Prefer one of these when debugging a Worker:
+
+1. temporarily stop the deployed development Worker,
+2. use an isolated dev database/queue/lease configuration, or
+3. test only the specific API/Azure dependency that you need.
+
+Do not point local code at production resources.
+
+### Configuration
+
+Use .NET user secrets or environment variables. Never place keys, connection strings or tokens in committed settings files.
+
+Common Cosmos configuration:
 
 ```text
 Cosmos:Endpoint
@@ -242,7 +221,7 @@ Cosmos:RunbookChunksContainerName
 Cosmos:ChangeFeedLeasesContainerName
 ```
 
-Worker Service Bus settings:
+Service Bus:
 
 ```text
 ServiceBus:FullyQualifiedNamespace
@@ -252,103 +231,50 @@ ServiceBus:IndexHistoricalIncidentQueueName
 ServiceBus:MaxDeliveryCount
 ```
 
-Azure AI is used by both hosts in non-Development environments, but for different Stage 11 responsibilities:
+Azure AI:
 
 ```text
-API
-├── AzureAI:Endpoint
-└── AzureAI:Embedding:*       # Runbook search query embeddings
-
-Worker
-├── AzureAI:Endpoint
-├── AzureAI:DeploymentName   # Incident analysis
-├── AzureAI:ModelName
-└── AzureAI:Embedding:*      # Runbook ingestion embeddings
-```
-
-The analyzer also has bounded-resilience options with application defaults:
-
-```text
-AzureAI:MaxRetries = 2
-AzureAI:NetworkTimeoutSeconds = 60
-AzureAI:RequestTimeoutSeconds = 90
-```
-
-Azure AI Embedding settings:
-
-```text
-AzureAI:Embedding:ModelName
+AzureAI:Endpoint
+AzureAI:DeploymentName
+AzureAI:ModelName
 AzureAI:Embedding:DeploymentName
+AzureAI:Embedding:ModelName
 AzureAI:Embedding:Dimensions
+AzureAI:MaxRetries
+AzureAI:NetworkTimeoutSeconds
+AzureAI:RequestTimeoutSeconds
 ```
 
-These can be overridden through normal configuration if needed.
+The API now needs the full Azure AI dependency set because it performs query embeddings **and** serves the Operational Assistant.
 
-To use real Azure AI locally, run the relevant host in a **non-Development** environment and provide its Azure configuration. `Development` intentionally selects deterministic AI. The API requires real embeddings for Azure-backed Runbook search; the Worker requires real embeddings for Runbook indexing and the chat deployment for Incident analysis.
-
-The signed-in Azure identity must have the permissions required by the resources it accesses, including `Cognitive Services OpenAI User` for Azure OpenAI. In the deployed environment, these permissions are assigned to the API/Worker managed identities through Bicep.
-
-If SAS authentication is being used instead of `DefaultAzureCredential` for Service Bus:
+If the local React app calls a non-Development API, configure:
 
 ```text
-ServiceBus:ConnectionString
+Frontend:Origin = http://localhost:5173
 ```
 
-Application Insights can be configured with:
+Application Insights is optional:
 
 ```text
 APPLICATIONINSIGHTS_CONNECTION_STRING
 ```
 
-For exact Azure CLI commands and values that may need refreshing after redeployment, see the [Azure Dev Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
+### Why a non-Development environment is required
 
-### 4. Start the API
+`Development` intentionally chooses the deterministic AI implementations. To exercise real Azure OpenAI, run the relevant host in a non-Development environment.
 
-For normal local Development/dummy embeddings:
+The launch profile can override environment settings, so use `--no-launch-profile` for an explicit Azure-connected run.
 
-```powershell
-dotnet run --project src\IncidentIQ.Api
-```
+### Run the API locally against Azure
 
-For real Azure embedding verification, use a non-Development environment and bypass the Development launch profile after supplying the required configuration:
+After supplying the Azure configuration:
 
 ```powershell
 $env:DOTNET_ENVIRONMENT = "Production"
 dotnet run --project src\IncidentIQ.Api --no-launch-profile
 ```
 
-### 5. Start the Worker
-
-For normal Development/dummy-AI behaviour:
-
-```powershell
-dotnet run --project src\IncidentIQ.Worker
-```
-
-For real Azure AI verification, set the Worker environment to a non-Development value before starting it. For example in PowerShell:
-
-```powershell
-$env:DOTNET_ENVIRONMENT = "Production"
-dotnet run --project src\IncidentIQ.Worker --no-launch-profile
-```
-
-The Worker runs four hosted services:
-
-```text
-IncidentOutboxWorker
-└── Incidents Change Feed → analyse-incident
-
-AnalyseIncidentWorker
-└── analyse-incident → IIncidentAnalyzer → analysis persistence
-
-RunbookIndexChangeFeedWorker
-└── Runbooks Change Feed → index-runbook
-
-IndexRunbookWorker
-└── index-runbook → chunking → IEmbeddingGenerator → RunbookChunks
-```
-
-### 6. Start the Frontend
+Then start the frontend normally:
 
 ```powershell
 cd src\IncidentIQ.Web
@@ -356,43 +282,81 @@ npm install
 npm run dev
 ```
 
-Open:
+Useful verification targets:
 
 ```text
-http://localhost:5173
+GET/POST normal Incident/Runbook endpoints
+Runbook semantic search
+POST /api/assistant/questions
+real Azure OpenAI embeddings
+real Azure OpenAI Assistant generation
+real Cosmos vector retrieval
 ```
 
----
+### Run the Worker locally against Azure
 
-## AI Resilience Behaviour
+Only do this after considering the shared-queue/change-feed warning above.
 
-The real Azure analyzer intentionally uses two resilience layers with different responsibilities:
+```powershell
+$env:DOTNET_ENVIRONMENT = "Production"
+dotnet run --project src\IncidentIQ.Worker --no-launch-profile
+```
+
+The Worker hosts the asynchronous relays/consumers for:
+
+```text
+Incident outbox relay
+Incident analysis
+Runbook indexing relay + consumer
+Historical Incident indexing relay + consumer
+```
+
+### Authentication notes
+
+Typical Azure-connected permissions include:
+
+- Azure OpenAI role such as `Cognitive Services OpenAI User`.
+- Cosmos permissions required by the configured authentication method.
+- Service Bus sender/receiver roles for the queues the local process actually uses.
+
+A process may start successfully and still fail later when it reaches a dependency for which its identity lacks a role.
+
+### Azure AI resilience
+
+The real Azure AI adapters use bounded resilience:
 
 ```text
 Azure OpenAI SDK
-→ small bounded retry policy
-→ individual network timeout
+→ small transport retry / network timeout
 
-AzureIncidentAnalyzer
+Azure AI adapter
 → overall request timeout
-→ failure classification + structured log
+→ classify failure
+→ structured logging
 → rethrow
-
-Service Bus
-→ durable message redelivery
-→ DLQ after retry exhaustion
 ```
 
-The analyzer does not swallow Azure failures. This allows the existing Worker/Service Bus reliability flow to remain the outer retry mechanism.
+For asynchronous Incident processing, Service Bus remains the durable outer retry mechanism. For the synchronous Assistant, failures return through the API's Problem Details path.
+
+---
 
 ## Which Mode Should I Use?
 
-Use **Docker Compose + deterministic Development AI** for normal feature development and local end-to-end testing.
+| Goal | Recommended mode |
+| --- | --- |
+| UI/API feature work | Local Development |
+| Messaging/handler logic | Local Development |
+| Deterministic RAG orchestration tests | Local Development |
+| Real Azure OpenAI prompt/schema verification | Azure-connected API/Worker |
+| Azure Cosmos vector behaviour | Azure-connected API/Worker |
+| Service Bus RBAC or delivery behaviour | Azure-connected, deliberately isolated |
+| Managed Identity verification | Deployed Azure environment |
+| Application Insights verification | Azure-connected or deployed Azure |
 
-Use **Azure-connected execution** when verifying real Azure OpenAI analysis/embeddings, Cosmos DB vector search, Service Bus, Managed Identity/RBAC, or telemetry behaviour.
+For exact Azure resource values and redeployment commands, see [Azure Dev Lifecycle](INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
 
-For automated and manual testing, see [tests/ReadMe.md](../tests/ReadMe.md).
+For common failures, see [Troubleshooting](TROUBLESHOOTING.md).
 
-# Breakpoints
+## Breakpoints
 
-- Useful breakpoint groups have been added to [breakpoint export](./other/breakpoints.xml) which can be imported to your IDE for easier debugging.
+Useful breakpoint groups are available in the repository breakpoint export under `docs/other/breakpoints.xml` when present. Import them into the IDE if useful; otherwise normal breakpoints around handlers, retrievers, queue senders/receivers and Azure AI adapters are sufficient.
