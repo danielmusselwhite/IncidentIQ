@@ -1,4 +1,4 @@
-﻿namespace IncidentIQ.Api.Contracts.Assistants;
+﻿namespace IncidentIQ.Api.Contracts.Assistant;
 
 public sealed record AssistantRunbookEvidenceResponse(
     string ReferenceId,

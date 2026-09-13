@@ -31,11 +31,12 @@ public sealed class AskOperationalQuestionHandler
     {
         ArgumentNullException.ThrowIfNull(query);
 
-        // Build the context for the operational question, including the top-K related historical incidents and runbook chunks.
+        // Build the context for the operational question, including the top-K related historical incidents, runbook chunks, and conversation history.
         var context = await _contextBuilder.BuildAsync(
             query.Question,
             query.Service,
             query.Environment,
+            query.ConversationHistory,
             cancellationToken);
 
         // Generate an answer to the operational question using the built context.

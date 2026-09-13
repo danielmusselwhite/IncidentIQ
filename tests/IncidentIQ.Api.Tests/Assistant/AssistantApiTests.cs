@@ -1,5 +1,5 @@
 ﻿using IncidentIQ.Api.Assistant;
-using IncidentIQ.Api.Contracts.Assistants;
+using IncidentIQ.Api.Contracts.Assistant;
 using IncidentIQ.Application.Assistant.Ask;
 using IncidentIQ.Application.Assistant.Generate;
 using IncidentIQ.Application.Assistant.Grounding;

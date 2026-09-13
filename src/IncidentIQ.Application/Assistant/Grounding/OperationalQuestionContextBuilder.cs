@@ -27,19 +27,21 @@ public sealed class OperationalQuestionContextBuilder
     }
 
     public async Task<OperationalQuestionContext> BuildAsync(
-        string question,
-        string? service,
-        string? environment,
-        CancellationToken cancellationToken = default)
+    string question,
+    string? service,
+    string? environment,
+    IReadOnlyList<ConversationTurn>? conversationHistory = null,
+    CancellationToken cancellationToken = default)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
 
-        // embed the question 
+        var trimmedQuestion = question.Trim();
+
+        // Only the current question drives semantic retrieval.
         var embedding = await _embeddingGenerator.GenerateAsync(
-            question.Trim(),
+            trimmedQuestion,
             cancellationToken);
 
-        // retrieve the top K historical incidents and runbook chunks in parallel
         var historicalIncidentsTask =
             _historicalIncidentRetriever.RetrieveAsync(
                 embedding,
@@ -59,12 +61,15 @@ public sealed class OperationalQuestionContextBuilder
             historicalIncidentsTask,
             runbookChunksTask);
 
-        // return the operational question context
         return new OperationalQuestionContext(
-            Question: question.Trim(),
+            Question: trimmedQuestion,
             Service: service,
             Environment: environment,
-            HistoricalIncidents: await historicalIncidentsTask,
-            RunbookChunks: await runbookChunksTask);
+            ConversationHistory:
+                conversationHistory ?? [],
+            HistoricalIncidents:
+                await historicalIncidentsTask,
+            RunbookChunks:
+                await runbookChunksTask);
     }
 }

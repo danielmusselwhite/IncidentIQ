@@ -1,5 +1,6 @@
-﻿using IncidentIQ.Api.Contracts.Assistants;
+﻿using IncidentIQ.Api.Contracts.Assistant;
 using IncidentIQ.Application.Assistant.Ask;
+using IncidentIQ.Application.Assistant.Conversation;
 using IncidentIQ.Application.Common.Grounding;
 using Microsoft.AspNetCore.Mvc;
 
@@ -16,10 +17,18 @@ public sealed class AssistantController(
         AskOperationalQuestionRequest request,
         CancellationToken cancellationToken)
     {
+        var conversationHistory = request.ConversationHistory?
+            .Select(turn =>
+                new ConversationTurn(
+                    Role: ParseRole(turn.Role),
+                    Content: turn.Content))
+            .ToList();
+
         var query = new AskOperationalQuestionQuery(
             Question: request.Question,
             Service: request.Service,
-            Environment: request.Environment);
+            Environment: request.Environment,
+            ConversationHistory: conversationHistory);
 
         var result = await handler.HandleAsync(
             query,
@@ -65,5 +74,18 @@ public sealed class AssistantController(
             AnsweredAtUtc: result.Answer.AnsweredAtUtc);
 
         return Ok(response);
+    }
+
+    private static ConversationRole ParseRole(string role)
+    {
+        return role.Trim().ToLowerInvariant() switch
+        {
+            "user" => ConversationRole.User,
+            "assistant" => ConversationRole.Assistant,
+
+            _ => throw new ArgumentException(
+                $"Unsupported conversation role '{role}'.",
+                nameof(role))
+        };
     }
 }
