@@ -34,10 +34,12 @@ public sealed class OperationalQuestionContextBuilder
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(question);
 
+        // embed the question 
         var embedding = await _embeddingGenerator.GenerateAsync(
             question.Trim(),
             cancellationToken);
 
+        // retrieve the top K historical incidents and runbook chunks in parallel
         var historicalIncidentsTask =
             _historicalIncidentRetriever.RetrieveAsync(
                 embedding,
@@ -57,6 +59,7 @@ public sealed class OperationalQuestionContextBuilder
             historicalIncidentsTask,
             runbookChunksTask);
 
+        // return the operational question context
         return new OperationalQuestionContext(
             Question: question.Trim(),
             Service: service,
