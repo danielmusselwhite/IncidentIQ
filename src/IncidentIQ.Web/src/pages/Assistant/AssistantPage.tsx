@@ -1,9 +1,19 @@
-import { useMemo, useState, type FormEvent } from "react";
+import {
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type FormEvent,
+} from "react";
 import { Link } from "react-router-dom";
 
 import { askOperationalQuestion } from "../../api/assistantApi";
+import { ApiError } from "../../api/apiError";
+
 import type {
     AssistantConversationTurn,
+    AssistantHistoricalIncidentEvidence,
+    AssistantRunbookEvidence,
     OperationalAssistantResponse,
 } from "../../types/assistant";
 
@@ -25,11 +35,29 @@ type ChatMessage =
     | UserMessage
     | AssistantMessage;
 
+interface SelectedEvidence {
+    messageId: string;
+    referenceId: string;
+}
+
+type SelectedEvidenceSource =
+    | {
+        kind: "historical-incident";
+        evidence: AssistantHistoricalIncidentEvidence;
+    }
+    | {
+        kind: "runbook";
+        evidence: AssistantRunbookEvidence;
+    };
+
 const MAX_CONVERSATION_TURNS = 10;
 
 /**
- * Provides an ephemeral conversational interface for grounded operational
- * questions. Conversation state remains in the browser and is not persisted.
+ * Provides the IncidentIQ Operational Assistant experience.
+ *
+ * Conversation state is intentionally kept in React only. Each request sends
+ * recent conversation history back to the stateless API, while grounding
+ * evidence remains scoped to the individual Assistant response that retrieved it.
  */
 export default function AssistantPage() {
     const [messages, setMessages] =
@@ -50,6 +78,12 @@ export default function AssistantPage() {
     const [error, setError] =
         useState<string | null>(null);
 
+    const [selectedEvidence, setSelectedEvidence] =
+        useState<SelectedEvidence | null>(null);
+
+    const messagesEndRef =
+        useRef<HTMLDivElement | null>(null);
+
     const canSubmit =
         question.trim().length > 0 &&
         !isSubmitting;
@@ -59,6 +93,27 @@ export default function AssistantPage() {
             () => buildConversationHistory(messages),
             [messages],
         );
+
+    const selectedEvidenceSource =
+        useMemo(
+            () =>
+                resolveSelectedEvidence(
+                    messages,
+                    selectedEvidence,
+                ),
+            [messages, selectedEvidence],
+        );
+
+    /*
+     * Keep the newest message or loading indicator visible without requiring
+     * the user to manually scroll after every Assistant response.
+     */
+    useEffect(() => {
+        messagesEndRef.current?.scrollIntoView({
+            behavior: "smooth",
+            block: "nearest",
+        });
+    }, [messages, isSubmitting]);
 
     async function handleSubmit(
         event: FormEvent<HTMLFormElement>,
@@ -72,20 +127,20 @@ export default function AssistantPage() {
             return;
         }
 
-        const userMessage: UserMessage = {
-            id: crypto.randomUUID(),
-            role: "user",
-            content: trimmedQuestion,
-        };
-
         /*
-         * Capture the history before adding the current question.
-         * The API accepts the current question separately from previous turns.
+         * History is captured before the new message is appended because the
+         * API receives the current question separately from previous turns.
          */
         const previousConversationHistory =
             conversationHistory.slice(
                 -MAX_CONVERSATION_TURNS,
             );
+
+        const userMessage: UserMessage = {
+            id: crypto.randomUUID(),
+            role: "user",
+            content: trimmedQuestion,
+        };
 
         setMessages(current => [
             ...current,
@@ -118,10 +173,35 @@ export default function AssistantPage() {
                 ...current,
                 assistantMessage,
             ]);
-        } catch {
-            setError(
-                "IncidentIQ could not answer that question. Please try again.",
-            );
+
+            /*
+             * Automatically inspect the first cited source in a new answer.
+             * The user can select any other citation afterwards.
+             */
+            const firstReference =
+                response.sections
+                    .flatMap(
+                        section =>
+                            section.evidenceReferences,
+                    )
+                    .at(0);
+
+            if (firstReference) {
+                setSelectedEvidence({
+                    messageId:
+                        assistantMessage.id,
+                    referenceId:
+                        firstReference,
+                });
+            }
+        } catch (exception) {
+            if (exception instanceof ApiError) {
+                setError(exception.message);
+            } else {
+                setError(
+                    "IncidentIQ could not answer that question. Please try again.",
+                );
+            }
         } finally {
             setIsSubmitting(false);
         }
@@ -129,7 +209,19 @@ export default function AssistantPage() {
 
     function clearConversation() {
         setMessages([]);
+        setSelectedEvidence(null);
         setError(null);
+        setQuestion("");
+    }
+
+    function handleEvidenceSelected(
+        messageId: string,
+        referenceId: string,
+    ) {
+        setSelectedEvidence({
+            messageId,
+            referenceId,
+        });
     }
 
     return (
@@ -140,11 +232,14 @@ export default function AssistantPage() {
                         IncidentIQ AI
                     </span>
 
-                    <h1>Operational Assistant</h1>
+                    <h1>
+                        Operational Assistant
+                    </h1>
 
                     <p>
                         Investigate operational issues using
-                        historical Incidents and Runbook guidance.
+                        grounded evidence from historical
+                        Incidents and Runbooks.
                     </p>
                 </div>
 
@@ -174,6 +269,7 @@ export default function AssistantPage() {
                                     )
                                 }
                                 placeholder="Any service"
+                                disabled={isSubmitting}
                             />
                         </label>
 
@@ -189,8 +285,15 @@ export default function AssistantPage() {
                                     )
                                 }
                                 placeholder="Any environment"
+                                disabled={isSubmitting}
                             />
                         </label>
+
+                        <div className="assistant-chat__scope-note">
+                            <span className="assistant-chat__scope-dot" />
+
+                            Filters scope evidence retrieval
+                        </div>
                     </div>
 
                     <div className="assistant-chat__messages">
@@ -205,6 +308,12 @@ export default function AssistantPage() {
                                 <ChatMessageView
                                     key={message.id}
                                     message={message}
+                                    selectedEvidence={
+                                        selectedEvidence
+                                    }
+                                    onEvidenceSelected={
+                                        handleEvidenceSelected
+                                    }
                                 />
                             ))
                         )}
@@ -219,9 +328,15 @@ export default function AssistantPage() {
                                     <span className="assistant-thinking-dot" />
                                     <span className="assistant-thinking-dot" />
                                     <span className="assistant-thinking-dot" />
+
+                                    <span className="assistant-thinking-label">
+                                        Retrieving evidence
+                                    </span>
                                 </div>
                             </div>
                         )}
+
+                        <div ref={messagesEndRef} />
                     </div>
 
                     {error && (
@@ -229,7 +344,11 @@ export default function AssistantPage() {
                             className="assistant-chat__error"
                             role="alert"
                         >
-                            {error}
+                            <strong>
+                                Assistant request failed
+                            </strong>
+
+                            <span>{error}</span>
                         </div>
                     )}
 
@@ -244,16 +363,37 @@ export default function AssistantPage() {
                                     event.target.value,
                                 )
                             }
+                            onKeyDown={event => {
+                                if (
+                                    event.key ===
+                                    "Enter" &&
+                                    !event.shiftKey
+                                ) {
+                                    event.preventDefault();
+
+                                    event.currentTarget
+                                        .form
+                                        ?.requestSubmit();
+                                }
+                            }}
                             placeholder="Ask about an operational issue..."
                             rows={3}
                             disabled={isSubmitting}
                         />
 
                         <div className="assistant-composer__footer">
-                            <span>
-                                Answers are grounded in retrieved
-                                Incident and Runbook evidence.
-                            </span>
+                            <div className="assistant-composer__hint">
+                                <span>
+                                    Enter to send
+                                </span>
+
+                                <span>·</span>
+
+                                <span>
+                                    Shift + Enter for
+                                    newline
+                                </span>
+                            </div>
 
                             <button
                                 type="submit"
@@ -267,6 +407,10 @@ export default function AssistantPage() {
                         </div>
                     </form>
                 </div>
+
+                <EvidenceInspector
+                    source={selectedEvidenceSource}
+                />
             </section>
         </main>
     );
@@ -292,12 +436,15 @@ function AssistantEmptyState({
                 IQ
             </div>
 
-            <h2>How can I help investigate?</h2>
+            <h2>
+                How can I help investigate?
+            </h2>
 
             <p>
                 Ask about service failures, symptoms,
-                previous Incidents or available recovery
-                guidance.
+                previous Incidents or available operational
+                guidance. IncidentIQ retrieves relevant
+                evidence before answering.
             </p>
 
             <div className="assistant-empty__prompts">
@@ -309,7 +456,16 @@ function AssistantEmptyState({
                             onPromptSelected(prompt)
                         }
                     >
-                        {prompt}
+                        <span>
+                            {prompt}
+                        </span>
+
+                        <span
+                            className="assistant-empty__prompt-arrow"
+                            aria-hidden="true"
+                        >
+                            →
+                        </span>
                     </button>
                 ))}
             </div>
@@ -319,8 +475,15 @@ function AssistantEmptyState({
 
 function ChatMessageView({
     message,
+    selectedEvidence,
+    onEvidenceSelected,
 }: {
     message: ChatMessage;
+    selectedEvidence: SelectedEvidence | null;
+    onEvidenceSelected: (
+        messageId: string,
+        referenceId: string,
+    ) => void;
 }) {
     if (message.role === "user") {
         return (
@@ -343,16 +506,32 @@ function ChatMessageView({
             </div>
 
             <div className="assistant-answer">
+                <div className="assistant-answer__heading">
+                    <span className="assistant-answer__label">
+                        Grounded response
+                    </span>
+
+                    <span className="assistant-answer__source-count">
+                        {countEvidence(
+                            message.response,
+                        )}{" "}
+                        sources retrieved
+                    </span>
+                </div>
+
                 {message.response.sections.map(
                     (section, index) => (
                         <section
                             key={index}
                             className="assistant-answer__section"
                         >
-                            <p>{section.content}</p>
+                            <p>
+                                {section.content}
+                            </p>
 
-                            {section.evidenceReferences.length >
-                                0 && (
+                            {section
+                                .evidenceReferences
+                                .length > 0 && (
                                     <div className="assistant-answer__citations">
                                         {section.evidenceReferences.map(
                                             reference => (
@@ -360,11 +539,23 @@ function ChatMessageView({
                                                     key={
                                                         reference
                                                     }
+                                                    messageId={
+                                                        message.id
+                                                    }
                                                     reference={
                                                         reference
                                                     }
                                                     response={
                                                         message.response
+                                                    }
+                                                    isSelected={
+                                                        selectedEvidence?.messageId ===
+                                                        message.id &&
+                                                        selectedEvidence?.referenceId ===
+                                                        reference
+                                                    }
+                                                    onSelected={
+                                                        onEvidenceSelected
                                                     }
                                                 />
                                             ),
@@ -393,56 +584,352 @@ function ChatMessageView({
 }
 
 function EvidenceReference({
+    messageId,
     reference,
     response,
+    isSelected,
+    onSelected,
 }: {
+    messageId: string;
     reference: string;
     response: OperationalAssistantResponse;
+    isSelected: boolean;
+    onSelected: (
+        messageId: string,
+        referenceId: string,
+    ) => void;
 }) {
     const historicalIncident =
         response.evidence.historicalIncidents.find(
-            item => item.referenceId === reference,
+            evidence =>
+                evidence.referenceId ===
+                reference,
         );
-
-    if (historicalIncident) {
-        return (
-            <Link
-                to={`/incidents/${historicalIncident.incidentId}`}
-                className="assistant-citation"
-                title={historicalIncident.title}
-            >
-                {reference}
-            </Link>
-        );
-    }
 
     const runbook =
         response.evidence.runbookChunks.find(
-            item => item.referenceId === reference,
+            evidence =>
+                evidence.referenceId ===
+                reference,
         );
 
-    if (runbook) {
-        return (
-            <Link
-                to={`/runbooks/${runbook.runbookId}`}
-                className="assistant-citation assistant-citation--runbook"
-                title={runbook.title}
-            >
-                {reference}
-            </Link>
-        );
-    }
+    const isRunbook = Boolean(runbook);
+
+    const title =
+        historicalIncident?.title ??
+        runbook?.title ??
+        reference;
 
     return (
-        <span className="assistant-citation">
-            {reference}
-        </span>
+        <button
+            type="button"
+            className={[
+                "assistant-citation",
+                isRunbook
+                    ? "assistant-citation--runbook"
+                    : "",
+                isSelected
+                    ? "assistant-citation--selected"
+                    : "",
+            ]
+                .filter(Boolean)
+                .join(" ")}
+            title={`Inspect ${title}`}
+            aria-pressed={isSelected}
+            onClick={() =>
+                onSelected(
+                    messageId,
+                    reference,
+                )
+            }
+        >
+            <span>{reference}</span>
+
+            <span
+                className="assistant-citation__type"
+                aria-hidden="true"
+            >
+                {isRunbook ? "RB" : "HI"}
+            </span>
+        </button>
     );
 }
 
 /**
- * Converts the rendered chat into the compact conversation history accepted
- * by the stateless Assistant API.
+ * Displays the source associated with the currently selected request-scoped
+ * evidence reference.
+ */
+function EvidenceInspector({
+    source,
+}: {
+    source: SelectedEvidenceSource | null;
+}) {
+    if (!source) {
+        return (
+            <aside className="assistant-evidence">
+                <div className="assistant-evidence__header">
+                    <div>
+                        <span className="assistant-evidence__eyebrow">
+                            Grounding
+                        </span>
+
+                        <h2>Evidence</h2>
+                    </div>
+                </div>
+
+                <div className="assistant-evidence__empty">
+                    <div className="assistant-evidence__empty-icon">
+                        ↗
+                    </div>
+
+                    <h3>
+                        Inspect a source
+                    </h3>
+
+                    <p>
+                        Select an{" "}
+                        <strong>HI-*</strong> or{" "}
+                        <strong>RB-*</strong>{" "}
+                        reference in an Assistant answer
+                        to inspect the evidence used for
+                        that response.
+                    </p>
+                </div>
+            </aside>
+        );
+    }
+
+    if (source.kind === "historical-incident") {
+        return (
+            <HistoricalIncidentInspector
+                evidence={source.evidence}
+            />
+        );
+    }
+
+    return (
+        <RunbookInspector
+            evidence={source.evidence}
+        />
+    );
+}
+
+function HistoricalIncidentInspector({
+    evidence,
+}: {
+    evidence: AssistantHistoricalIncidentEvidence;
+}) {
+    return (
+        <aside className="assistant-evidence">
+            <div className="assistant-evidence__header">
+                <div>
+                    <span className="assistant-evidence__eyebrow">
+                        Historical Incident
+                    </span>
+
+                    <h2>{evidence.referenceId}</h2>
+                </div>
+
+                <span className="assistant-evidence__type-badge">
+                    HI
+                </span>
+            </div>
+
+            <div className="assistant-evidence__body">
+                <section className="assistant-evidence__summary">
+                    <h3>
+                        {evidence.title}
+                    </h3>
+
+                    <div className="assistant-evidence__metadata">
+                        <span>
+                            {evidence.service}
+                        </span>
+
+                        <span>
+                            {evidence.environment}
+                        </span>
+
+                        <span>
+                            {evidence.severity}
+                        </span>
+                    </div>
+                </section>
+
+                <EvidenceSection title="Description">
+                    <p>
+                        {evidence.description}
+                    </p>
+                </EvidenceSection>
+
+                <EvidenceSection title="Symptoms">
+                    <p>
+                        {evidence.symptoms ||
+                            "No symptoms were recorded."}
+                    </p>
+                </EvidenceSection>
+
+                <EvidenceSection title="Completed">
+                    <p>
+                        {formatDate(
+                            evidence.completedAtUtc,
+                        )}
+                    </p>
+                </EvidenceSection>
+            </div>
+
+            <div className="assistant-evidence__footer">
+                <Link
+                    to={`/incidents/${evidence.incidentId}`}
+                    className="button assistant-evidence__link"
+                >
+                    View Incident
+                    <span aria-hidden="true">
+                        →
+                    </span>
+                </Link>
+            </div>
+        </aside>
+    );
+}
+
+function RunbookInspector({
+    evidence,
+}: {
+    evidence: AssistantRunbookEvidence;
+}) {
+    return (
+        <aside className="assistant-evidence">
+            <div className="assistant-evidence__header">
+                <div>
+                    <span className="assistant-evidence__eyebrow">
+                        Runbook guidance
+                    </span>
+
+                    <h2>{evidence.referenceId}</h2>
+                </div>
+
+                <span className="assistant-evidence__type-badge assistant-evidence__type-badge--runbook">
+                    RB
+                </span>
+            </div>
+
+            <div className="assistant-evidence__body">
+                <section className="assistant-evidence__summary">
+                    <h3>
+                        {evidence.title}
+                    </h3>
+
+                    <div className="assistant-evidence__metadata">
+                        <span>
+                            {evidence.service}
+                        </span>
+
+                        <span>
+                            Chunk{" "}
+                            {evidence.chunkIndex}
+                        </span>
+                    </div>
+                </section>
+
+                <EvidenceSection title="Relevant excerpt">
+                    <p className="assistant-evidence__content">
+                        {evidence.content}
+                    </p>
+                </EvidenceSection>
+            </div>
+
+            <div className="assistant-evidence__footer">
+                <Link
+                    to={`/runbooks/${evidence.runbookId}`}
+                    className="button assistant-evidence__link"
+                >
+                    View Runbook
+                    <span aria-hidden="true">
+                        →
+                    </span>
+                </Link>
+            </div>
+        </aside>
+    );
+}
+
+function EvidenceSection({
+    title,
+    children,
+}: {
+    title: string;
+    children: React.ReactNode;
+}) {
+    return (
+        <section className="assistant-evidence__section">
+            <h4>{title}</h4>
+            {children}
+        </section>
+    );
+}
+
+/**
+ * Resolves a citation against the evidence belonging to the Assistant message
+ * that produced it. This prevents request-scoped identifiers such as HI-1 from
+ * accidentally resolving against evidence from another conversation turn.
+ */
+function resolveSelectedEvidence(
+    messages: ChatMessage[],
+    selected: SelectedEvidence | null,
+): SelectedEvidenceSource | null {
+    if (!selected) {
+        return null;
+    }
+
+    const message =
+        messages.find(
+            candidate =>
+                candidate.id ===
+                selected.messageId &&
+                candidate.role === "assistant",
+        );
+
+    if (!message || message.role !== "assistant") {
+        return null;
+    }
+
+    const historicalIncident =
+        message.response.evidence
+            .historicalIncidents
+            .find(
+                evidence =>
+                    evidence.referenceId ===
+                    selected.referenceId,
+            );
+
+    if (historicalIncident) {
+        return {
+            kind: "historical-incident",
+            evidence: historicalIncident,
+        };
+    }
+
+    const runbook =
+        message.response.evidence.runbookChunks.find(
+            evidence =>
+                evidence.referenceId ===
+                selected.referenceId,
+        );
+
+    if (runbook) {
+        return {
+            kind: "runbook",
+            evidence: runbook,
+        };
+    }
+
+    return null;
+}
+
+/**
+ * Converts rendered chat messages into the compact history accepted by the
+ * stateless Assistant API.
  */
 function buildConversationHistory(
     messages: ChatMessage[],
@@ -457,11 +944,25 @@ function buildConversationHistory(
 
         return {
             role: "assistant",
-            content: message.response.sections
-                .map(section => section.content)
-                .join("\n\n"),
+            content:
+                message.response.sections
+                    .map(
+                        section =>
+                            section.content,
+                    )
+                    .join("\n\n"),
         };
     });
+}
+
+function countEvidence(
+    response: OperationalAssistantResponse,
+) {
+    return (
+        response.evidence.historicalIncidents
+            .length +
+        response.evidence.runbookChunks.length
+    );
 }
 
 function formatDate(value: string) {
