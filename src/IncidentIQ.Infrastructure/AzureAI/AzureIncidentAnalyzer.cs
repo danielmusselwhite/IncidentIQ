@@ -187,9 +187,11 @@ public sealed class AzureIncidentAnalyzer(
 
         try
         {
-            // Structured Outputs validate the JSON shape. This additionally checks
-            // semantic constraints such as required values and confidence ranges.
+            // Structured Outputs validate the JSON shape. This additionally checks semantic constraints such as required values and confidence ranges.
             response.Validate();
+
+            // Ensure every evidence reference returned by the model refers to evidence that was actually supplied in this analysis request.
+            EvidenceReferenceValidator.Validate(response, context);
         }
         catch (Exception exception)
             when (exception is InvalidOperationException or ArgumentException)
@@ -213,11 +215,13 @@ public sealed class AzureIncidentAnalyzer(
             LikelyCauses: response.LikelyCauses
                 .Select(cause => new LikelyCause(
                     cause.Cause,
-                    cause.Confidence))
+                    cause.Confidence,
+                    cause.EvidenceReferences))
                 .ToList(),
             RecommendedActions: response.RecommendedActions
                 .Select(action => new RecommendedAction(
-                    action.Action))
+                    action.Action,
+                    action.EvidenceReferences))
                 .ToList(),
             Model: _options.ModelName,
             AnalysedAtUtc: DateTimeOffset.UtcNow);
@@ -239,6 +243,7 @@ public sealed class AzureIncidentAnalyzer(
         return result;
     }
 
+    #region Build Azure AI Request Messages
     /// <summary>
     /// Builds the chat messages to send to Azure OpenAI for incident analysis.
     /// </summary>
@@ -248,8 +253,7 @@ public sealed class AzureIncidentAnalyzer(
     {
         var incident = context.Incident;
 
-        var historicalIncidentEvidence = BuildHistoricalIncidentEvidence(
-            context.HistoricalIncidents);
+        var historicalIncidentEvidence = BuildHistoricalIncidentEvidence(context.HistoricalIncidents);
 
         var runbookEvidence = BuildRunbookEvidence(context.RunbookChunks);
 
@@ -276,6 +280,12 @@ public sealed class AzureIncidentAnalyzer(
             - Prefer recommendations supported by the supplied Runbook evidence where relevant.
             - If the supplied evidence is insufficient, remain appropriately uncertain.
             - Return content matching the required structured response schema.
+            - Historical Incident evidence is identified using HI-* references.
+            - Runbook evidence is identified using RB-* references.
+            - Every evidence reference in the response must exactly match an identifier supplied in the evidence.
+            - Never invent an evidence identifier.
+            - Include evidence references only when that evidence materially supports the cause or action.
+            - If a cause or action is not supported by retrieved evidence, return an empty evidenceReferences array.
             """),
 
         new UserChatMessage(
@@ -308,7 +318,8 @@ public sealed class AzureIncidentAnalyzer(
     /// </summary>
     /// <param name="chunks">The relevant Runbook chunks returned by vector retrieval.</param>
     /// <returns>Formatted Runbook evidence suitable for inclusion in the AI prompt.</returns>
-    private static string BuildRunbookEvidence(IReadOnlyList<RunbookChunkMatch> chunks)
+    private static string BuildRunbookEvidence(
+    IReadOnlyList<RunbookChunkMatch> chunks)
     {
         if (chunks.Count == 0)
             return "No relevant Runbook evidence was retrieved.";
@@ -316,16 +327,21 @@ public sealed class AzureIncidentAnalyzer(
         return string.Join(
             "\n\n",
             chunks.Select((chunk, index) =>
-                $"""
-            Runbook Evidence {index + 1}
-            Runbook ID: {chunk.RunbookId}
-            Chunk: {chunk.ChunkIndex}
-            Title: {chunk.Title}
-            Service: {chunk.Service}
-            Content:
-            {chunk.Content}
-            Similarity: {chunk.Distance:F4}
-            """));
+            {
+                var referenceId = EvidenceReferenceId.RunbookChunk(index); // Used for traceability in the AI prompt and response returns e.g. RB-1, RB-2, etc.
+
+                return
+                    $"""
+                [{referenceId}]
+                Runbook ID: {chunk.RunbookId}
+                Chunk: {chunk.ChunkIndex}
+                Title: {chunk.Title}
+                Service: {chunk.Service}
+                Content:
+                {chunk.Content}
+                Similarity: {chunk.Distance:F4}
+                """;
+            }));
     }
 
     /// <summary>
@@ -342,20 +358,25 @@ public sealed class AzureIncidentAnalyzer(
         return string.Join(
             "\n\n",
             incidents.Select((incident, index) =>
-                $"""
-            Historical Incident {index + 1}
-            Incident ID: {incident.IncidentId}
-            Title: {incident.Title}
-            Description: {incident.Description}
-            Service: {incident.Service}
-            Environment: {incident.Environment}
-            Severity: {incident.Severity}
-            Symptoms: {incident.Symptoms ?? "Not provided"}
-            Completed: {incident.CompletedAtUtc:O}
-            Similarity: {incident.Distance:F4}
-            """));
-    }
+            {
+                var referenceId = EvidenceReferenceId.HistoricalIncident(index); // Used for traceability in the AI prompt and response returns e.g. HI-1, HI-2, etc.
 
+                return
+                    $"""
+                [{referenceId}]
+                Incident ID: {incident.IncidentId}
+                Title: {incident.Title}
+                Description: {incident.Description}
+                Service: {incident.Service}
+                Environment: {incident.Environment}
+                Severity: {incident.Severity}
+                Symptoms: {incident.Symptoms ?? "Not provided"}
+                Completed: {incident.CompletedAtUtc:O}
+                Similarity: {incident.Distance:F4}
+                """;
+            }));
+    }
+    #endregion
 
     /// <summary>
     /// Records a classified Azure AI failure together with its duration and

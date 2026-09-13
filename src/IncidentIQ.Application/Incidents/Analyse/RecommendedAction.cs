@@ -1,12 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace IncidentIQ.Application.Incidents.Analyse;
+﻿namespace IncidentIQ.Application.Incidents.Analyse;
 
 /// <summary>
-/// Represents a recommended action for an incident along with the confidence level.
+/// Represents an action recommended for an Incident together with the grounding evidence that supports the recommendation.
 /// </summary>
 public sealed record RecommendedAction(
-    string Action
-);
+    string Action,
+    IReadOnlyList<string> EvidenceReferences);

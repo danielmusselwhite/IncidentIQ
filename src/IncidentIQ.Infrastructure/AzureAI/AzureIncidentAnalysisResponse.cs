@@ -59,10 +59,16 @@ internal sealed class AzureLikelyCauseResponse
 
     [JsonPropertyName("confidence")]
     public required double Confidence { get; init; }
+
+    [JsonPropertyName("evidenceReferences")]
+    public required List<string> EvidenceReferences { get; init; }
 }
 
 internal sealed class AzureRecommendedActionResponse
 {
     [JsonPropertyName("action")]
     public required string Action { get; init; }
+
+    [JsonPropertyName("evidenceReferences")]
+    public required List<string> EvidenceReferences { get; init; }
 }

@@ -15,12 +15,22 @@ public sealed record IncidentAnalysisResponse(
     /// <summary>
     /// Maps the Application analysis result into the HTTP response contract exposed by the API.
     /// </summary>
-    public static IncidentAnalysisResponse FromApplication(IncidentAnalysisResult analysis)
+    public static IncidentAnalysisResponse FromApplication(
+    IncidentAnalysisResult analysis)
     {
         return new IncidentAnalysisResponse(
             analysis.Summary,
-            analysis.LikelyCauses.Select(cause => new LikelyCauseResponse(cause.Cause, cause.Confidence)).ToList(),
-            analysis.RecommendedActions.Select(action => new RecommendedActionResponse(action.Action)).ToList(),
+            analysis.LikelyCauses
+                .Select(cause => new LikelyCauseResponse(
+                    cause.Cause,
+                    cause.Confidence,
+                    cause.EvidenceReferences))
+                .ToList(),
+            analysis.RecommendedActions
+                .Select(action => new RecommendedActionResponse(
+                    action.Action,
+                    action.EvidenceReferences))
+                .ToList(),
             analysis.Model,
             analysis.AnalysedAtUtc);
     }
@@ -29,9 +39,9 @@ public sealed record IncidentAnalysisResponse(
 /// <summary>
 /// API representation of a possible incident cause and the model's confidence in that hypothesis.
 /// </summary>
-public sealed record LikelyCauseResponse(string Cause, double Confidence);
+public sealed record LikelyCauseResponse(string Cause, double Confidence, IReadOnlyList<string> EvidenceReferences);
 
 /// <summary>
 /// API representation of an action recommended by the incident analysis.
 /// </summary>
-public sealed record RecommendedActionResponse(string Action);
+public sealed record RecommendedActionResponse(string Action, IReadOnlyList<string> EvidenceReferences);

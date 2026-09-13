@@ -319,11 +319,13 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             [
                 new LikelyCause(
                     "Database connection pool exhaustion.",
-                    0.85)
+                    0.85,
+                    []),
             ],
             [
                 new RecommendedAction(
-                    "Review database connection pool metrics and recent database failures.")
+                    "Review database connection pool metrics and recent database failures.",
+                    [])
             ],
             "test-model",
             new DateTimeOffset(2026, 9, 4, 12, 0, 0, TimeSpan.Zero));

@@ -29,16 +29,18 @@ public sealed class DevelopmentDummyIncidentAnalyzer : IIncidentAnalyzer
             [
                 new LikelyCause(
                 "A recent application or configuration change may have introduced unexpected behaviour.",
-                0.75),
+                0.75,
+                []),
             new LikelyCause(
                 "A downstream dependency or resource constraint may be contributing to the incident.",
-                0.55)
+                0.55,
+                [])
             ],
             RecommendedActions:
             [
-                new RecommendedAction("Review recent deployments and configuration changes for the affected service."),
-            new RecommendedAction("Inspect application logs and service health metrics around the time of the incident."),
-            new RecommendedAction("Check dependent services for elevated latency or failures.")
+                new RecommendedAction("Review recent deployments and configuration changes for the affected service.", []),
+            new RecommendedAction("Inspect application logs and service health metrics around the time of the incident.", []),
+            new RecommendedAction("Check dependent services for elevated latency or failures.", [])
             ],
             Model: "development-analyzer",
             AnalysedAtUtc: DateTimeOffset.UtcNow);

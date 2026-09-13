@@ -629,12 +629,14 @@ public sealed class AnalyseIncidentHandlerTests
             [
                 new LikelyCause(
                     "Database connection or query timeout",
-                    0.9)
+                    0.9,
+                    []),
             ],
             RecommendedActions:
             [
                 new RecommendedAction(
-                    "Inspect database latency and active connections.")
+                    "Inspect database latency and active connections.",
+                    [])
             ],
             Model: "test-model",
             AnalysedAtUtc: DateTimeOffset.UtcNow);

@@ -278,12 +278,12 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 * [x] Retrieve relevant Runbook chunks.
 * [x] Apply relevance gating before retrieved evidence is supplied to the AI.
 * [x] Build combined RAG context from historical Incidents and Runbook chunks.
-* [ ] Generate evidence-backed Incident analysis.
-* [ ] Include historical Incident and Runbook references in the structured analysis result.
-* [ ] Validate returned references/citations against the evidence actually retrieved.
+* [x] Generate evidence-backed Incident analysis.
+* [x] Include historical Incident and Runbook references in the structured analysis result.
+* [x] Validate returned references/citations against the evidence actually retrieved.
 * [ ] Persist the grounded analysis and the evidence used to generate it.
 * [ ] Display the persisted analysis, similar-Incident evidence and Runbook evidence in the frontend.
-* [ ] Add RAG orchestration and evidence-validation tests.
+* [x] Add RAG orchestration and evidence-validation tests.
 * [ ] Verify grounded Incident analysis end-to-end locally.
 * [ ] Verify grounded Incident analysis end-to-end in Azure.
 * [ ] Update RAG documentation and architecture diagrams.
