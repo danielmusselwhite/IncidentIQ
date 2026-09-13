@@ -1,216 +1,90 @@
 # IncidentIQ.Worker
 
-`IncidentIQ.Worker` is the .NET background-processing host for IncidentIQ.
+`IncidentIQ.Worker` hosts IncidentIQ's asynchronous Change Feed relays and Service Bus consumers.
 
-It currently runs four hosted services:
+The Worker owns transport/execution boundaries; business orchestration remains in Application handlers.
+
+## Hosted flows
 
 ```text
 IncidentOutboxWorker
-└── Incidents Change Feed → analyse-incident
+→ Incidents Change Feed → analyse-incident
 
 AnalyseIncidentWorker
-└── analyse-incident → Application analysis workflow
+→ analyse-incident → AnalyseIncidentHandler
 
 RunbookIndexChangeFeedWorker
-└── Runbooks Change Feed → index-runbook
+→ Runbooks Change Feed → index-runbook
 
 IndexRunbookWorker
-└── index-runbook → Application Runbook indexing workflow
+→ index-runbook → IndexRunbookHandler
+
+HistoricalIncidentIndexChangeFeedWorker
+→ Incidents Change Feed → index-historical-incident
+
+IndexHistoricalIncidentWorker
+→ index-historical-incident → IndexHistoricalIncidentHandler
 ```
 
-Keeping relay/consumer responsibilities separate lets Incident analysis and Runbook indexing retry, evolve and eventually scale independently. Runbook **retrieval** is intentionally a separate synchronous API read path, not another Worker responsibility.
+## Incident analysis
 
-## Current Flow
+`IncidentOutboxWorker` observes durable analysis outbox records and publishes `AnalyseIncidentCommand`.
+
+`AnalyseIncidentWorker` receives the command, creates a DI scope, resolves `AnalyseIncidentHandler`, and completes the Service Bus message only after the handler succeeds.
+
+The handler now performs grounded analysis using historical Incident and Runbook evidence before persisting the completed analysis.
+
+## Runbook indexing
 
 ```text
-Cosmos Incidents container
-├── IncidentDocument
-└── IncidentAnalysisOutboxDocument
-          ↓
-     Cosmos Change Feed
-          ↓
-   IncidentOutboxWorker
-          ↓
-   IIncidentAnalysisQueue
-          ↓
- Service Bus: analyse-incident
-          ↓
-   AnalyseIncidentWorker
-          ↓
-   AnalyseIncidentHandler
-          ↓
-     IIncidentAnalyzer
-      ├── DevelopmentDummyIncidentAnalyzer
-      └── AzureIncidentAnalyzer → Azure OpenAI
-          ↓
- IncidentAnalysisResult
-          ↓
-CosmosIncidentAnalysisStore
-          ↓
-Completed Incident + analysis atomically
+Runbook change
+→ Change Feed relay
+→ index-runbook
+→ IndexRunbookWorker
+→ load latest Runbook
+→ chunk + embed
+→ replace RunbookChunks
 ```
 
+Failures propagate to Service Bus so durable redelivery/DLQ behaviour remains the outer retry boundary.
 
-The Runbook ingestion path is separate:
+## Historical Incident indexing
 
 ```text
-Cosmos Runbooks container
-          ↓
-     Cosmos Change Feed
-          ↓
-RunbookIndexChangeFeedWorker
-          ↓
-    IRunbookIndexQueue
-          ↓
- Service Bus: index-runbook
-          ↓
-    IndexRunbookWorker
-          ↓
-    IndexRunbookHandler
-          ↓
-      RunbookChunker
-          ↓
-   IEmbeddingGenerator
-    ├── DevelopmentDummyEmbeddingGenerator
-    └── AzureEmbeddingGenerator → text-embedding-3-small
-          ↓
-   IRunbookChunkStore
-          ↓
-Cosmos RunbookChunks
+Completed Incident
+→ historical Change Feed relay
+→ index-historical-incident
+→ IndexHistoricalIncidentWorker
+→ embed title/description/symptoms
+→ HistoricalIncidentVectors
 ```
 
-## `IncidentOutboxWorker`
+The historical relay uses its own Change Feed processor/checkpoint so it can evolve independently from the Incident outbox relay.
 
-Responsible for relaying durable outbox entries to Service Bus.
+## Scope and lifetime
 
-It:
+Hosted services are singletons. Application handlers/repositories are scoped.
 
-- Monitors the Cosmos `Incidents` container through the Change Feed Processor.
-- Uses `ChangeFeedLeases` for ownership/checkpoints.
-- Ignores normal Incident/analysis changes.
-- Reads `AnalyseIncidentOutbox` documents.
-- Converts each outbox document back into `AnalyseIncidentCommand`.
-- Publishes through `IIncidentAnalysisQueue`.
-
-The Change Feed is at-least-once, so duplicate relay is possible. Stable command IDs, Service Bus duplicate detection, and analysis idempotency provide complementary protection.
-
-## `AnalyseIncidentWorker`
-
-Responsible for consuming analysis commands from Service Bus.
-
-It:
-
-- Consumes the `analyse-incident` queue.
-- Deserializes `AnalyseIncidentCommand`.
-- Adds correlation, Incident, and command IDs to logging scope.
-- Creates a new DI scope per message and resolves scoped `AnalyseIncidentHandler` inside that scope.
-- Invokes `AnalyseIncidentHandler`, which calls `IIncidentAnalyzer` and atomically persists the completed Incident + structured analysis.
-- Completes messages only after successful processing.
-- Allows failures to propagate for Service Bus redelivery.
-- Dead-letters permanently invalid messages immediately.
-- Marks the Incident `Failed` and dead-letters after retry exhaustion.
-
-## `RunbookIndexChangeFeedWorker`
-
-Responsible for detecting created/updated Runbooks and publishing asynchronous indexing work. It monitors the `Runbooks` Change Feed, uses an independent processor name/lease checkpoint, builds `IndexRunbookCommand`, and publishes through `IRunbookIndexQueue`. Existing Runbooks can be backfilled when this processor is introduced.
-
-## `IndexRunbookWorker`
-
-Responsible for consuming `index-runbook` commands. It deserializes the command, creates a DI scope per message, resolves scoped `IndexRunbookHandler`, completes only after chunking/embedding/persistence succeeds, and allows processing failures to flow into Service Bus redelivery/DLQ behaviour.
-
-The handler reloads the current Runbook, generates deterministic overlapping chunks, calls `IEmbeddingGenerator`, and replaces the current `RunbookChunks` set.
-
-## AI Implementation Selection
-
-The Worker selects its analyzer from the host environment:
-
-```text
-DOTNET_ENVIRONMENT=Development
-→ AddDevelopmentAIDependencies()
-→ DevelopmentDummyIncidentAnalyzer
-→ DevelopmentDummyEmbeddingGenerator
-
-Non-Development
-→ AddAzureAIDependencies(...)
-→ AzureIncidentAnalyzer
-→ AzureEmbeddingGenerator
-```
-
-This means local Docker development exercises the complete Incident-analysis and Runbook-ingestion messaging/persistence flows without calling Azure OpenAI.
+Service Bus consumers therefore create a DI scope per message and resolve handlers inside that scope.
 
 ## Reliability
 
-Both Service Bus consumers settle messages only after their Application workflow succeeds:
+IncidentIQ assumes at-least-once delivery:
 
 ```text
-Incident analysis failure
-→ analyzer/handler rethrows
-→ Service Bus redelivery
-→ final Incident failure handling + DLQ after retry exhaustion
-
-Runbook indexing failure
-→ chunking/embedding/persistence throws
-→ Service Bus redelivery
-→ DLQ after retry exhaustion
-
-Malformed message
-→ immediate DLQ
+stable command/message IDs
++ Service Bus duplicate detection
++ application state checks
++ bounded redelivery
++ DLQ
 ```
 
-The real Incident analyzer has a small bounded SDK retry policy and request timeout, but Service Bus remains the durable outer retry mechanism. Runbook embedding/indexing failures likewise propagate to `IndexRunbookWorker` so the queue remains responsible for durable redelivery rather than failures being swallowed inside the ingestion pipeline.
+Azure AI failures are not swallowed inside the Worker. Short transport retries happen inside the Azure SDK/adapter, then processing failures propagate back to Service Bus.
 
-See [Design Decisions & Trade-offs](../../docs/DESIGN-DECISIONS.md) for the detailed reasoning.
+## Development
 
-## AI Telemetry
+In `Development`, the Worker uses deterministic AI/embeddings plus local Cosmos/Service Bus.
 
-`AzureIncidentAnalyzer` records structured success/failure logs containing analysis duration, model, deployment, and failure category. It deliberately avoids logging prompts, raw responses, and Incident payload fields.
+In non-Development environments it uses Azure OpenAI, Azure Cosmos DB and Azure Service Bus through managed identity/configured credentials.
 
-Full distributed tracing, dependency metrics, dashboards, and KQL remain future work.
-
-## Structure
-
-```text
-IncidentIQ.Worker/
-├── IncidentOutboxWorker.cs
-├── AnalyseIncidentWorker.cs
-├── RunbookIndexChangeFeedWorker.cs
-├── IndexRunbookWorker.cs
-├── Program.cs
-├── Dockerfile
-├── appsettings.json
-└── Properties/
-```
-
-`Program.cs` registers shared Application/Infrastructure dependencies, chooses environment-specific analyzer/embedding implementations, registers `AnalyseIncidentHandler` and `IndexRunbookHandler` as scoped, and hosts all four background services.
-
-## Local Development
-
-Run as part of Docker Compose:
-
-```powershell
-docker compose up --build
-```
-
-The Compose Worker must set `DOTNET_ENVIRONMENT=Development` to use the deterministic analyzer.
-
-To run directly:
-
-```powershell
-dotnet run --project src\IncidentIQ.Worker
-```
-
-See the [Development Guide](../../docs/DEVELOPMENT.md) for local emulator and real-Azure options.
-
-## Stage 11 Boundary and Next Work
-
-Stage 11 Runbook vector ingestion **and retrieval** are complete locally and in Azure.
-
-The Worker owns the asynchronous **ingestion** side of Stage 11:
-
-```text
-Runbook change → Change Feed → index-runbook → IndexRunbookWorker → chunk/embed/store
-```
-
-The synchronous **retrieval** side does not run inside this Worker. It is exposed through the API, which embeds the search query and calls `IRunbookChunkRetriever` / `CosmosRunbookChunkRetriever` against `RunbookChunks`.
-
-Stage 12 next adds historical-Incident vector retrieval and then combines historical-Incident evidence with the existing Runbook retrieval path into grounded RAG analysis. Later stages add full observability, completion events, operational tooling and KEDA-based scaling.
+For live-Azure debugging warnings about shared queues and Change Feed leases, see [Development](../../docs/DEVELOPMENT.md).

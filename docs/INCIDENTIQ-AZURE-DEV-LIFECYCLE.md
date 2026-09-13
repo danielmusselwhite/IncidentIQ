@@ -51,7 +51,7 @@ infra/main.bicep
 
 ### Cosmos NoSQL Vector Search
 
-The `RunbookChunks` container uses a Cosmos DB vector policy and therefore requires the `EnableNoSQLVectorSearch` capability on the Cosmos account.
+`RunbookChunks` and `HistoricalIncidentVectors` use Cosmos DB vector policies and therefore require the `EnableNoSQLVectorSearch` capability on the Cosmos account.
 
 This is an **account-level Cosmos capability**. It is not registered using `az feature register`.
 
@@ -110,9 +110,9 @@ az cosmosdb show `
 
 Vector-search capability activation can take several minutes to propagate.
 
-The `RunbookChunks` container must only be created once the vector-search capability is active because its vector embedding policy and vector index are defined when the container is created.
+The vector-enabled `RunbookChunks` and `HistoricalIncidentVectors` containers must only be created once the vector-search capability is active because their vector policies/indexes are defined when the containers are created.
 
-If an environment deployment provisions the Cosmos account but `RunbookChunks` fails because vector search is not yet active:
+If an environment deployment provisions the Cosmos account but a vector-enabled container fails because vector search is not yet active:
 
 1. Enable or confirm `EnableNoSQLVectorSearch` using the commands above.
 2. Wait for the capability to become active.
@@ -449,15 +449,18 @@ rg-incidentiq-dev
 
 ├── Azure Cosmos DB
 │   └── IncidentIQ
-│       ├── Incidents              /incidentId
-│       ├── Runbooks               /id
-│       ├── RunbookChunks          /runbookId (vector-enabled)
-│       └── ChangeFeedLeases       /id
+│       ├── Incidents                  /incidentId
+│       ├── Runbooks                   /id
+│       ├── RunbookChunks              /runbookId (vector-enabled)
+│       ├── HistoricalIncidentVectors  /incidentId (vector-enabled)
+│       └── ChangeFeedLeases           /id
 
 ├── Azure Service Bus
 │   ├── analyse-incident
 │   │   └── $DeadLetterQueue
-│   └── index-runbook
+│   ├── index-runbook
+│   │   └── $DeadLetterQueue
+│   └── index-historical-incident
 │       └── $DeadLetterQueue
 
 ├── Azure OpenAI
@@ -512,24 +515,36 @@ az cosmosdb update `
     --capabilities @("EnableServerless","EnableNoSQLVectorSearch")
 ```
 
-Wait for the capability to become active, then rerun the **Deploy Development** workflow so the vector-enabled `RunbookChunks` container can be provisioned.
+Wait for the capability to become active, then rerun the **Deploy Development** workflow so the vector-enabled containers can be provisioned.
 
 ### 7. Verify the Deployment
 
-After deployment, submit an Incident through the frontend and verify:
+After deployment, verify the main Stage 12 paths.
+
+Incident analysis:
 
 ```text
 Queued
 → Processing
-→ real Azure OpenAI analysis
+→ historical Incident + Runbook retrieval
+→ real Azure OpenAI structured analysis
 → Completed
-→ persisted analysis returned by GET /api/incidents/{id}/analysis
+→ persisted grounded analysis/evidence
 → analysis displayed in React
 ```
 
-Worker/Application Insights logs should also contain structured AI completion/failure telemetry such as duration, deployment/model, and a failure category when applicable.
+Historical indexing:
 
-For Runbook ingestion verification, create or update a Runbook and confirm:
+```text
+Completed Incident
+→ HistoricalIncidentIndexChangeFeedWorker
+→ index-historical-incident
+→ IndexHistoricalIncidentWorker
+→ text-embedding-3-small
+→ HistoricalIncidentVectors populated
+```
+
+Runbook indexing:
 
 ```text
 Runbook persisted
@@ -538,12 +553,22 @@ Runbook persisted
 → IndexRunbookWorker
 → text-embedding-3-small
 → RunbookChunks populated
-→ embedding length = 1536
 ```
 
-Edit the Runbook and confirm stale chunks are replaced.
+Edit a Runbook and confirm stale chunks are replaced; delete it and confirm derived chunks are removed.
 
-Delete the Runbook and confirm its derived `RunbookChunks` are removed.
+Operational Assistant:
+
+```text
+React /assistant
+→ POST /api/assistant/questions
+→ real query embedding + Cosmos retrieval
+→ AzureOperationalAssistant
+→ answer with valid HI-* / RB-* citations
+→ evidence inspector resolves the returned sources
+```
+
+Worker/API Application Insights logs should contain structured AI completion/failure metadata such as duration, deployment/model and failure category without raw operational payload logging.
 
 ### 8. Refresh Local Configuration
 

@@ -371,22 +371,22 @@ authenticated user identity is available.
 
 #### 12D.4 — Operational Assistant Frontend
 
-* [ ] Add an `Assistant` item to the main navigation.
-* [ ] Add a dedicated `/assistant` page.
-* [ ] Build a conversational user/Assistant message interface.
-* [ ] Keep the current conversation in React state only.
-* [ ] Send recent conversation history with each Assistant request.
-* [ ] Add optional Service and Environment filters.
-* [ ] Add a desktop evidence/source panel alongside the conversation.
-* [ ] Display clickable `HI-*` and `RB-*` references alongside the answer sections they support.
-* [ ] Allow evidence references to preview/highlight their corresponding source.
-* [ ] Link historical Incident evidence to Incident details.
-* [ ] Link Runbook evidence to Runbook details.
-* [ ] Keep evidence scoped to the Assistant response that retrieved it.
-* [ ] Add responsive behaviour for smaller screens.
-* [ ] Add useful empty, loading and error states.
-* [ ] Add a clear-conversation action.
-* [ ] Do not persist conversation history before authenticated user identity exists.
+* [x] Add an `Assistant` item to the main navigation.
+* [x] Add a dedicated `/assistant` page.
+* [x] Build a conversational user/Assistant message interface.
+* [x] Keep the current conversation in React state only.
+* [x] Send recent conversation history with each Assistant request.
+* [x] Add optional Service and Environment filters.
+* [x] Add a desktop evidence/source panel alongside the conversation.
+* [x] Display clickable `HI-*` and `RB-*` references alongside the answer sections they support.
+* [x] Allow evidence references to preview/highlight their corresponding source.
+* [x] Link historical Incident evidence to Incident details.
+* [x] Link Runbook evidence to Runbook details.
+* [x] Keep evidence scoped to the Assistant response that retrieved it.
+* [x] Add responsive behaviour for smaller screens.
+* [x] Add useful empty, loading and error states.
+* [x] Add a clear-conversation action.
+* [x] Do not persist conversation history before authenticated user identity exists.
 
 #### 12D.5 — Verification
 
@@ -408,103 +408,102 @@ vector-search and grounded-AI flows are implemented.
 
 #### 12E.1 — Important Application Flows
 
-* [ ] Create a dedicated documentation folder for important end-to-end flows, for example `docs/flows/`.
-* [ ] Document Incident submission and asynchronous analysis in a detailed sequence/flow diagram.
-  * [ ] `User → POST /api/incidents → IncidentsController → CreateIncidentCommand → CreateIncidentHandler`.
-  * [ ] Show Cosmos persistence and transactional outbox creation.
-  * [ ] Show Incidents Change Feed relay → Service Bus `analyse-incident`.
-  * [ ] Show `AnalyseIncidentWorker → AnalyseIncidentHandler`.
-  * [ ] Show RAG retrieval → Azure OpenAI → completed analysis persistence.
-* [ ] Document Runbook indexing flow.
-  * [ ] Runbook create/update → Cosmos Change Feed.
-  * [ ] `IndexRunbookCommand` → Service Bus.
-  * [ ] `IndexRunbookWorker`.
-  * [ ] chunking → embeddings → `RunbookChunks`.
-* [ ] Document historical Incident indexing flow.
-  * [ ] completed Incident → Cosmos Change Feed.
-  * [ ] `IndexHistoricalIncidentCommand`.
-  * [ ] Service Bus → indexing Worker.
-  * [ ] embeddings → `HistoricalIncidentVectors`.
-* [ ] Document grounded Incident-analysis flow.
-  * [ ] Incident retrieval input.
-  * [ ] single embedding generation.
-  * [ ] parallel historical Incident and Runbook retrieval.
-  * [ ] combined grounding context.
-  * [ ] Azure OpenAI structured analysis.
-  * [ ] evidence-reference validation.
-  * [ ] persisted evidence snapshots.
-* [ ] Document Operational Assistant flow.
-  * [ ] React Assistant → `POST /api/assistant/questions`.
-  * [ ] current question + ephemeral conversation history.
-  * [ ] embedding generated from the current question.
-  * [ ] historical Incident and Runbook retrieval.
-  * [ ] `OperationalQuestionContext`.
-  * [ ] `AzureOperationalAssistant`.
-  * [ ] structured grounded response.
-  * [ ] `HI-*` / `RB-*` validation.
-  * [ ] answer-specific evidence returned to React.
+* [x] Create a dedicated documentation folder for important end-to-end flows, for example `docs/flows/`.
+* [x] Document Incident submission and asynchronous analysis in a detailed sequence/flow diagram.
+  * [x] `User → POST /api/incidents → IncidentsController → CreateIncidentCommand → CreateIncidentHandler`.
+  * [x] Show Cosmos persistence and transactional outbox creation.
+  * [x] Show Incidents Change Feed relay → Service Bus `analyse-incident`.
+  * [x] Show `AnalyseIncidentWorker → AnalyseIncidentHandler`.
+  * [x] Show RAG retrieval → Azure OpenAI → completed analysis persistence.
+* [x] Document Runbook indexing flow.
+  * [x] Runbook create/update → Cosmos Change Feed.
+  * [x] `IndexRunbookCommand` → Service Bus.
+  * [x] `IndexRunbookWorker`.
+  * [x] chunking → embeddings → `RunbookChunks`.
+* [x] Document historical Incident indexing flow.
+  * [x] completed Incident → Cosmos Change Feed.
+  * [x] `IndexHistoricalIncidentCommand`.
+  * [x] Service Bus → indexing Worker.
+  * [x] embeddings → `HistoricalIncidentVectors`.
+* [x] Document grounded Incident-analysis flow.
+  * [x] Incident retrieval input.
+  * [x] single embedding generation.
+  * [x] parallel historical Incident and Runbook retrieval.
+  * [x] combined grounding context.
+  * [x] Azure OpenAI structured analysis.
+  * [x] evidence-reference validation.
+  * [x] persisted evidence snapshots.
+* [x] Document Operational Assistant flow.
+  * [x] React Assistant → `POST /api/assistant/questions`.
+  * [x] current question + ephemeral conversation history.
+  * [x] embedding generated from the current question.
+  * [x] historical Incident and Runbook retrieval.
+  * [x] `OperationalQuestionContext`.
+  * [x] `AzureOperationalAssistant`.
+  * [x] structured grounded response.
+  * [x] `HI-*` / `RB-*` validation.
+  * [x] answer-specific evidence returned to React.
 
 #### 12E.2 — Architecture Diagrams
 
-* [ ] Add a detailed component-level architecture diagram showing the important commands, handlers, repositories, Workers and external Azure services.
-* [ ] Add a simplified high-level colour-coded architecture diagram suitable for the README/portfolio.
-* [ ] Clearly distinguish synchronous HTTP flows from asynchronous Service Bus / Change Feed flows.
-* [ ] Clearly distinguish source documents from derived vector documents.
-* [ ] Clearly distinguish application orchestration from Infrastructure implementations.
-* [ ] Show where Azure OpenAI, Cosmos vector search and Service Bus participate in each flow.
+* [x] Add a detailed component-level architecture diagram showing the important commands, handlers, repositories, Workers and external Azure services.
+* [x] Add a simplified high-level colour-coded architecture diagram suitable for the README/portfolio.
+* [x] Clearly distinguish synchronous HTTP flows from asynchronous Service Bus / Change Feed flows.
+* [x] Clearly distinguish source documents from derived vector documents.
+* [x] Clearly distinguish application orchestration from Infrastructure implementations.
+* [x] Show where Azure OpenAI, Cosmos vector search and Service Bus participate in each flow.
 
 #### 12E.3 — LLM & Grounded RAG Documentation
 
-* [ ] Document the complete LLM/RAG flow used by Incident analysis.
-* [ ] Document the complete LLM/RAG flow used by the Operational Assistant.
-* [ ] Explain why historical Incident evidence and Runbook evidence remain separate.
-* [ ] Explain request-scoped evidence identifiers such as `HI-1` and `RB-1`.
-* [ ] Explain why evidence references are validated after model generation.
-* [ ] Explain why previous Assistant conversation turns provide context but are not treated as grounding evidence.
-* [ ] Explain why semantic retrieval for the Assistant is based primarily on the current question.
-* [ ] Explain how prompt-injection risk is reduced by treating retrieved content and previous conversation messages as untrusted data.
-* [ ] Document behaviour when no relevant grounding evidence is available.
+* [x] Document the complete LLM/RAG flow used by Incident analysis.
+* [x] Document the complete LLM/RAG flow used by the Operational Assistant.
+* [x] Explain why historical Incident evidence and Runbook evidence remain separate.
+* [x] Explain request-scoped evidence identifiers such as `HI-1` and `RB-1`.
+* [x] Explain why evidence references are validated after model generation.
+* [x] Explain why previous Assistant conversation turns provide context but are not treated as grounding evidence.
+* [x] Explain why semantic retrieval for the Assistant is based primarily on the current question.
+* [x] Explain how prompt-injection risk is reduced by treating retrieved content and previous conversation messages as untrusted data.
+* [x] Document behaviour when no relevant grounding evidence is available.
 
 #### 12E.4 — Structured Azure OpenAI Output
 
-* [ ] Document `AzureIncidentAnalysisSchema` and its role in enforcing the expected structured Incident-analysis response.
-* [ ] Document `AzureOperationalAssistantSchema` and its role in enforcing structured Assistant answers.
-* [ ] Explain the difference between JSON-schema validation and application-level semantic validation.
-* [ ] Explain why valid `HI-*` / `RB-*` identifiers are validated in application code rather than encoded as a static JSON-schema enum.
-* [ ] Document the mapping from Azure OpenAI response DTOs into provider-independent Application models.
-* [ ] Document Azure AI timeout, throttling, transient-failure and invalid-response handling.
+* [x] Document `AzureIncidentAnalysisSchema` and its role in enforcing the expected structured Incident-analysis response.
+* [x] Document `AzureOperationalAssistantSchema` and its role in enforcing structured Assistant answers.
+* [x] Explain the difference between JSON-schema validation and application-level semantic validation.
+* [x] Explain why valid `HI-*` / `RB-*` identifiers are validated in application code rather than encoded as a static JSON-schema enum.
+* [x] Document the mapping from Azure OpenAI response DTOs into provider-independent Application models.
+* [x] Document Azure AI timeout, throttling, transient-failure and invalid-response handling.
 
 #### 12E.5 — Local Development & Live Azure Debugging
 
-* [ ] Document the normal deterministic local-development configuration.
-  * [ ] Development dummy Incident analyser.
-  * [ ] Development dummy Operational Assistant.
-  * [ ] Development embedding generator.
-  * [ ] local Cosmos / Service Bus infrastructure.
-* [ ] Add a guide for selectively debugging local code against live Azure resources when required.
-* [ ] Explain how to run the local API or Worker against Azure Cosmos DB.
-* [ ] Explain how to use real Azure OpenAI embeddings/Chat models from local development.
-* [ ] Explain how to connect local processing to Azure Service Bus when deliberately testing messaging behaviour.
-* [ ] Document required Azure authentication using `DefaultAzureCredential` / developer Azure credentials.
-* [ ] Document the risks of accidentally modifying shared Azure development data while debugging locally.
-* [ ] Recommend using the normal dummy/emulator configuration by default and live Azure resources only for targeted integration debugging.
-* [ ] Add example configuration overrides without committing secrets or credentials.
-* [ ] Add troubleshooting guidance for Managed Identity/RBAC, Service Bus permissions, Cosmos Change Feed leases and Azure OpenAI access.
+* [x] Document the normal deterministic local-development configuration.
+  * [x] Development dummy Incident analyser.
+  * [x] Development dummy Operational Assistant.
+  * [x] Development embedding generator.
+  * [x] local Cosmos / Service Bus infrastructure.
+* [x] Add a guide for selectively debugging local code against live Azure resources when required.
+* [x] Explain how to run the local API or Worker against Azure Cosmos DB.
+* [x] Explain how to use real Azure OpenAI embeddings/Chat models from local development.
+* [x] Explain how to connect local processing to Azure Service Bus when deliberately testing messaging behaviour.
+* [x] Document required Azure authentication using `DefaultAzureCredential` / developer Azure credentials.
+* [x] Document the risks of accidentally modifying shared Azure development data while debugging locally.
+* [x] Recommend using the normal dummy/emulator configuration by default and live Azure resources only for targeted integration debugging.
+* [x] Add example configuration overrides without committing secrets or credentials.
+* [x] Add troubleshooting guidance for Managed Identity/RBAC, Service Bus permissions, Cosmos Change Feed leases and Azure OpenAI access.
 
 #### 12E.6 — Final Stage 12 Documentation Review
 
-* [ ] Update `docs/DESIGN-DECISIONS.md` with the final Stage 12 architectural decisions.
-* [ ] Update the root README high-level architecture where necessary.
-* [ ] Ensure detailed diagrams remain in `docs/` rather than overwhelming the root README.
-* [ ] Ensure terminology is consistent across code and documentation:
-  * [ ] Incident.
-  * [ ] Runbook.
-  * [ ] grounding evidence.
-  * [ ] historical Incident retrieval.
-  * [ ] Operational Assistant.
-  * [ ] request-scoped evidence references.
-* [ ] Review all Stage 12 diagrams and documentation against the implemented system.
-  * [ ] make new folder for important flows, make them more clear eg User -|POST api/incidents|-> IncidentController -|CreateIncidentCommand|->|CreateIncidentHandler| -> Analyse + blah blah -> ASYNC FLOWS | then just have high level colour coded one too of eg Api -> Command -> Handler -> blah blah, also can you add a section seomewhere to explain how to debug locally against a live resources of azure / cosmos/ api etc. if required instead of just our dummied ones, also mention azureincidentanalysisschema and its role, also the LLM flow
+* [x] Update `docs/DESIGN-DECISIONS.md` with the final Stage 12 architectural decisions.
+* [x] Update the root README high-level architecture where necessary.
+* [x] Ensure detailed diagrams remain in `docs/` rather than overwhelming the root README.
+* [x] Ensure terminology is consistent across code and documentation:
+  * [x] Incident.
+  * [x] Runbook.
+  * [x] grounding evidence.
+  * [x] historical Incident retrieval.
+  * [x] Operational Assistant.
+  * [x] request-scoped evidence references.
+* [x] Review all Stage 12 diagrams and documentation against the implemented system.
 
 ## Stage 13 — AI Evaluation
 

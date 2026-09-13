@@ -180,27 +180,38 @@ IIncidentAnalysisReader
 
 ## 10. Provider-Independent AI Boundary
 
-`IIncidentAnalyzer` is defined in Application. Infrastructure provides the implementation:
+Application defines the capabilities it needs; Infrastructure supplies the Azure or deterministic Development implementations:
 
 ```text
-Development
-→ DevelopmentDummyIncidentAnalyzer
+IIncidentAnalyzer
+├── DevelopmentDummyIncidentAnalyzer
+└── AzureIncidentAnalyzer
 
-Deployed / non-Development
-→ AzureIncidentAnalyzer
+IEmbeddingGenerator
+├── DevelopmentDummyEmbeddingGenerator
+└── AzureEmbeddingGenerator
+
+IOperationalAssistant
+├── DevelopmentDummyOperationalAssistant
+└── AzureOperationalAssistant
 ```
 
-`IncidentAnalysisResult`, `LikelyCause`, and `RecommendedAction` remain Application models rather than Azure SDK/domain models.
+`IncidentAnalysisResult`, `OperationalAnswer`, retrieval matches, likely causes and recommended actions remain Application models rather than Azure SDK types.
 
-**Why:** Application owns the analysis use case without depending on Azure OpenAI types, and local development can exercise the full asynchronous pipeline without Azure credentials.
+**Why:** Application owns the use cases without depending on Azure OpenAI, Cosmos, or model-provider contracts. Normal local development can still exercise the complete orchestration flow without Azure credentials.
 
 ## 11. Structured AI Output
 
-`AzureIncidentAnalyzer` requires a structured response schema, deserializes the model output into Infrastructure response types, performs semantic validation, and maps the result into `IncidentAnalysisResult`.
+Both Azure chat integrations require structured output:
 
-**Why:** downstream persistence/API/frontend code receives a predictable shape rather than arbitrary prose.
+- `AzureIncidentAnalysisSchema` defines the expected Incident-analysis JSON shape.
+- `AzureOperationalAssistantSchema` defines the Assistant answer-section shape.
 
-**Trade-off:** schema-valid output can still be semantically poor, so later stages add retrieval evidence and formal AI evaluation.
+Azure responses are deserialised into Infrastructure DTOs and then mapped into provider-independent Application models.
+
+**Why:** persistence, API and frontend code receive predictable contracts rather than arbitrary prose.
+
+**Trade-off:** JSON-schema validity does not guarantee that a citation is real or that an answer is operationally correct. Request-specific evidence validation is therefore handled separately in Application, and formal answer/retrieval quality evaluation remains a later stage.
 
 ## 12. AI Resilience Boundaries
 
@@ -374,23 +385,141 @@ Infrastructure supplies `DevelopmentDummyEmbeddingGenerator` / `AzureEmbeddingGe
 
 ## 21. Cosmos Vector Results Are Mapped at the Infrastructure Boundary
 
-`CosmosRunbookChunkRetriever` executes the Cosmos `VectorDistance` query and projects only the fields required by retrieval. The Infrastructure projection is explicitly mapped into `CosmosRunbookChunkMatchResult` before being converted to the Application-level `RunbookChunkMatch`.
+Cosmos vector queries project only the fields required by retrieval. Infrastructure-specific projection models are mapped into Application-level results such as `RunbookChunkMatch` and `HistoricalIncidentMatch`.
 
 ```text
-Cosmos RunbookChunkDocument
+Cosmos vector document
       ↓ VectorDistance query
-CosmosRunbookChunkMatchResult
-      ↓ Infrastructure mapping
-RunbookChunkMatch
+Infrastructure projection
+      ↓ explicit mapping
+Application retrieval model
 ```
 
-The returned `Distance` is cosine distance, therefore **lower values represent stronger semantic matches**. Retrieval supports top-K limiting plus service metadata filtering and records query latency and Cosmos request-unit (RU) consumption.
+**Why:** Cosmos SQL aliases, SDK result types, request-charge APIs and vector-query details remain Infrastructure concerns. Application only knows that it receives ranked retrieval matches.
 
-**Why:** the Cosmos projection/deserialization shape is a provider-specific concern. Keeping it inside Infrastructure prevents Cosmos JSON aliases, SDK query details, and `VectorDistance` semantics from leaking into Application.
+The ranking value is useful for retrieval but is **not exposed as an AI confidence score**. Retrieval-quality thresholds are evaluated separately from the generated answer.
 
-The explicit projection mapping also avoids a subtle failure mode discovered during Stage 11B: Cosmos can return valid rows while a mismatched projection contract materialises fields as empty/default values. The retrieval boundary now makes that mapping explicit and testable.
+## 22. Historical Incidents Use a Separate Derived Vector Store
 
-**Trade-off:** vector distance is useful for ranking but is not treated as a calibrated confidence score. Relevance thresholds and retrieval-quality evaluation are deferred until the AI-evaluation stage, when they can be measured against controlled data.
+Completed Incidents remain the source business records in `Incidents`. Searchable historical representations are written to `HistoricalIncidentVectors`.
+
+The embedded text is based on the original operational report:
+
+```text
+Title
+Description
+Symptoms
+```
+
+The previous AI analysis is not embedded.
+
+**Why:** future retrieval should represent the Incident that actually occurred, not compound an earlier model's interpretation. The derived vector document can also be rebuilt without changing the source Incident.
+
+**Trade-off:** completion and historical indexing are eventually consistent. A newly completed Incident may not immediately appear in retrieval results.
+
+## 23. Grounded Analysis Reuses One Embedding Across Two Retrieval Paths
+
+`IncidentAnalysisContextBuilder` generates one Incident embedding and uses it for both:
+
+```text
+IHistoricalIncidentRetriever
+IRunbookChunkRetriever
+```
+
+The independent retrievals can run concurrently.
+
+**Why:** both searches are trying to understand the same operational problem, so generating duplicate embeddings would add latency and cost without adding useful information.
+
+Historical Incident retrieval can apply service/environment metadata, while Runbook retrieval can apply service metadata.
+
+## 24. Historical Incidents and Runbooks Remain Distinct Evidence Types
+
+Grounding does not flatten all retrieved text into one anonymous source list.
+
+```text
+HI-* → similar historical observations
+RB-* → operational guidance
+```
+
+**Why:** they have different meanings. A similar previous Incident does not prove the current cause, and a Runbook describes what to do rather than what is currently happening.
+
+Keeping them distinct makes both the prompt and the UI more understandable.
+
+## 25. Evidence References Are Request-Scoped and Semantically Validated
+
+The model receives compact identifiers such as `HI-1` and `RB-2`.
+
+Those identifiers only exist within the current analysis or Assistant answer. After generation, Application validates that every returned reference was actually present in the supplied grounding context.
+
+**Why:** a static JSON schema can enforce "array of strings" but cannot know which evidence happened to be retrieved for one request.
+
+**Trade-off:** evidence identifiers are intentionally not globally stable IDs. The API/UI must keep each answer together with the evidence that produced it.
+
+## 26. Persist Incident-Analysis Evidence, Return Assistant Evidence Per Answer
+
+Grounded Incident analysis persists evidence snapshots with the analysis result. The Operational Assistant instead returns the exact retrieved evidence with each response.
+
+**Why:** persisted Incident analysis should remain explainable later even if the vector index changes. Assistant answers are currently ephemeral, so returning answer-scoped evidence is sufficient and avoids introducing conversation persistence before authentication exists.
+
+## 27. The Operational Assistant Is Stateless on the Backend
+
+The Assistant API accepts:
+
+```text
+current question
++ optional service/environment filters
++ recent conversation history
+```
+
+React keeps the conversation for the current browser session and resends recent turns with each request.
+
+**Why:** this supports useful follow-up questions without creating anonymous persisted conversation records that would later need ownership/security rules.
+
+**Trade-off:** refreshing the page loses the conversation. Persisted history is deferred until authenticated user identity is introduced.
+
+## 28. Conversation History Provides Context, Not Grounding
+
+For Assistant requests, semantic retrieval is driven by the **current question**. Previous user/Assistant turns are passed to the chat model for language continuity only.
+
+```text
+conversation history → understand "what should I check first?"
+current question     → embedding + vector retrieval
+retrieved evidence   → claims and citations
+```
+
+**Why:** long conversation history should not drown out the engineer's latest operational question, and model-generated previous answers should not become evidence for later answers.
+
+## 29. Retrieved and Conversational Content Is Treated as Untrusted Data
+
+Azure AI prompts explicitly distinguish system instructions from Incident text, Runbook content and previous conversation messages.
+
+The model is instructed not to follow instructions embedded inside those values and not to claim access to logs, metrics, deployments, source code or other systems unless the supplied evidence states that information.
+
+**Why:** RAG introduces external text into the prompt. Treating it as untrusted data reduces the risk that retrieved content overrides the intended Assistant behaviour.
+
+**Trade-off:** prompt-injection risk can be reduced but not eliminated solely through prompting; later security/evaluation work can add further controls.
+
+## 30. Azure AI Schema Validation and Application Validation Have Different Jobs
+
+The Azure schemas validate **shape**:
+
+```text
+required fields
+types
+arrays
+additional properties
+```
+
+Application validation checks **request-specific meaning**:
+
+```text
+does HI-2 actually exist in this context?
+does RB-1 belong to this answer?
+```
+
+**Why:** keeping these responsibilities separate makes the Azure adapter predictable while preserving provider-independent business rules in Application.
+
+For the full LLM/RAG flow, see [RAG & AI Design](RAG-AND-AI.md).
 
 ## Current Accepted Trade-offs
 
@@ -399,9 +528,10 @@ The explicit projection mapping also avoids a subtle failure mode discovered dur
 - No automatic DLQ reprocessing; requeue is deliberate through the backend capability.
 - No automatic outbox cleanup yet.
 - Final failure persistence can still be affected by Cosmos availability.
-- Runbook vector retrieval is implemented, but it is not yet injected into Incident analysis; evidence-backed combined RAG begins in Stage 12.
+- Source records and derived vector stores are eventually consistent by design.
+- Assistant conversation history is browser-only until authenticated conversation ownership is added.
 - AI telemetry is intentionally lightweight until the full observability stage.
-- Runbook source/vector persistence is eventually consistent across containers; stronger source-version concurrency checks can be added if parallel indexing becomes significant.
+- Retrieval ranking is not treated as calibrated confidence; formal retrieval/answer evaluation is deferred to Stage 13.
 - Stronger optimistic concurrency can be added before significant Worker scaling.
 
-These are deliberate limits: the current design demonstrates realistic cloud reliability patterns without adding complexity before it is needed.
+These are deliberate limits: the current design demonstrates realistic cloud reliability and grounded-AI patterns without adding production complexity before it is needed.

@@ -2,57 +2,26 @@
 
 The `infra` folder contains the Azure Infrastructure as Code for IncidentIQ.
 
-Azure resources are defined with Bicep and deployed through GitHub Actions using OIDC authentication. For environment teardown/recreation and configuration refresh commands, see [IncidentIQ Azure Dev Environment Lifecycle](../docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
+Azure resources are defined with Bicep and deployed through GitHub Actions using OIDC. For teardown/recreation and environment refresh commands, see [Azure Dev Lifecycle](../docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
 
 ## Structure
 
 ```text
 infra/
 ├── bootstrap/
-│   ├── main.bicep
-│   ├── github-identity.bicep
-│   └── deployment-role.bicep
 ├── environments/
-│   └── dev.bicepparam
 ├── local/
 │   └── servicebus/
-│       └── Config.json
 ├── modules/
-│   ├── acr.bicep
-│   ├── api-container-app.bicep
-│   ├── api-identity.bicep
-│   ├── application-insights.bicep
-│   ├── azure-ai.bicep
-│   ├── container-apps-environment.bicep
-│   ├── cosmos.bicep
-│   ├── frontend.bicep
-│   ├── log-analytics.bicep
-│   ├── service-bus.bicep
-│   ├── worker-container-app.bicep
-│   └── worker-identity.bicep
 ├── main.bicep
 └── ReadMe.md
 ```
 
-## Bootstrap Infrastructure
+Bootstrap resources are kept separate from the disposable application environment. The GitHub deployment identity uses an OIDC federated credential rather than a stored client secret.
 
-Bootstrap infrastructure is deliberately separate from the disposable development environment.
+## Development environment
 
-```text
-rg-incidentiq-bootstrap
-└── GitHub deployment managed identity
-    └── OIDC federated credential
-```
-
-The deployment identity receives resource-group-scoped permissions on `rg-incidentiq-dev` including Contributor, Role Based Access Control Administrator, and ACR push access.
-
-This lets GitHub Actions provision the development environment, create workload RBAC assignments, and push application images without storing an Azure client secret.
-
-## Development Environment
-
-`main.bicep` is the composition root for the application environment and receives environment-specific values from `environments/dev.bicepparam`.
-
-The Bicep development-environment definition currently includes:
+The Bicep environment includes:
 
 ```text
 rg-incidentiq-dev
@@ -66,59 +35,48 @@ rg-incidentiq-dev
 │       ├── Incidents
 │       ├── Runbooks
 │       ├── RunbookChunks
+│       ├── HistoricalIncidentVectors
 │       └── ChangeFeedLeases
 ├── Azure Service Bus
 │   ├── analyse-incident
-│   │   └── $DeadLetterQueue
-│   └── index-runbook
-│       └── $DeadLetterQueue
+│   ├── index-runbook
+│   └── index-historical-incident
 ├── Azure OpenAI
-│   ├── incident-analysis deployment
-│   └── runbook-embedding deployment
+│   ├── incident-analysis
+│   └── runbook-embedding
 ├── API Managed Identity
 ├── Worker Managed Identity
 ├── Application Insights
 └── Log Analytics
 ```
 
-Bicep defines the `RunbookChunks` vector container, `index-runbook` queue, Runbook embedding deployment, and the API/Worker permissions and configuration required to use that embedding deployment.
-
-The repository root [README](../ReadMe.md) contains Mermaid diagrams for the infrastructure, internal application architecture, and asynchronous message flows.
-
 ## Cosmos DB
 
-Defined in `modules/cosmos.bicep`.
-
 | Container | Partition key | Purpose |
-|---|---|---|
-| `Incidents` | `/incidentId` | Incident, `AnalyseIncident` outbox, and structured analysis documents |
-| `Runbooks` | `/id` | Editable operational Runbooks and Change Feed source for indexing |
-| `RunbookChunks` | `/runbookId` | Derived Runbook chunks, retrieval metadata, and 1536-dimension embeddings |
-| `ChangeFeedLeases` | `/id` | SDK-managed Change Feed Processor checkpoints/ownership |
+| --- | --- | --- |
+| `Incidents` | `/incidentId` | Incident state, analysis outbox, analysis/evidence documents |
+| `Runbooks` | `/id` | Editable operational Runbooks |
+| `RunbookChunks` | `/runbookId` | Derived Runbook chunks and embeddings |
+| `HistoricalIncidentVectors` | `/incidentId` | Derived completed-Incident embeddings and metadata |
+| `ChangeFeedLeases` | `/id` | Change Feed Processor ownership/checkpoints |
 
-The shared `/incidentId` partition allows two important atomic operations:
+The shared Incident partition supports transactional operations such as:
 
 ```text
-Create / Retry
+Create Incident
 → Incident + analysis outbox
 
-Complete Analysis
-→ Completed Incident + IncidentAnalysisDocument
+Complete analysis
+→ completed Incident + analysis/evidence documents
 ```
 
-Both use Cosmos transactional batches inside one logical partition.
+`RunbookChunks` and `HistoricalIncidentVectors` are vector-enabled derived stores. Source records remain in `Runbooks` and `Incidents`.
 
-`RunbookChunks` is configured with a `/embedding` `float32` vector policy using cosine distance and a `quantizedFlat` index. The embedding path is excluded from the ordinary Cosmos index. Grouping chunks by `/runbookId` lets re-indexing replace stale chunks inside one logical partition.
-
-Stage 11B queries this container through `VectorDistance`, returning top-K chunk matches with optional service metadata filtering. The Infrastructure retriever records query latency and Cosmos request-unit (RU) consumption; lower returned distance values are stronger semantic matches.
-
-See [Design Decisions & Trade-offs](../docs/DESIGN-DECISIONS.md) for the reasoning behind the outbox and partition-key change.
+Vector ranking is used for retrieval only; it is not exposed as a calibrated model-confidence score.
 
 ## Service Bus
 
-Defined in `modules/service-bus.bicep`.
-
-Two queues are currently provisioned:
+Current queues:
 
 ```text
 analyse-incident
@@ -126,115 +84,113 @@ analyse-incident
 
 index-runbook
 → durable Runbook indexing commands
+
+index-historical-incident
+→ durable historical Incident indexing commands
 ```
 
-Both use bounded redelivery, dead-lettering, TTL, and duplicate detection. The Worker's queue-scoped RBAC grants sender/receiver access only where its hosted services require it. The API does not require Service Bus access: Incident submission uses the Cosmos outbox, while Runbook indexing is initiated by the Worker-side Runbooks Change Feed relay.
+Queues use bounded redelivery, dead-lettering and duplicate-detection settings.
 
-## Azure AI
+The Worker identity needs only the sender/receiver permissions required by its hosted relays/consumers. The API does not directly publish Incident analysis work because submission uses the Cosmos transactional outbox.
 
-Defined in `modules/azure-ai.bicep`.
+## Azure OpenAI
 
-The development environment provisions one Azure OpenAI account with two deployments:
+The development environment uses:
 
 ```text
-incident-analysis → gpt-5-mini
-runbook-embedding → text-embedding-3-small (1536 dimensions)
+incident-analysis
+→ gpt-5-mini
+
+runbook-embedding
+→ text-embedding-3-small
+→ 1536 dimensions
 ```
 
-Both backend hosts receive the Azure AI configuration they need through Container App environment variables and authenticate with managed identity:
+The same chat deployment supports structured Incident analysis and the Operational Assistant; each uses its own response schema/prompting path.
+
+The embedding deployment supports:
+
+- Runbook indexing,
+- historical Incident indexing,
+- Runbook search,
+- grounded Incident retrieval,
+- Operational Assistant retrieval.
+
+Both API and Worker require Azure OpenAI access:
 
 ```text
 API
-└── runbook-embedding configuration for semantic Runbook search
+├── query embeddings
+└── Operational Assistant chat generation
 
 Worker
-├── incident-analysis configuration
-└── runbook-embedding configuration for Runbook ingestion
+├── Incident analysis chat generation
+├── Runbook embeddings
+└── historical Incident embeddings
 ```
 
-Both the API and Worker identities are assigned `Cognitive Services OpenAI User` on the Azure OpenAI resource. The API needs this role for query embeddings; the Worker needs it for Incident analysis and Runbook ingestion embeddings.
+Deployed workloads authenticate through managed identity.
 
-Application-level resilience settings such as bounded SDK retries and request/network timeouts live in the Worker/Infrastructure configuration; they do not require extra Azure resources.
-
-## Container Hosting
-
-The API and Worker run in a shared Azure Container Apps Environment connected to Log Analytics.
+## Container Apps
 
 ```text
 API Container App
 ├── external HTTPS ingress
-├── scale-to-zero enabled
 ├── API managed identity
-├── Cosmos + ACR access
-└── Azure OpenAI embedding access
+├── Cosmos access
+├── ACR pull
+└── Azure OpenAI access
 
 Worker Container App
-├── no ingress
-├── one replica kept running before KEDA stage
+├── no public ingress
 ├── Worker managed identity
-├── Cosmos + ACR access
-├── Service Bus sender + receiver access
+├── Cosmos access
+├── ACR pull
+├── Service Bus sender/receiver roles
 └── Azure OpenAI access
 ```
 
-The Worker remains at one replica until queue/KEDA scaling is introduced later.
+KEDA-driven scaling is a later stage; the current Worker hosting keeps the asynchronous pipelines deliberately simple while the feature set is still evolving.
 
-## Container Registry
+## Workload identities
 
-ACR stores the API and Worker images.
+### API identity
 
-- Admin credentials are disabled.
-- Anonymous pull is disabled.
-- API and Worker managed identities receive `AcrPull`.
-- The GitHub deployment identity receives push access through bootstrap RBAC.
-- Container images are tagged as `<VersionPrefix>-<short-git-sha>` for traceability.
+The API uses Managed Identity for Cosmos and Azure OpenAI. It does not need Service Bus access for normal Incident submission.
 
-Example:
+### Worker identity
 
-```text
-incidentiq-api:1.0.0-a83bf21
-incidentiq-worker:1.0.0-a83bf21
-```
-
-## Frontend Hosting
-
-The React/Vite frontend is hosted in Azure Static Web Apps. Bicep provisions the Static Web App resource; GitHub Actions builds the frontend with the deployed API URL and uploads the generated `dist` directory.
-
-## Workload Identities
-
-### API Identity
-
-The API uses Managed Identity for Cosmos DB, ACR, and Azure OpenAI. With the transactional outbox architecture, it does not publish directly to Service Bus. Stage 11B adds Azure OpenAI access because semantic Runbook search generates its query embedding synchronously in the API path.
-
-### Worker Identity
-
-The Worker host currently runs four background services:
+The Worker hosts six main background services:
 
 ```text
 IncidentOutboxWorker
-→ Incidents Change Feed → analyse-incident
-
 AnalyseIncidentWorker
-→ analyse-incident → Azure OpenAI → Cosmos analysis persistence
-
 RunbookIndexChangeFeedWorker
-→ Runbooks Change Feed → index-runbook
-
 IndexRunbookWorker
-→ index-runbook → chunking/embeddings → RunbookChunks
+HistoricalIncidentIndexChangeFeedWorker
+IndexHistoricalIncidentWorker
 ```
 
-It therefore requires Cosmos DB Data Contributor, queue-scoped Service Bus Data Sender/Data Receiver, and Cognitive Services OpenAI User access.
+It needs:
+
+- Cosmos data access,
+- Service Bus sender/receiver permissions for the relevant queues,
+- Azure OpenAI access,
+- ACR pull.
+
+A useful lesson from Stage 12 was that a relay which **sends** an indexing command needs `Azure Service Bus Data Sender`; receiver permission alone is not sufficient.
 
 ## Monitoring
 
-`application-insights.bicep`, `log-analytics.bicep`, and `container-apps-environment.bicep` provide the telemetry foundation.
+Application Insights and Log Analytics provide the telemetry foundation.
 
-`AzureIncidentAnalyzer` emits structured AI success/failure logs including analysis duration, failure category, deployment, and model. Full OpenTelemetry dependency tracing, dashboards, KQL, queue metrics, and scaling telemetry remain future work.
+Current AI adapters record structured metadata such as duration, deployment/model and failure category without logging raw Incident, Runbook, prompt or model-response payloads.
+
+Full distributed tracing, dashboards/KQL and KEDA/queue telemetry are later-stage work.
 
 ## GitHub Actions
 
-Deployment authentication uses GitHub OIDC and the `development` GitHub Environment.
+Deployment uses GitHub OIDC:
 
 ```text
 Pull request → master
@@ -244,17 +200,13 @@ Pull request → master
 
 Push → master / manual trigger
 → tests
-→ Bicep validation + What-If
-→ provision/update Azure infrastructure
-→ build + push API/Worker images to ACR
-→ deploy Container App revisions
-→ build React with the deployed API URL
-→ deploy frontend to Static Web Apps
+→ provision/update infrastructure
+→ build/push API + Worker images
+→ deploy Container Apps
+→ build/deploy React frontend
 ```
 
-Normal environment deployments should be performed through repository workflows. Bootstrap infrastructure remains a separate, intentionally infrequent manual operation.
-
-## Local Infrastructure
+## Local infrastructure
 
 Docker Compose provides local equivalents where practical:
 
@@ -267,40 +219,37 @@ Service Bus Emulator
 └── SQL Server dependency
 ```
 
-Azure OpenAI itself is not emulated. When the Worker runs with `DOTNET_ENVIRONMENT=Development`, `DevelopmentDummyIncidentAnalyzer` provides deterministic structured analysis and `DevelopmentDummyEmbeddingGenerator` provides deterministic 1536-dimensional vectors while Cosmos/Service Bus use the local emulators.
+Azure OpenAI is not emulated. `Development` selects deterministic Incident analysis, embedding and Operational Assistant implementations.
 
-The Service Bus Emulator queue definition is stored at `infra/local/servicebus/Config.json`.
+The Service Bus Emulator queue definition lives under:
 
-For startup commands and local URLs, see the [Development Guide](../docs/DEVELOPMENT.md).
+```text
+infra/local/servicebus/Config.json
+```
 
-## Resource Ownership
+For startup and Azure-connected debugging, see [Development](../docs/DEVELOPMENT.md).
+
+## Resource ownership
 
 | Resource | Defined in |
-|---|---|
-| Bootstrap resource groups / deployment foundation | `bootstrap/main.bicep` |
-| GitHub deployment identity | `bootstrap/github-identity.bicep` |
-| Deployment RBAC | `bootstrap/deployment-role.bicep` |
-| Cosmos DB / containers / Cosmos RBAC | `modules/cosmos.bicep` |
-| Service Bus / queue / messaging RBAC | `modules/service-bus.bicep` |
-| Azure OpenAI / model deployments / API + Worker AI RBAC | `modules/azure-ai.bicep` |
-| Azure Container Registry / workload pull RBAC | `modules/acr.bicep` |
+| --- | --- |
+| Bootstrap identity/RBAC | `bootstrap/` |
+| Cosmos DB, containers and Cosmos RBAC | `modules/cosmos.bicep` |
+| Service Bus queues and messaging RBAC | `modules/service-bus.bicep` |
+| Azure OpenAI deployments and AI RBAC | `modules/azure-ai.bicep` |
+| ACR | `modules/acr.bicep` |
 | Container Apps Environment | `modules/container-apps-environment.bicep` |
-| API Container App | `modules/api-container-app.bicep` |
-| Worker Container App | `modules/worker-container-app.bicep` |
+| API Container App / identity | API modules |
+| Worker Container App / identity | Worker modules |
 | Static Web App | `modules/frontend.bicep` |
-| API identity | `modules/api-identity.bicep` |
-| Worker identity | `modules/worker-identity.bicep` |
-| Application Insights | `modules/application-insights.bicep` |
-| Log Analytics | `modules/log-analytics.bicep` |
+| Application Insights / Log Analytics | monitoring modules |
 
-## Infrastructure Principles
+## Infrastructure principles
 
 - Define Azure resources in Bicep.
-- Keep resource-specific configuration in modules.
-- Keep environment values in `.bicepparam` files.
-- Use OIDC rather than GitHub client secrets.
-- Use Managed Identity and least-privilege RBAC where practical.
 - Keep bootstrap resources separate from disposable application resources.
-- Keep application-level resilience policy in application configuration rather than encoding it as unrelated infrastructure.
-- Tag deployed container images for source traceability.
-- Use local emulators and deterministic local AI for normal development where practical.
+- Use OIDC for GitHub and Managed Identity for workloads.
+- Apply least-privilege RBAC where practical.
+- Keep source data separate from derived vector data.
+- Keep application retry/business policy in application configuration rather than IaC.
+- Prefer local emulators and deterministic AI for normal feature development.
