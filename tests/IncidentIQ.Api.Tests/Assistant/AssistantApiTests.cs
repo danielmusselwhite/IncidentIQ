@@ -123,7 +123,8 @@ public sealed class AssistantApiTests
                 Question:
                     "Why are payment requests timing out?",
                 Service: "Payments",
-                Environment: "Production");
+                Environment: "Production",
+                null);
 
         // Act
         var actionResult =
@@ -310,7 +311,8 @@ public sealed class AssistantApiTests
                 Question:
                     "Why is the service unhealthy?",
                 Service: null,
-                Environment: null);
+                Environment: null,
+                ConversationHistory: null);
 
         // Act
         var actionResult =
