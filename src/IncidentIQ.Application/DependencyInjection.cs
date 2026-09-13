@@ -1,4 +1,6 @@
 ﻿using FluentValidation;
+using IncidentIQ.Application.Assistant.Ask;
+using IncidentIQ.Application.Assistant.Grounding;
 using IncidentIQ.Application.Incidents.Analyse.Grounding;
 using IncidentIQ.Application.Incidents.Analyse.Retry;
 using IncidentIQ.Application.Incidents.Create;
@@ -41,6 +43,9 @@ public static class DependencyInjection
         services.AddScoped<RetrieveHistoricalIncidentsHandler>();
 
         services.AddScoped<IncidentAnalysisContextBuilder>();
+
+        services.AddScoped<OperationalQuestionContextBuilder>();
+        services.AddScoped<AskOperationalQuestionHandler>();
 
         return services;
     }
