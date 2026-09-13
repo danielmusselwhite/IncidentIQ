@@ -282,9 +282,9 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 * [x] Include historical Incident and Runbook references in the structured analysis result.
 * [x] Validate returned references/citations against the evidence actually retrieved.
 * [x] Persist the grounded analysis and the evidence used to generate it.
-* [ ] Display the persisted analysis, similar-Incident evidence and Runbook evidence in the frontend.
+* [x] Display the persisted analysis, similar-Incident evidence and Runbook evidence in the frontend.
 * [x] Add RAG orchestration and evidence-validation tests.
-* [ ] Verify grounded Incident analysis end-to-end locally.
+* [x] Verify grounded Incident analysis end-to-end locally.
 * [ ] Verify grounded Incident analysis end-to-end in Azure.
 * [ ] Update RAG documentation and architecture diagrams.
 

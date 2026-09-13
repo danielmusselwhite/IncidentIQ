@@ -512,6 +512,233 @@
     font-weight: 700;
 }
 
+/* Grounding evidence references */
+
+.analysis-evidence-references {
+    margin-top: 12px;
+    padding-top: 11px;
+
+    border-top: 1px solid var(--border);
+}
+
+.analysis-evidence-label {
+    display: block;
+
+    margin-bottom: 7px;
+
+    color: var(--text-muted);
+
+    font-size: 0.65rem;
+    font-weight: 700;
+
+    letter-spacing: 0.055em;
+
+    text-transform: uppercase;
+}
+
+.analysis-evidence-chips {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 7px;
+}
+
+.analysis-evidence-chip {
+    display: inline-flex;
+
+    align-items: center;
+
+    padding: 5px 9px;
+
+    border: 1px solid rgba(79, 70, 229, 0.14);
+    border-radius: 7px;
+
+    background: var(--primary-light);
+
+    color: var(--primary);
+
+    font-size: 0.7rem;
+    font-weight: 600;
+
+    line-height: 1.35;
+}
+
+
+/* Grounding evidence sections */
+
+.analysis-section__header {
+    display: flex;
+
+    align-items: center;
+    justify-content: space-between;
+
+    gap: 16px;
+
+    margin-bottom: 13px;
+}
+
+.analysis-section__header h3 {
+    margin: 0;
+}
+
+.analysis-section__count {
+    display: inline-flex;
+
+    min-width: 25px;
+    height: 25px;
+
+    align-items: center;
+    justify-content: center;
+
+    padding: 0 7px;
+
+    border: 1px solid rgba(79, 70, 229, 0.14);
+    border-radius: 999px;
+
+    background: var(--primary-light);
+
+    color: var(--primary);
+
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+
+/* Evidence cards */
+
+.analysis-evidence-list {
+    display: flex;
+    flex-direction: column;
+
+    gap: 9px;
+}
+
+.analysis-evidence-card {
+    display: block;
+
+    padding: 15px 16px;
+
+    border: 1px solid var(--border);
+    border-radius: 9px;
+
+    background: var(--surface-muted);
+
+    color: inherit;
+
+    text-decoration: none;
+
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease,
+        box-shadow 0.15s ease,
+        transform 0.15s ease;
+}
+
+.analysis-evidence-card:hover {
+    border-color: var(--border-dark);
+
+    background: var(--surface);
+
+    box-shadow: 0 3px 10px rgba(24, 32, 54, 0.05);
+
+    transform: translateY(-1px);
+}
+
+.analysis-evidence-card__header {
+    display: flex;
+
+    align-items: center;
+
+    gap: 9px;
+
+    margin-bottom: 8px;
+}
+
+.analysis-evidence-card__header strong {
+    min-width: 0;
+
+    overflow: hidden;
+
+    color: var(--text);
+
+    font-size: 0.87rem;
+    font-weight: 650;
+
+    line-height: 1.4;
+
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.analysis-evidence-reference {
+    display: inline-flex;
+
+    flex-shrink: 0;
+
+    align-items: center;
+
+    padding: 4px 7px;
+
+    border: 1px solid rgba(124, 58, 237, 0.14);
+    border-radius: 6px;
+
+    background: var(--purple-light);
+
+    color: var(--purple);
+
+    font-family:
+        Consolas,
+        "Liberation Mono",
+        monospace;
+
+    font-size: 0.66rem;
+    font-weight: 700;
+}
+
+.analysis-evidence-card > p {
+    margin: 0;
+
+    color: var(--text-secondary);
+
+    font-size: 0.83rem;
+    line-height: 1.6;
+}
+
+.analysis-evidence-card__symptoms {
+    margin-top: 8px !important;
+
+    color: var(--text-muted) !important;
+
+    font-size: 0.78rem !important;
+}
+
+.analysis-evidence-meta {
+    display: flex;
+    flex-wrap: wrap;
+
+    gap: 6px;
+
+    margin-top: 11px;
+}
+
+.analysis-evidence-meta span {
+    display: inline-flex;
+
+    align-items: center;
+
+    padding: 4px 7px;
+
+    border: 1px solid var(--border);
+    border-radius: 6px;
+
+    background: var(--surface);
+
+    color: var(--text-muted);
+
+    font-size: 0.67rem;
+    font-weight: 600;
+}
+
 /* AI metadata */
 
 .incident-analysis__meta {
@@ -656,29 +883,32 @@
 }
 
 @media (max-width: 480px) {
-    .incident-detail__metadata {
-        grid-template-columns: 1fr;
-
-        gap: 18px;
+    .analysis-section__header {
+        align-items: flex-start;
     }
 
-    .analysis-cause__header {
+    .analysis-evidence-card__header {
         align-items: flex-start;
 
         flex-direction: column;
 
-        gap: 8px;
+        gap: 7px;
     }
 
-    .analysis-cause__confidence {
-        min-width: 0;
+    .analysis-evidence-card__header strong {
+        overflow: visible;
+
+        text-overflow: unset;
+        white-space: normal;
     }
 
-    .incident-analysis__meta {
-        align-items: flex-start;
-
+    .analysis-evidence-chips {
         flex-direction: column;
 
-        gap: 4px;
+        align-items: flex-start;
+    }
+
+    .analysis-evidence-chip {
+        max-width: 100%;
     }
 }
