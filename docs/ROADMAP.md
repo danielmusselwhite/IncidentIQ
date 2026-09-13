@@ -258,24 +258,26 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 * [x] Publish historical Incident indexing commands from the `Incidents` Cosmos Change Feed.
 * [x] Consume indexing commands with `IndexHistoricalIncidentWorker`.
 * [x] Verify completed Incident indexing end-to-end locally.
-* [ ] Define similar-Incident retrieval abstraction and result model.
-* [ ] Implement Cosmos `VectorDistance` retrieval for historical Incidents.
-* [ ] Add service/environment metadata filtering, top-K retrieval and relevance threshold behaviour.
-* [ ] Add historical Incident retrieval tests and telemetry.
-* [ ] Verify historical Incident retrieval locally.
-* [ ] Deploy historical Incident indexing/retrieval changes to Azure.
-* [ ] Verify historical Incident indexing and retrieval end-to-end in Azure.
+* [x] Define similar-Incident retrieval abstraction and result model.
+* [x] Implement Cosmos `VectorDistance` retrieval for historical Incidents.
+* [x] Add service/environment metadata filtering, top-K retrieval and relevance threshold behaviour.
+* [x] Add historical Incident retrieval tests and telemetry.
+* [x] Verify historical Incident retrieval locally.
+* [x] Deploy historical Incident indexing/retrieval changes to Azure.
+* [x] Verify historical Incident indexing and retrieval end-to-end in Azure.
 * [ ] Update historical Incident retrieval documentation and architecture notes.
 
 ### 12B — Combined RAG Context & Grounded Incident Analysis
 
-* [ ] Keep historical Incident evidence and Runbook evidence separate in the retrieval model.
-* [ ] Define the combined RAG context supplied to Incident analysis.
-* [ ] Build retrieval input from the Incident title, description, symptoms and relevant metadata.
-* [ ] Retrieve similar historical Incidents.
-* [ ] Retrieve relevant Runbook chunks.
-* [ ] Apply relevance gating before retrieved evidence is supplied to the AI.
-* [ ] Build combined RAG context from historical Incidents and Runbook chunks.
+### 12B — Combined RAG Context & Grounded Incident Analysis
+
+* [x] Keep historical Incident evidence and Runbook evidence separate in the retrieval model.
+* [x] Define the combined RAG context supplied to Incident analysis.
+* [x] Build retrieval input from the Incident title, description, symptoms and relevant metadata.
+* [x] Retrieve similar historical Incidents.
+* [x] Retrieve relevant Runbook chunks.
+* [x] Apply relevance gating before retrieved evidence is supplied to the AI.
+* [x] Build combined RAG context from historical Incidents and Runbook chunks.
 * [ ] Generate evidence-backed Incident analysis.
 * [ ] Include historical Incident and Runbook references in the structured analysis result.
 * [ ] Validate returned references/citations against the evidence actually retrieved.

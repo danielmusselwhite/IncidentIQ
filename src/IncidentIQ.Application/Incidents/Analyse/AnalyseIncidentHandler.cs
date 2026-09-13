@@ -1,11 +1,11 @@
-using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Common.Exceptions;
+using IncidentIQ.Application.Incidents.Analyse.Grounding;
 using IncidentIQ.Domain.Incidents;
 
 namespace IncidentIQ.Application.Incidents.Analyse;
 
-public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepository, IIncidentAnalyzer incidentAnalyzer, IIncidentAnalysisStore incidentAnalysisStore)
+public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepository, IIncidentAnalyzer incidentAnalyzer, IIncidentAnalysisStore incidentAnalysisStore, IncidentAnalysisContextBuilder incidentAnalysisContextBuilder)
 {
     /// <summary>
     /// Handles the analysis of an incident based on the provided command. It retrieves the incident from the repository, checks its status, and performs the analysis if it hasn't been completed yet. If the incident is already completed, it treats the operation as a no-op to ensure idempotency.
@@ -35,10 +35,11 @@ public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepositor
             Environment: incident.Environment,
             Severity: incident.Severity,
             Symptoms: incident.Symptoms);
+        var analysisContext = await incidentAnalysisContextBuilder.BuildAsync(analysisInput, cancellationToken); // Retrieve the historical Incident and Runbook evidence that will ground the AI analysis.
 
         // perform analysis        
         var analysisResult = await incidentAnalyzer.AnalyzeIncidentAsync(
-            analysisInput,
+            analysisContext,
             cancellationToken);
 
         // Do not persist Completed separately: the store atomically commits the completed Incident and its IncidentAnalysis document.
