@@ -1,6 +1,7 @@
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Common.Exceptions;
 using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Grounding;
 
 namespace IncidentIQ.Application.Incidents.GetAnalysisById;
 
@@ -17,7 +18,7 @@ public sealed class GetIncidentAnalysisByIdHandler(IIncidentAnalysisReader incid
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
     /// <returns>The persisted incident analysis.</returns>
     /// <exception cref="IncidentAnalysisNotFoundException">Thrown when no analysis exists for the supplied incident ID.</exception>
-    public async Task<IncidentAnalysisResult> HandleAsync(string incidentId, CancellationToken cancellationToken = default)
+    public async Task<GroundedIncidentAnalysis> HandleAsync(string incidentId, CancellationToken cancellationToken = default)
     {
         var analysis = await incidentAnalysisReader.GetByIncidentIdAsync(incidentId, cancellationToken);
 

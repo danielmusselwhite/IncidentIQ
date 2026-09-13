@@ -18,7 +18,7 @@ IndexRunbookWorker
 └── index-runbook → Application Runbook indexing workflow
 ```
 
-Keeping relay/consumer responsibilities separate lets Incident analysis and Runbook indexing retry, evolve, and eventually scale independently.
+Keeping relay/consumer responsibilities separate lets Incident analysis and Runbook indexing retry, evolve and eventually scale independently. Runbook **retrieval** is intentionally a separate synchronous API read path, not another Worker responsibility.
 
 ## Current Flow
 
@@ -201,6 +201,16 @@ dotnet run --project src\IncidentIQ.Worker
 
 See the [Development Guide](../../docs/DEVELOPMENT.md) for local emulator and real-Azure options.
 
-## Planned Work
+## Stage 11 Boundary and Next Work
 
-Runbook vector ingestion is now implemented locally. Next work adds Runbook vector retrieval/metadata filtering, followed by historical-Incident retrieval and evidence-backed RAG; later stages add full observability, completion events, operational tooling, and KEDA-based scaling.
+Stage 11 Runbook vector ingestion **and retrieval** are complete locally and in Azure.
+
+The Worker owns the asynchronous **ingestion** side of Stage 11:
+
+```text
+Runbook change → Change Feed → index-runbook → IndexRunbookWorker → chunk/embed/store
+```
+
+The synchronous **retrieval** side does not run inside this Worker. It is exposed through the API, which embeds the search query and calls `IRunbookChunkRetriever` / `CosmosRunbookChunkRetriever` against `RunbookChunks`.
+
+Stage 12 next adds historical-Incident vector retrieval and then combines historical-Incident evidence with the existing Runbook retrieval path into grounded RAG analysis. Later stages add full observability, completion events, operational tooling and KEDA-based scaling.

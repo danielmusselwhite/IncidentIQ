@@ -8,12 +8,13 @@ param tags object
 
 param databaseName string = 'IncidentIQ'
 param incidentsContainerName string = 'Incidents'
+param historicalIncidentVectorsContainerName string = 'HistoricalIncidentVectors'
 param runbooksContainerName string = 'Runbooks'
 param runbookChunksContainerName string = 'RunbookChunks'
 param changeFeedLeasesContainerName string = 'ChangeFeedLeases'
 
-@description('Number of dimensions stored in each Runbook embedding vector.')
-param runbookEmbeddingDimensions int = 1536
+@description('Number of dimensions stored in each semantic-search embedding vectors.')
+param embeddingDimensions  int = 1536
 
 param apiPrincipalId string
 param workerPrincipalId string
@@ -111,6 +112,69 @@ resource incidentsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/
   }
 }
 
+// Derived vector-search representation of completed historical Incidents.
+//
+// Each completed Incident is represented by one embedding document, allowing
+// new Incidents to retrieve semantically similar historical Incidents.
+resource historicalIncidentVectorsContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2026-03-15' = {
+  parent: database
+  name: historicalIncidentVectorsContainerName
+
+  properties: {
+    resource: {
+      id: historicalIncidentVectorsContainerName
+
+      // One vector document exists per Incident.
+      partitionKey: {
+        paths: [
+          '/incidentId'
+        ]
+        kind: 'Hash'
+        version: 2
+      }
+
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+
+        // Incident metadata remains normally indexed so vector similarity can
+        // later be combined with service/environment/severity filters.
+        includedPaths: [
+          {
+            path: '/*'
+          }
+        ]
+
+        // Embeddings use the specialised vector index instead of the ordinary
+        // Cosmos index.
+        excludedPaths: [
+          {
+            path: '/embedding/*'
+          }
+        ]
+
+        vectorIndexes: [
+          {
+            path: '/embedding'
+            type: 'quantizedFlat'
+          }
+        ]
+      }
+
+      vectorEmbeddingPolicy: {
+        vectorEmbeddings: [
+          {
+            path: '/embedding'
+            dataType: 'float32'
+            dimensions: embeddingDimensions 
+            distanceFunction: 'cosine'
+          }
+        ]
+      }
+    }
+  }
+}
+
 resource runbooksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2026-03-15' = {
   parent: database
   name: runbooksContainerName
@@ -199,7 +263,7 @@ resource runbookChunksContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDataba
           {
             path: '/embedding'
             dataType: 'float32'
-            dimensions: runbookEmbeddingDimensions
+            dimensions: embeddingDimensions 
             distanceFunction: 'cosine'
           }
         ]
@@ -255,6 +319,7 @@ output endpoint string = cosmosAccount.properties.documentEndpoint
 output databaseName string = database.name
 
 output incidentsContainerName string = incidentsContainer.name
+output historicalIncidentVectorsContainerName string = historicalIncidentVectorsContainer.name
 output runbooksContainerName string = runbooksContainer.name
 output runbookChunksContainerName string = runbookChunksContainer.name
 output changeFeedLeasesContainerName string = changeFeedLeasesContainer.name

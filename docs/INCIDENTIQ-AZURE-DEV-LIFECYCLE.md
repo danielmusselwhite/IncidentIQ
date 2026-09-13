@@ -146,6 +146,7 @@ Common Cosmos configuration:
 Cosmos:Endpoint
 Cosmos:DatabaseName = IncidentIQ
 Cosmos:IncidentsContainerName = Incidents
+Cosmos:HistoricalIncidentVectorsContainerName = HistoricalIncidentVectors
 Cosmos:RunbooksContainerName = Runbooks
 Cosmos:RunbookChunksContainerName = RunbookChunks
 Cosmos:ChangeFeedLeasesContainerName = ChangeFeedLeases
@@ -157,6 +158,7 @@ Worker Service Bus configuration:
 ServiceBus:FullyQualifiedNamespace
 ServiceBus:AnalyseIncidentQueueName = analyse-incident
 ServiceBus:IndexRunbookQueueName = index-runbook
+ServiceBus:IndexHistoricalIncidentQueueName = index-historical-incident
 ServiceBus:MaxDeliveryCount
 ```
 

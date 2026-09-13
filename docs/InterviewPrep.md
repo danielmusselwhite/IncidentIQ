@@ -20,8 +20,12 @@ Api = the HTTP Controllers, and the DTOs. (http boundary, request/response dtos,
 
 Worker = the async workers that are doing background processing
 
-- IncidentOutBoxWorker -> runs Cosmos Change Feed Processor which monitors for changes in the Cosmos, using ChangeFeedLeases to record where it has got up to
-- AnalyseIncidentWorker -> Consumes Service Bus Messages
+- `IncidentOutboxWorker` -> reads Incident outbox changes from the Cosmos Change Feed and publishes `analyse-incident` commands
+- `AnalyseIncidentWorker` -> consumes `analyse-incident` Service Bus messages
+- `RunbookIndexChangeFeedWorker` -> reads Runbook changes from the Cosmos Change Feed and publishes `index-runbook` commands
+- `IndexRunbookWorker` -> consumes `index-runbook` messages and invokes the Runbook indexing workflow
+
+Runbook **vector retrieval** is not a fifth Worker: it is a synchronous API read/search path.
 
 ---
 
@@ -86,7 +90,9 @@ IncidentOutboxWorker publishes AnalyseIncidentCommand
                ↓
 Service Bus
                ↓
-AnalyseIncidentWorker consumes this message and (eventually) sends it to the rag AI
+AnalyseIncidentWorker consumes this message and invokes `AnalyseIncidentHandler` / `IIncidentAnalyzer`
+
+(Stage 12 will add retrieved evidence to make this a RAG-based analysis.)
 ```
 
 ---
@@ -258,3 +264,179 @@ _It's "optimistic" because we don't lock the document while somebody is working.
 **3. If our Worker successfully finishes the AI analysis and writes Completed to Cosmos, but crashes before CompleteMessageAsync() succeeds, what do you expect Service Bus to do next, and what should our application do when that happens?**
 
 - Service Bus will requeue and mark it for redilvery (how does it know when does it just wait a certain amount of time or something?), but the state will be completed so we will reach our state based idempotency check and then return no-op as work has been done
+
+---
+
+# Round 5 — Stage 11 Runbook Ingestion & Vector Search
+
+**1. Why do we keep `Runbooks` and `RunbookChunks` separate instead of adding an embedding directly to each Runbook?**
+
+`Runbooks` are the editable source of truth. `RunbookChunks` are derived search/index data.
+
+A long Runbook needs multiple smaller chunks so retrieval can return the relevant section rather than embedding and returning the whole document. Keeping them separate also means the vector index can be rebuilt, re-chunked or re-embedded without changing the source Runbook model.
+
+```text
+Runbooks
+→ source business/document data
+
+RunbookChunks
+→ derived retrieval data
+→ chunk text + metadata + embedding
+```
+
+---
+
+**2. What is the complete asynchronous Runbook indexing flow?**
+
+```text
+Create / update Runbook
+      ↓
+IRunbookRepository
+      ↓
+Cosmos Runbooks
+      ↓
+Runbooks Change Feed
+      ↓
+RunbookIndexChangeFeedWorker
+      ↓
+IRunbookIndexQueue
+      ↓
+Service Bus: index-runbook
+      ↓
+IndexRunbookWorker
+      ↓
+IndexRunbookHandler
+      ↓
+RunbookChunker
+      ↓
+IEmbeddingGenerator
+      ↓
+IRunbookChunkStore
+      ↓
+Cosmos RunbookChunks
+```
+
+The Worker reloads the current source Runbook rather than carrying the complete Runbook content inside the Service Bus command.
+
+---
+
+**3. Why is `IEmbeddingGenerator` in Application while `AzureEmbeddingGenerator` is in Infrastructure?**
+
+Application only needs the capability: _turn this text into an embedding_. It should not care whether that vector comes from Azure OpenAI, a deterministic local implementation or another provider later.
+
+Infrastructure owns the Azure SDK and provider-specific configuration:
+
+```text
+Application
+IEmbeddingGenerator
+      ↑ implements
+Infrastructure
+├── DevelopmentDummyEmbeddingGenerator
+└── AzureEmbeddingGenerator
+```
+
+This is dependency inversion: the higher-level Application code owns the abstraction that the lower-level external adapter implements.
+
+---
+
+**4. What is the difference between `IRunbookRepository`, `IRunbookChunkStore` and `IRunbookChunkRetriever`?**
+
+- `IRunbookRepository` is centred on the source `Runbook` entity and its CRUD persistence.
+- `IRunbookChunkStore` is a purpose-specific write boundary for the derived vector index, including replacing/removing Runbook chunks.
+- `IRunbookChunkRetriever` is a purpose-specific search/read boundary that returns relevant `RunbookChunkMatch` results.
+
+Keeping those responsibilities separate avoids turning one repository into a large interface containing source CRUD, vector indexing and semantic-search concerns.
+
+---
+
+**5. What happens during a semantic Runbook search?**
+
+```text
+GET /api/runbooks/search
+      ↓
+search text + optional service + topK
+      ↓
+IEmbeddingGenerator
+      ↓
+1536-dimensional query vector
+      ↓
+IRunbookChunkRetriever
+      ↓
+CosmosRunbookChunkRetriever
+      ↓
+VectorDistance(c.embedding, queryVector)
+      ↓
+optional service filter
+      ↓
+top-K RunbookChunkMatch results
+```
+
+In local Development, the API uses the deterministic embedding generator. In Azure, the API Managed Identity can call the `runbook-embedding` / `text-embedding-3-small` deployment.
+
+---
+
+**6. Why must the same embedding model/vector space be used for indexing and querying?**
+
+Vector similarity is only meaningful when the stored chunk embeddings and query embedding were produced in the same compatible embedding space.
+
+If chunks are embedded with one unrelated model and the query with another, both may still be arrays of 1536 floats, but the dimensions no longer represent the same learned relationships. `VectorDistance` would then produce meaningless rankings.
+
+---
+
+**7. What does `Distance` mean in a `RunbookChunkMatch`? Is it a confidence score?**
+
+No. It is the cosine **distance** returned by vector retrieval. Smaller values mean the vectors are closer/more similar.
+
+It should be used for ranking and evaluation, not displayed or interpreted as “85% confidence”. A useful interview distinction is:
+
+```text
+vector distance/similarity → retrieval ranking signal
+AI confidence              → a separate model/application concept
+```
+
+---
+
+**8. Why do we explicitly map Cosmos vector-query rows through `CosmosRunbookChunkMatchResult`?**
+
+Cosmos returns a query projection whose JSON field names must map correctly to CLR properties. We hit a real bug where the vector query returned rows, but the result object materialised with empty/default fields because the projected names did not line up with deserialization.
+
+The Infrastructure layer now owns that provider-specific mapping:
+
+```text
+Cosmos query projection
+      ↓
+CosmosRunbookChunkMatchResult
+      ↓
+RunbookChunkMatch (Application model)
+```
+
+That keeps Cosmos serialization details outside Application and makes the boundary explicit.
+
+---
+
+**9. Why do we measure both vector-search latency and Cosmos Request Units (RUs)?**
+
+A retrieval design can be relevant but still be too slow or too expensive. Latency measures user/runtime performance; RUs measure Cosmos query resource consumption and therefore help evaluate the cost of filters, `topK`, index choices and future RAG retrieval patterns.
+
+---
+
+**10. What is the boundary between Stage 11 and Stage 12?**
+
+Stage 11 makes Runbook evidence **searchable**. It does not yet make Incident analysis RAG-based.
+
+```text
+Stage 11
+Incident/query text
+→ vector retrieval
+→ relevant Runbook chunks
+
+Stage 12
+Incident
+→ retrieve historical Incidents
+→ retrieve Runbook chunks
+→ build combined evidence context
+→ grounded AI analysis
+```
+
+This is useful architecturally because retrieval can be tested and measured independently before it is coupled to model generation.
+

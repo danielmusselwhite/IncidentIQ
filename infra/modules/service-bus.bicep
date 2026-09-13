@@ -9,6 +9,7 @@ param workerPrincipalId string
 
 param analyseIncidentQueueName string = 'analyse-incident'
 param indexRunbookQueueName string = 'index-runbook'
+param indexHistoricalIncidentQueueName string = 'index-historical-incident'
 
 param maxDeliveryCount int = 5
 
@@ -83,6 +84,27 @@ resource indexRunbookQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' =
   }
 }
 
+resource indexHistoricalIncidentQueue 'Microsoft.ServiceBus/namespaces/queues@2026-01-01' = {
+  parent: serviceBusNamespace
+  name: indexHistoricalIncidentQueueName
+
+  properties: {
+    lockDuration: 'PT1M'
+    maxDeliveryCount: maxDeliveryCount
+
+    defaultMessageTimeToLive: 'P1D'
+    deadLetteringOnMessageExpiration: true
+
+    requiresDuplicateDetection: true
+    duplicateDetectionHistoryTimeWindow: 'PT10M'
+
+    requiresSession: false
+    enableBatchedOperations: true
+    enablePartitioning: false
+    status: 'Active'
+  }
+}
+
 // Built-in Azure Service Bus Data Sender role.
 var serviceBusDataSenderRoleDefinitionId = subscriptionResourceId(
   'Microsoft.Authorization/roleDefinitions',
@@ -147,7 +169,21 @@ resource workerIndexRunbookReceiverRole 'Microsoft.Authorization/roleAssignments
   }
 }
 
+// IndexHistoricalIncidentWorker will consume IndexHistoricalIncident commands.
+resource workerIndexHistoricalIncidentReceiverRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(indexHistoricalIncidentQueue.id, workerPrincipalId, serviceBusDataReceiverRoleDefinitionId)
+
+  scope: indexHistoricalIncidentQueue
+
+  properties: {
+    principalId: workerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataReceiverRoleDefinitionId
+  }
+}
+
 output namespaceName string = serviceBusNamespace.name
 output fullyQualifiedNamespace string = '${serviceBusNamespace.name}.servicebus.windows.net'
 output analyseIncidentQueueName string = analyseIncidentQueue.name
 output indexRunbookQueueName string = indexRunbookQueue.name
+output indexHistoricalIncidentQueueName string = indexHistoricalIncidentQueue.name

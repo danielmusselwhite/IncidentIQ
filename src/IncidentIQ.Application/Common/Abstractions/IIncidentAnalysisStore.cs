@@ -1,4 +1,5 @@
 ﻿using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Grounding;
 using IncidentIQ.Domain.Incidents;
 namespace IncidentIQ.Application.Common.Abstractions;
 
@@ -12,6 +13,7 @@ public interface IIncidentAnalysisStore
     /// </summary>
     /// <param name="incident">The incident for which the analysis result is being stored.</param>
     /// <param name="analysis">The analysis result to store.</param>
+    /// <param name="evidence">The evidence corresponding to the analysis result.</param>
     /// <param name="cancellationToken">A token to monitor for cancellation requests.</param>
-    public Task StoreCompletedAnalysisAsync(Incident incident, IncidentAnalysisResult analysis, CancellationToken cancellationToken = default);
+    public Task StoreCompletedAnalysisAsync(Incident incident, IncidentAnalysisResult analysis, IncidentAnalysisEvidence evidence, CancellationToken cancellationToken = default);
 }

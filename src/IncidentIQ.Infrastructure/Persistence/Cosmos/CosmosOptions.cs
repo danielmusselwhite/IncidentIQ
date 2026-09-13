@@ -25,6 +25,7 @@ public sealed class CosmosOptions
 
     #region Containers
     public required string IncidentsContainerName { get; init; }
+    public required string HistoricalIncidentVectorsContainerName { get; init; }
     public required string RunbooksContainerName { get; init; }
     public required string RunbookChunksContainerName { get; init; }
     public required string ChangeFeedLeasesContainerName { get; init; }

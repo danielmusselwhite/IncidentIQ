@@ -353,6 +353,45 @@ IRunbookRepository → delete source Runbook
 
 **Trade-off:** the two containers cannot participate in one Cosmos transaction, so deletion is not globally atomic. The chosen ordering prefers temporary missing derived data over stale evidence for a deleted source.
 
+## 20. Vector Retrieval Uses Dedicated Application Abstractions
+
+Runbook semantic search is intentionally modelled as two capabilities rather than being added to `IRunbookRepository`:
+
+```text
+Runbook search use case
+      ├── IEmbeddingGenerator
+      │      └── query text → embedding[]
+      │
+      └── IRunbookChunkRetriever
+             └── embedding[] + filter + topK → RunbookChunkMatch[]
+```
+
+Infrastructure supplies `DevelopmentDummyEmbeddingGenerator` / `AzureEmbeddingGenerator` and `CosmosRunbookChunkRetriever`.
+
+**Why:** `IRunbookRepository` represents persistence of the editable source Runbook. Vector retrieval operates over derived chunk documents, has different query semantics, and returns search-specific metadata such as distance. Keeping those responsibilities separate prevents the source repository from becoming a catch-all data-access interface.
+
+**Trade-off:** the API now has a direct dependency on the embedding capability for synchronous Runbook search. In Azure, its managed identity therefore requires Azure OpenAI access in addition to Cosmos access.
+
+## 21. Cosmos Vector Results Are Mapped at the Infrastructure Boundary
+
+`CosmosRunbookChunkRetriever` executes the Cosmos `VectorDistance` query and projects only the fields required by retrieval. The Infrastructure projection is explicitly mapped into `CosmosRunbookChunkMatchResult` before being converted to the Application-level `RunbookChunkMatch`.
+
+```text
+Cosmos RunbookChunkDocument
+      ↓ VectorDistance query
+CosmosRunbookChunkMatchResult
+      ↓ Infrastructure mapping
+RunbookChunkMatch
+```
+
+The returned `Distance` is cosine distance, therefore **lower values represent stronger semantic matches**. Retrieval supports top-K limiting plus service metadata filtering and records query latency and Cosmos request-unit (RU) consumption.
+
+**Why:** the Cosmos projection/deserialization shape is a provider-specific concern. Keeping it inside Infrastructure prevents Cosmos JSON aliases, SDK query details, and `VectorDistance` semantics from leaking into Application.
+
+The explicit projection mapping also avoids a subtle failure mode discovered during Stage 11B: Cosmos can return valid rows while a mismatched projection contract materialises fields as empty/default values. The retrieval boundary now makes that mapping explicit and testable.
+
+**Trade-off:** vector distance is useful for ranking but is not treated as a calibrated confidence score. Relevance thresholds and retrieval-quality evaluation are deferred until the AI-evaluation stage, when they can be measured against controlled data.
+
 ## Current Accepted Trade-offs
 
 - Basic rather than full concurrency-safe idempotency.
@@ -360,7 +399,7 @@ IRunbookRepository → delete source Runbook
 - No automatic DLQ reprocessing; requeue is deliberate through the backend capability.
 - No automatic outbox cleanup yet.
 - Final failure persistence can still be affected by Cosmos availability.
-- Runbook vector retrieval is not yet wired into Incident analysis, so evidence-backed RAG is not yet active.
+- Runbook vector retrieval is implemented, but it is not yet injected into Incident analysis; evidence-backed combined RAG begins in Stage 12.
 - AI telemetry is intentionally lightweight until the full observability stage.
 - Runbook source/vector persistence is eventually consistent across containers; stronger source-version concurrency checks can be added if parallel indexing becomes significant.
 - Stronger optimistic concurrency can be added before significant Worker scaling.

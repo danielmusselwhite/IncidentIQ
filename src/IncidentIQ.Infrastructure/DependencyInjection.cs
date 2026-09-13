@@ -1,6 +1,7 @@
 using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using IncidentIQ.Application.Common.Abstractions;
+using IncidentIQ.Application.Incidents.Retrieve;
 using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using IncidentIQ.Infrastructure.Messaging;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
@@ -52,6 +53,7 @@ public static class DependencyInjection
         });
 
         services.AddSingleton<CosmosInitializer>();
+
         services.AddScoped<IIncidentRepository, CosmosIncidentRepository>();
         services.AddScoped<IRunbookRepository, CosmosRunbookRepository>();
         services.AddScoped<IRunbookChunkStore, CosmosRunbookChunkStore>();
@@ -59,6 +61,8 @@ public static class DependencyInjection
         services.AddScoped<IIncidentAnalysisStore, CosmosIncidentAnalysisStore>();
         services.AddScoped<IIncidentAnalysisReader, CosmosIncidentAnalysisReader>();
         services.AddScoped<IRunbookChunkRetriever, CosmosRunbookChunkRetriever>();
+        services.AddScoped<IHistoricalIncidentRetriever, CosmosHistoricalIncidentRetriever>();
+        services.AddScoped<IHistoricalIncidentVectorStore, CosmosHistoricalIncidentVectorStore>();
 
         #endregion
 
@@ -69,19 +73,19 @@ public static class DependencyInjection
             .Bind(configuration.GetSection(ServiceBusOptions.SectionName))
             .ValidateOnStart();
 
+        // ServiceBusClient is thread-safe and shared by queue publishers and processors.
         services.AddSingleton(sp =>
         {
             var options = sp.GetRequiredService<IOptions<ServiceBusOptions>>().Value;
 
             return !string.IsNullOrWhiteSpace(options.ConnectionString)
                 ? new ServiceBusClient(options.ConnectionString)
-                : new ServiceBusClient(
-                    options.FullyQualifiedNamespace,
-                    new DefaultAzureCredential());
+                : new ServiceBusClient(options.FullyQualifiedNamespace, new DefaultAzureCredential());
         });
 
         services.AddSingleton<IIncidentAnalysisQueue, AzureServiceBusIncidentAnalysisQueue>();
         services.AddSingleton<IRunbookIndexQueue, AzureServiceBusRunbookIndexQueue>();
+        services.AddSingleton<IHistoricalIncidentIndexQueue, AzureServiceBusHistoricalIncidentIndexQueue>();
 
         #endregion
 

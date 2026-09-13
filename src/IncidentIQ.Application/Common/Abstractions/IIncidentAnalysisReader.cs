@@ -1,4 +1,5 @@
 using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Grounding;
 
 namespace IncidentIQ.Application.Common.Abstractions;
 
@@ -13,5 +14,5 @@ public interface IIncidentAnalysisReader
     /// <param name="incidentId">The ID of the incident whose analysis should be retrieved.</param>
     /// <param name="cancellationToken">A token used to cancel the operation.</param>
     /// <returns>The analysis result, or <c>null</c> when no analysis has been persisted for the incident.</returns>
-    Task<IncidentAnalysisResult?> GetByIncidentIdAsync(string incidentId, CancellationToken cancellationToken = default);
+    Task<GroundedIncidentAnalysis?> GetByIncidentIdAsync(string incidentId, CancellationToken cancellationToken = default);
 }

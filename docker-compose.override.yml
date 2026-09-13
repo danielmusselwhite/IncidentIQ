@@ -7,6 +7,7 @@ services:
       - Cosmos__Endpoint=https://cosmos:8081
       - Cosmos__DatabaseName=IncidentIQ
       - Cosmos__IncidentsContainerName=Incidents
+      - Cosmos__HistoricalIncidentVectorsContainerName=HistoricalIncidentVectors
       - Cosmos__RunbooksContainerName=Runbooks
       - Cosmos__RunbookChunksContainerName=RunbookChunks
       - Cosmos__ChangeFeedLeasesContainerName=ChangeFeedLeases

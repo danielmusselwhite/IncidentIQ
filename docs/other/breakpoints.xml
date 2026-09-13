@@ -3,7 +3,7 @@
   <Breakpoints>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -12,10 +12,10 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Worker\IndexRunbookWorker.cs</FileName>
-        <startLine>109</startLine>
+        <FileName>.\src\IncidentIQ.Worker\AnalyseIncidentWorker.cs</FileName>
+        <startLine>102</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>109</EndLine>
+        <EndLine>102</EndLine>
         <EndColumn>9</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
@@ -28,7 +28,7 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Worker.IndexRunbookWorker.ProcessMessageAsync(ProcessMessageEventArgs args)</NamedLocationText>
+      <NamedLocationText>IncidentIQ.Worker.AnalyseIncidentWorker.ProcessMessageAsync(ProcessMessageEventArgs args)</NamedLocationText>
       <NamedLocationLine>5</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
       <HitCountType>NoHitCount</HitCountType>
@@ -56,13 +56,13 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>25</BreakpointId>
+      <BreakpointId>35</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>25</BreakpointIdForGroup>
+      <BreakpointIdForGroup>35</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -71,11 +71,11 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Infrastructure\AzureAI\Embedding\DevelopmentDummyEmbeddingGenerator.cs</FileName>
-        <startLine>18</startLine>
+        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\Incidents\CosmosIncidentSubmissionStore.cs</FileName>
+        <startLine>29</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>18</EndLine>
-        <EndColumn>56</EndColumn>
+        <EndLine>29</EndLine>
+        <EndColumn>69</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
         <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
@@ -87,10 +87,11 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Infrastructure.AzureAI.Embedding.DevelopmentDummyEmbeddingGenerator.GenerateAsync(
-        string text,
+      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents.CosmosIncidentSubmissionStore.CreateAsync(
+        Incident incident,
+        AnalyseIncidentCommand analyseIncidentCommand,
         CancellationToken cancellationToken = default)</NamedLocationText>
-      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationLine>6</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
       <HitCountType>NoHitCount</HitCountType>
       <HitCountTarget>1</HitCountTarget>
@@ -117,13 +118,13 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>49</BreakpointId>
+      <BreakpointId>30</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>49</BreakpointIdForGroup>
+      <BreakpointIdForGroup>30</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -132,11 +133,11 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Worker\RunbookIndexChangeFeedWorker.cs</FileName>
-        <startLine>111</startLine>
-        <StartColumn>12</StartColumn>
-        <EndLine>113</EndLine>
-        <EndColumn>35</EndColumn>
+        <FileName>.\src\IncidentIQ.Infrastructure\AzureAI\AzureIncidentAnalyzer.cs</FileName>
+        <startLine>46</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>46</EndLine>
+        <EndColumn>49</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
         <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
@@ -148,11 +149,10 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Worker.RunbookIndexChangeFeedWorker.HandleChangesAsync(
-        ChangeFeedProcessorContext context,
-        IReadOnlyCollection&lt;JsonElement&gt; changes,
-        CancellationToken cancellationToken)</NamedLocationText>
-      <NamedLocationLine>19</NamedLocationLine>
+      <NamedLocationText>IncidentIQ.Infrastructure.AzureAI.AzureIncidentAnalyzer.AnalyzeIncidentAsync(
+        IncidentAnalysisInput input,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>6</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
       <HitCountType>NoHitCount</HitCountType>
       <HitCountTarget>1</HitCountTarget>
@@ -179,9 +179,9 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>20</BreakpointId>
+      <BreakpointId>42</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>20</BreakpointIdForGroup>
+      <BreakpointIdForGroup>42</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
@@ -194,10 +194,10 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Worker\RunbookIndexChangeFeedWorker.cs</FileName>
-        <startLine>97</startLine>
+        <FileName>.\src\IncidentIQ.Worker\HistoricalIncidentIndexChangeFeedWorker.cs</FileName>
+        <startLine>102</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>97</EndLine>
+        <EndLine>102</EndLine>
         <EndColumn>15</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
@@ -210,7 +210,7 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Worker.RunbookIndexChangeFeedWorker.HandleChangesAsync(
+      <NamedLocationText>IncidentIQ.Worker.HistoricalIncidentIndexChangeFeedWorker.HandleChangesAsync(
         ChangeFeedProcessorContext context,
         IReadOnlyCollection&lt;JsonElement&gt; changes,
         CancellationToken cancellationToken)</NamedLocationText>
@@ -241,9 +241,9 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>18</BreakpointId>
+      <BreakpointId>19</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>18</BreakpointIdForGroup>
+      <BreakpointIdForGroup>19</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
@@ -256,11 +256,11 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Application\Runbooks\Index\IndexRunbookHandler.cs</FileName>
-        <startLine>27</startLine>
+        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\Incidents\CosmosHistoricalIncidentVectorStore.cs</FileName>
+        <startLine>33</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>27</EndLine>
-        <EndColumn>51</EndColumn>
+        <EndLine>33</EndLine>
+        <EndColumn>58</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
         <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
@@ -272,10 +272,671 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Application.Runbooks.Index.IndexRunbookHandler.HandleAsync(
-        IndexRunbookCommand command,
+      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents.CosmosHistoricalIncidentVectorStore.UpsertAsync(
+        HistoricalIncidentVector incidentVector,
         CancellationToken cancellationToken = default)</NamedLocationText>
       <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>24</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>24</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Incidents\Analyse\AnalyseIncidentHandler.cs</FileName>
+        <startLine>27</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>27</EndLine>
+        <EndColumn>74</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Incidents.Analyse.AnalyseIncidentHandler.HandleAsync(AnalyseIncidentCommand command, CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>11</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>37</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>37</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Incidents\Create\CreateIncidentHandler.cs</FileName>
+        <startLine>42</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>44</EndLine>
+        <EndColumn>31</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Incidents.Create.CreateIncidentHandler.HandleAsync(
+        CreateIncidentCommand command,
+        string correlationId,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>6</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>29</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>29</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Api\Controllers\RunbooksController.cs</FileName>
+        <startLine>33</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>37</EndLine>
+        <EndColumn>29</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Api.Controllers.RunbooksController.Create(
+        CreateRunbookRequest request,
+        CancellationToken cancellationToken)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>6</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>6</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Api\Controllers\RunbooksController.cs</FileName>
+        <startLine>39</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>41</EndLine>
+        <EndColumn>31</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Api.Controllers.RunbooksController.Create(
+        CreateRunbookRequest request,
+        CancellationToken cancellationToken)</NamedLocationText>
+      <NamedLocationLine>10</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>7</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>7</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Incidents\Analyse\AnalyseIncidentHandler.cs</FileName>
+        <startLine>46</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>49</EndLine>
+        <EndColumn>31</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Incidents.Analyse.AnalyseIncidentHandler.HandleAsync(AnalyseIncidentCommand command, CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>30</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>39</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>39</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\Incidents\CosmosIncidentAnalysisStore.cs</FileName>
+        <startLine>28</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>28</EndLine>
+        <EndColumn>69</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents.CosmosIncidentAnalysisStore.StoreCompletedAnalysisAsync(Incident incident, IncidentAnalysisResult analysis, CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>3</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>40</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>40</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Worker\IncidentOutboxWorker.cs</FileName>
+        <startLine>98</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>98</EndLine>
+        <EndColumn>15</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Worker.IncidentOutboxWorker.HandleChangesAsync(
+        ChangeFeedProcessorContext context,
+        IReadOnlyCollection&lt;JsonElement&gt; changes,
+        CancellationToken cancellationToken)</NamedLocationText>
+      <NamedLocationLine>6</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>34</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>34</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Incidents\Analyse\AnalyseIncidentHandler.cs</FileName>
+        <startLine>19</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>19</EndLine>
+        <EndColumn>100</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Incidents.Analyse.AnalyseIncidentHandler.HandleAsync(AnalyseIncidentCommand command, CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>3</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>36</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>36</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Incidents\Analyse\AnalyseIncidentHandler.cs</FileName>
+        <startLine>39</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>41</EndLine>
+        <EndColumn>31</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Incidents.Analyse.AnalyseIncidentHandler.HandleAsync(AnalyseIncidentCommand command, CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>23</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>38</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>38</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\AzureAI\DevelopmentDummyIncidentAnalyzer.cs</FileName>
+        <startLine>17</startLine>
+        <StartColumn>4</StartColumn>
+        <EndLine>17</EndLine>
+        <EndColumn>5</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.AzureAI.DevelopmentDummyIncidentAnalyzer.AnalyzeIncidentAsync(
+        IncidentAnalysisInput input,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>3</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>41</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>41</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Api\Controllers\IncidentsController.cs</FileName>
+        <startLine>31</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>37</EndLine>
+        <EndColumn>30</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Api.Controllers.IncidentsController.Create(CreateIncidentRequest request, CancellationToken cancellationToken)</NamedLocationText>
+      <NamedLocationLine>5</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
       <HitCountType>NoHitCount</HitCountType>
       <HitCountTarget>1</HitCountTarget>
@@ -317,11 +978,11 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Api\Controllers\RunbooksController.cs</FileName>
-        <startLine>33</startLine>
+        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\Incidents\CosmosHistoricalIncidentVectorStore.cs</FileName>
+        <startLine>48</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>37</EndLine>
-        <EndColumn>29</EndColumn>
+        <EndLine>48</EndLine>
+        <EndColumn>62</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
         <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
@@ -333,130 +994,8 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Api.Controllers.RunbooksController.Create(
-        CreateRunbookRequest request,
-        CancellationToken cancellationToken)</NamedLocationText>
-      <NamedLocationLine>6</NamedLocationLine>
-      <NamedLocationColumn>0</NamedLocationColumn>
-      <HitCountType>NoHitCount</HitCountType>
-      <HitCountTarget>1</HitCountTarget>
-      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
-      <IsMapped>0</IsMapped>
-      <BreakpointType>PendingBreakpoint</BreakpointType>
-      <AddressLocation>
-        <Version>0</Version>
-        <MarkerId>0</MarkerId>
-        <FunctionLine>0</FunctionLine>
-        <FunctionColumn>0</FunctionColumn>
-        <Language>00000000-0000-0000-0000-000000000000</Language>
-      </AddressLocation>
-      <DataCount>4</DataCount>
-      <IsTracepointActive>0</IsTracepointActive>
-      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
-      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
-      <IsBreakWhenHit>1</IsBreakWhenHit>
-      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
-      <UseChecksum>1</UseChecksum>
-      <Labels />
-      <RequestRemapped>0</RequestRemapped>
-      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
-      <SnapshotCountTarget>1</SnapshotCountTarget>
-      <parentIndex>-1</parentIndex>
-      <IsTemporary>0</IsTemporary>
-      <BreakpointId>1</BreakpointId>
-      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>1</BreakpointIdForGroup>
-    </Breakpoint>
-    <Breakpoint>
-      <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
-      <IsVisible>1</IsVisible>
-      <IsEmulated>0</IsEmulated>
-      <IsCondition>0</IsCondition>
-      <IsProductionBps>0</IsProductionBps>
-      <ConditionType>WhenTrue</ConditionType>
-      <LocationType>SourceLocation</LocationType>
-      <TextPosition>
-        <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Api\Controllers\RunbooksController.cs</FileName>
-        <startLine>39</startLine>
-        <StartColumn>8</StartColumn>
-        <EndLine>41</EndLine>
-        <EndColumn>31</EndColumn>
-        <MarkerId>0</MarkerId>
-        <IsLineBased>0</IsLineBased>
-        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
-        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
-        <Checksum>
-          <Version>1</Version>
-          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
-          <ByteCount>0</ByteCount>
-          <Bytes />
-        </Checksum>
-      </TextPosition>
-      <NamedLocationText>IncidentIQ.Api.Controllers.RunbooksController.Create(
-        CreateRunbookRequest request,
-        CancellationToken cancellationToken)</NamedLocationText>
-      <NamedLocationLine>12</NamedLocationLine>
-      <NamedLocationColumn>0</NamedLocationColumn>
-      <HitCountType>NoHitCount</HitCountType>
-      <HitCountTarget>1</HitCountTarget>
-      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
-      <IsMapped>0</IsMapped>
-      <BreakpointType>PendingBreakpoint</BreakpointType>
-      <AddressLocation>
-        <Version>0</Version>
-        <MarkerId>0</MarkerId>
-        <FunctionLine>0</FunctionLine>
-        <FunctionColumn>0</FunctionColumn>
-        <Language>00000000-0000-0000-0000-000000000000</Language>
-      </AddressLocation>
-      <DataCount>4</DataCount>
-      <IsTracepointActive>0</IsTracepointActive>
-      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
-      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
-      <IsBreakWhenHit>1</IsBreakWhenHit>
-      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
-      <UseChecksum>1</UseChecksum>
-      <Labels />
-      <RequestRemapped>0</RequestRemapped>
-      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
-      <SnapshotCountTarget>1</SnapshotCountTarget>
-      <parentIndex>-1</parentIndex>
-      <IsTemporary>0</IsTemporary>
-      <BreakpointId>3</BreakpointId>
-      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>3</BreakpointIdForGroup>
-    </Breakpoint>
-    <Breakpoint>
-      <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
-      <IsVisible>1</IsVisible>
-      <IsEmulated>0</IsEmulated>
-      <IsCondition>0</IsCondition>
-      <IsProductionBps>0</IsProductionBps>
-      <ConditionType>WhenTrue</ConditionType>
-      <LocationType>SourceLocation</LocationType>
-      <TextPosition>
-        <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Infrastructure\AzureAI\Embedding\AzureEmbeddingGenerator.cs</FileName>
-        <startLine>23</startLine>
-        <StartColumn>8</StartColumn>
-        <EndLine>23</EndLine>
-        <EndColumn>56</EndColumn>
-        <MarkerId>0</MarkerId>
-        <IsLineBased>0</IsLineBased>
-        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
-        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
-        <Checksum>
-          <Version>1</Version>
-          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
-          <ByteCount>0</ByteCount>
-          <Bytes />
-        </Checksum>
-      </TextPosition>
-      <NamedLocationText>IncidentIQ.Infrastructure.AzureAI.Embedding.AzureEmbeddingGenerator.GenerateAsync(
-        string text,
+      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents.CosmosHistoricalIncidentVectorStore.DeleteAsync(
+        string incidentId,
         CancellationToken cancellationToken = default)</NamedLocationText>
       <NamedLocationLine>4</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
@@ -485,9 +1024,9 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>46</BreakpointId>
+      <BreakpointId>25</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>46</BreakpointIdForGroup>
+      <BreakpointIdForGroup>25</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
@@ -500,11 +1039,11 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\CosmosRunbookChunkStore.cs</FileName>
-        <startLine>37</startLine>
-        <StartColumn>8</StartColumn>
-        <EndLine>37</EndLine>
-        <EndColumn>50</EndColumn>
+        <FileName>.\src\IncidentIQ.Api\ExceptionHandling\GlobalExceptionHandler.cs</FileName>
+        <startLine>14</startLine>
+        <StartColumn>4</StartColumn>
+        <EndLine>14</EndLine>
+        <EndColumn>5</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
         <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
@@ -516,11 +1055,11 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.CosmosRunbookChunkStore.ReplaceForRunbookAsync(
-        Guid runbookId,
-        IReadOnlyCollection&lt;RunbookChunk&gt; chunks,
-        CancellationToken cancellationToken = default)</NamedLocationText>
-      <NamedLocationLine>5</NamedLocationLine>
+      <NamedLocationText>IncidentIQ.Api.ExceptionHandling.GlobalExceptionHandler.TryHandleAsync(
+        HttpContext httpContext,
+        Exception exception,
+        CancellationToken cancellationToken)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
       <HitCountType>NoHitCount</HitCountType>
       <HitCountTarget>1</HitCountTarget>
@@ -547,13 +1086,434 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>40</BreakpointId>
+      <BreakpointId>27</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>40</BreakpointIdForGroup>
+      <BreakpointIdForGroup>27</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\Runbooks\CosmosRunbookChunkRetriever.cs</FileName>
+        <startLine>36</startLine>
+        <StartColumn>12</StartColumn>
+        <EndLine>36</EndLine>
+        <EndColumn>62</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks.CosmosRunbookChunkRetriever.RetrieveAsync(IReadOnlyList&lt;float&gt; queryEmbedding, string? service, int topK, CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>3</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>22</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>22</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
       <IsEnabled>1</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\AzureAI\Embedding\AzureEmbeddingGenerator.cs</FileName>
+        <startLine>22</startLine>
+        <StartColumn>4</StartColumn>
+        <EndLine>22</EndLine>
+        <EndColumn>5</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.AzureAI.Embedding.AzureEmbeddingGenerator.GenerateAsync(
+        string text,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>3</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>21</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>21</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>1</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\AzureAI\Embedding\DevelopmentDummyEmbeddingGenerator.cs</FileName>
+        <startLine>17</startLine>
+        <StartColumn>4</StartColumn>
+        <EndLine>17</EndLine>
+        <EndColumn>5</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.AzureAI.Embedding.DevelopmentDummyEmbeddingGenerator.GenerateAsync(
+        string text,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>3</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>26</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>26</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\Incidents\CosmosIncidentRepository.cs</FileName>
+        <startLine>78</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>78</EndLine>
+        <EndColumn>61</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents.CosmosIncidentRepository.UpdateAsync(Incident incident, CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>2</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>43</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>43</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Runbooks\Create\CreateRunbookHandler.cs</FileName>
+        <startLine>26</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>28</EndLine>
+        <EndColumn>31</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Runbooks.Create.CreateRunbookHandler.HandleAsync(
+        CreateRunbookCommand command,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>16</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>16</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Runbooks\Index\IndexRunbookHandler.cs</FileName>
+        <startLine>38</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>38</EndLine>
+        <EndColumn>62</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Runbooks.Index.IndexRunbookHandler.HandleAsync(
+        IndexRunbookCommand command,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>15</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>15</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>15</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Runbooks\Index\RunbookChunker.cs</FileName>
+        <startLine>18</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>18</EndLine>
+        <EndColumn>47</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Runbooks.Index.RunbookChunker.Chunk(string content)</NamedLocationText>
+      <NamedLocationLine>2</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>13</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>13</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -608,136 +1568,13 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>43</BreakpointId>
+      <BreakpointId>9</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>43</BreakpointIdForGroup>
+      <BreakpointIdForGroup>9</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
-      <IsVisible>1</IsVisible>
-      <IsEmulated>0</IsEmulated>
-      <IsCondition>0</IsCondition>
-      <IsProductionBps>0</IsProductionBps>
-      <ConditionType>WhenTrue</ConditionType>
-      <LocationType>SourceLocation</LocationType>
-      <TextPosition>
-        <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Api\Controllers\RunbooksController.cs</FileName>
-        <startLine>45</startLine>
-        <StartColumn>8</StartColumn>
-        <EndLine>48</EndLine>
-        <EndColumn>22</EndColumn>
-        <MarkerId>0</MarkerId>
-        <IsLineBased>0</IsLineBased>
-        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
-        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
-        <Checksum>
-          <Version>1</Version>
-          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
-          <ByteCount>0</ByteCount>
-          <Bytes />
-        </Checksum>
-      </TextPosition>
-      <NamedLocationText>IncidentIQ.Api.Controllers.RunbooksController.Create(
-        CreateRunbookRequest request,
-        CancellationToken cancellationToken)</NamedLocationText>
-      <NamedLocationLine>18</NamedLocationLine>
-      <NamedLocationColumn>0</NamedLocationColumn>
-      <HitCountType>NoHitCount</HitCountType>
-      <HitCountTarget>1</HitCountTarget>
-      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
-      <IsMapped>0</IsMapped>
-      <BreakpointType>PendingBreakpoint</BreakpointType>
-      <AddressLocation>
-        <Version>0</Version>
-        <MarkerId>0</MarkerId>
-        <FunctionLine>0</FunctionLine>
-        <FunctionColumn>0</FunctionColumn>
-        <Language>00000000-0000-0000-0000-000000000000</Language>
-      </AddressLocation>
-      <DataCount>4</DataCount>
-      <IsTracepointActive>0</IsTracepointActive>
-      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
-      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
-      <IsBreakWhenHit>1</IsBreakWhenHit>
-      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
-      <UseChecksum>1</UseChecksum>
-      <Labels />
-      <RequestRemapped>0</RequestRemapped>
-      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
-      <SnapshotCountTarget>1</SnapshotCountTarget>
-      <parentIndex>-1</parentIndex>
-      <IsTemporary>0</IsTemporary>
-      <BreakpointId>5</BreakpointId>
-      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>5</BreakpointIdForGroup>
-    </Breakpoint>
-    <Breakpoint>
-      <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
-      <IsVisible>1</IsVisible>
-      <IsEmulated>0</IsEmulated>
-      <IsCondition>0</IsCondition>
-      <IsProductionBps>0</IsProductionBps>
-      <ConditionType>WhenTrue</ConditionType>
-      <LocationType>SourceLocation</LocationType>
-      <TextPosition>
-        <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Application\Runbooks\Index\IndexRunbookHandler.cs</FileName>
-        <startLine>86</startLine>
-        <StartColumn>8</StartColumn>
-        <EndLine>91</EndLine>
-        <EndColumn>16</EndColumn>
-        <MarkerId>0</MarkerId>
-        <IsLineBased>0</IsLineBased>
-        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
-        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
-        <Checksum>
-          <Version>1</Version>
-          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
-          <ByteCount>0</ByteCount>
-          <Bytes />
-        </Checksum>
-      </TextPosition>
-      <NamedLocationText>IncidentIQ.Application.Runbooks.Index.IndexRunbookHandler.BuildEmbeddingText(
-        string title,
-        string service,
-        string content)</NamedLocationText>
-      <NamedLocationLine>5</NamedLocationLine>
-      <NamedLocationColumn>0</NamedLocationColumn>
-      <HitCountType>NoHitCount</HitCountType>
-      <HitCountTarget>1</HitCountTarget>
-      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
-      <IsMapped>0</IsMapped>
-      <BreakpointType>PendingBreakpoint</BreakpointType>
-      <AddressLocation>
-        <Version>0</Version>
-        <MarkerId>0</MarkerId>
-        <FunctionLine>0</FunctionLine>
-        <FunctionColumn>0</FunctionColumn>
-        <Language>00000000-0000-0000-0000-000000000000</Language>
-      </AddressLocation>
-      <DataCount>4</DataCount>
-      <IsTracepointActive>0</IsTracepointActive>
-      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
-      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
-      <IsBreakWhenHit>1</IsBreakWhenHit>
-      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
-      <UseChecksum>1</UseChecksum>
-      <Labels />
-      <RequestRemapped>0</RequestRemapped>
-      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
-      <SnapshotCountTarget>1</SnapshotCountTarget>
-      <parentIndex>-1</parentIndex>
-      <IsTemporary>0</IsTemporary>
-      <BreakpointId>37</BreakpointId>
-      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>37</BreakpointIdForGroup>
-    </Breakpoint>
-    <Breakpoint>
-      <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -798,7 +1635,7 @@
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -807,11 +1644,11 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Application\Runbooks\Index\RunbookChunker.cs</FileName>
-        <startLine>18</startLine>
+        <FileName>.\src\IncidentIQ.Api\Controllers\RunbooksController.cs</FileName>
+        <startLine>45</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>18</EndLine>
-        <EndColumn>47</EndColumn>
+        <EndLine>48</EndLine>
+        <EndColumn>22</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
         <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
@@ -823,8 +1660,10 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Application.Runbooks.Index.RunbookChunker.Chunk(string content)</NamedLocationText>
-      <NamedLocationLine>2</NamedLocationLine>
+      <NamedLocationText>IncidentIQ.Api.Controllers.RunbooksController.Create(
+        CreateRunbookRequest request,
+        CancellationToken cancellationToken)</NamedLocationText>
+      <NamedLocationLine>16</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
       <HitCountType>NoHitCount</HitCountType>
       <HitCountTarget>1</HitCountTarget>
@@ -851,13 +1690,75 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>34</BreakpointId>
+      <BreakpointId>10</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>34</BreakpointIdForGroup>
+      <BreakpointIdForGroup>10</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Runbooks\Index\IndexRunbookHandler.cs</FileName>
+        <startLine>86</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>91</EndLine>
+        <EndColumn>16</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Runbooks.Index.IndexRunbookHandler.BuildEmbeddingText(
+        string title,
+        string service,
+        string content)</NamedLocationText>
+      <NamedLocationLine>5</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>11</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>11</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -910,13 +1811,13 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>22</BreakpointId>
+      <BreakpointId>14</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>22</BreakpointIdForGroup>
+      <BreakpointIdForGroup>14</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -925,11 +1826,11 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Application\Runbooks\Index\IndexRunbookHandler.cs</FileName>
-        <startLine>38</startLine>
+        <FileName>.\src\IncidentIQ.Worker\HistoricalIncidentIndexChangeFeedWorker.cs</FileName>
+        <startLine>68</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>38</EndLine>
-        <EndColumn>62</EndColumn>
+        <EndLine>69</EndLine>
+        <EndColumn>76</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
         <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
@@ -941,10 +1842,8 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Application.Runbooks.Index.IndexRunbookHandler.HandleAsync(
-        IndexRunbookCommand command,
-        CancellationToken cancellationToken = default)</NamedLocationText>
-      <NamedLocationLine>15</NamedLocationLine>
+      <NamedLocationText>IncidentIQ.Worker.HistoricalIncidentIndexChangeFeedWorker.ExecuteAsync(CancellationToken stoppingToken)</NamedLocationText>
+      <NamedLocationLine>2</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
       <HitCountType>NoHitCount</HitCountType>
       <HitCountTarget>1</HitCountTarget>
@@ -971,9 +1870,9 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>31</BreakpointId>
+      <BreakpointId>18</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>31</BreakpointIdForGroup>
+      <BreakpointIdForGroup>18</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
@@ -986,11 +1885,11 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Application\Runbooks\Create\CreateRunbookHandler.cs</FileName>
-        <startLine>26</startLine>
+        <FileName>.\src\IncidentIQ.Application\Incidents\HistoricalSearch\Index\IndexHistoricalIncidentHandler.cs</FileName>
+        <startLine>32</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>28</EndLine>
-        <EndColumn>31</EndColumn>
+        <EndLine>32</EndLine>
+        <EndColumn>51</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
         <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
@@ -1002,8 +1901,8 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Application.Runbooks.Create.CreateRunbookHandler.HandleAsync(
-        CreateRunbookCommand command,
+      <NamedLocationText>IncidentIQ.Application.Incidents.HistoricalSearch.Index.IndexHistoricalIncidentHandler.HandleAsync(
+        IndexHistoricalIncidentCommand command,
         CancellationToken cancellationToken = default)</NamedLocationText>
       <NamedLocationLine>4</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
@@ -1032,13 +1931,13 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>9</BreakpointId>
+      <BreakpointId>20</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>9</BreakpointIdForGroup>
+      <BreakpointIdForGroup>20</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -1094,13 +1993,13 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>7</BreakpointId>
+      <BreakpointId>17</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>7</BreakpointIdForGroup>
+      <BreakpointIdForGroup>17</BreakpointIdForGroup>
     </Breakpoint>
     <Breakpoint>
       <Version>65536</Version>
-      <IsEnabled>1</IsEnabled>
+      <IsEnabled>0</IsEnabled>
       <IsVisible>1</IsVisible>
       <IsEmulated>0</IsEmulated>
       <IsCondition>0</IsCondition>
@@ -1109,10 +2008,10 @@
       <LocationType>SourceLocation</LocationType>
       <TextPosition>
         <Version>4</Version>
-        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\CosmosRunbookRepository.cs</FileName>
+        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\Runbooks\CosmosRunbookChunkStore.cs</FileName>
         <startLine>37</startLine>
         <StartColumn>8</StartColumn>
-        <EndLine>40</EndLine>
+        <EndLine>37</EndLine>
         <EndColumn>50</EndColumn>
         <MarkerId>0</MarkerId>
         <IsLineBased>0</IsLineBased>
@@ -1125,10 +2024,11 @@
           <Bytes />
         </Checksum>
       </TextPosition>
-      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.CosmosRunbookRepository.CreateAsync(
-        Runbook runbook,
+      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.Runbooks.CosmosRunbookChunkStore.ReplaceForRunbookAsync(
+        Guid runbookId,
+        IReadOnlyCollection&lt;RunbookChunk&gt; chunks,
         CancellationToken cancellationToken = default)</NamedLocationText>
-      <NamedLocationLine>6</NamedLocationLine>
+      <NamedLocationLine>5</NamedLocationLine>
       <NamedLocationColumn>0</NamedLocationColumn>
       <HitCountType>NoHitCount</HitCountType>
       <HitCountTarget>1</HitCountTarget>
@@ -1155,39 +2055,747 @@
       <SnapshotCountTarget>1</SnapshotCountTarget>
       <parentIndex>-1</parentIndex>
       <IsTemporary>0</IsTemporary>
-      <BreakpointId>15</BreakpointId>
+      <BreakpointId>23</BreakpointId>
       <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
-      <BreakpointIdForGroup>15</BreakpointIdForGroup>
+      <BreakpointIdForGroup>23</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\AzureAI\Embedding\DevelopmentDummyEmbeddingGenerator.cs</FileName>
+        <startLine>18</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>18</EndLine>
+        <EndColumn>56</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.AzureAI.Embedding.DevelopmentDummyEmbeddingGenerator.GenerateAsync(
+        string text,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>2</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>2</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Worker\IndexRunbookWorker.cs</FileName>
+        <startLine>109</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>109</EndLine>
+        <EndColumn>9</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Worker.IndexRunbookWorker.ProcessMessageAsync(ProcessMessageEventArgs args)</NamedLocationText>
+      <NamedLocationLine>5</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>1</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>1</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Worker\RunbookIndexChangeFeedWorker.cs</FileName>
+        <startLine>111</startLine>
+        <StartColumn>12</StartColumn>
+        <EndLine>113</EndLine>
+        <EndColumn>35</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Worker.RunbookIndexChangeFeedWorker.HandleChangesAsync(
+        ChangeFeedProcessorContext context,
+        IReadOnlyCollection&lt;JsonElement&gt; changes,
+        CancellationToken cancellationToken)</NamedLocationText>
+      <NamedLocationLine>19</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>3</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>3</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Runbooks\Index\IndexRunbookHandler.cs</FileName>
+        <startLine>27</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>27</EndLine>
+        <EndColumn>51</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Runbooks.Index.IndexRunbookHandler.HandleAsync(
+        IndexRunbookCommand command,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>5</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>5</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\AzureAI\Embedding\AzureEmbeddingGenerator.cs</FileName>
+        <startLine>23</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>23</EndLine>
+        <EndColumn>56</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.AzureAI.Embedding.AzureEmbeddingGenerator.GenerateAsync(
+        string text,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>8</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>8</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Worker\RunbookIndexChangeFeedWorker.cs</FileName>
+        <startLine>97</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>97</EndLine>
+        <EndColumn>15</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Worker.RunbookIndexChangeFeedWorker.HandleChangesAsync(
+        ChangeFeedProcessorContext context,
+        IReadOnlyCollection&lt;JsonElement&gt; changes,
+        CancellationToken cancellationToken)</NamedLocationText>
+      <NamedLocationLine>5</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>4</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>4</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\Persistence\Cosmos\Incidents\CosmosIncidentSubmissionStore.cs</FileName>
+        <startLine>44</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>44</EndLine>
+        <EndColumn>50</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.Persistence.Cosmos.Incidents.CosmosIncidentSubmissionStore.CreateAsync(
+        Incident incident,
+        AnalyseIncidentCommand analyseIncidentCommand,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>21</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>31</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>31</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>1</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\Messaging\AzureServiceBusHistoricalIncidentIndexQueue.cs</FileName>
+        <startLine>26</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>26</EndLine>
+        <EndColumn>51</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.Messaging.AzureServiceBusHistoricalIncidentIndexQueue.EnqueueAsync(
+        IndexHistoricalIncidentCommand command,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>32</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>32</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>0</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Infrastructure\Messaging\AzureServiceBusIncidentAnalysisQueue.cs</FileName>
+        <startLine>28</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>28</EndLine>
+        <EndColumn>53</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Infrastructure.Messaging.AzureServiceBusIncidentAnalysisQueue.EnqueueAsync(
+        AnalyseIncidentCommand command,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>33</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>33</BreakpointIdForGroup>
+    </Breakpoint>
+    <Breakpoint>
+      <Version>65536</Version>
+      <IsEnabled>1</IsEnabled>
+      <IsVisible>1</IsVisible>
+      <IsEmulated>0</IsEmulated>
+      <IsCondition>0</IsCondition>
+      <IsProductionBps>0</IsProductionBps>
+      <ConditionType>WhenTrue</ConditionType>
+      <LocationType>SourceLocation</LocationType>
+      <TextPosition>
+        <Version>4</Version>
+        <FileName>.\src\IncidentIQ.Application\Incidents\HistoricalSearch\Retrieve\RetrieveHistoricalIncidentsHandler.cs</FileName>
+        <startLine>36</startLine>
+        <StartColumn>8</StartColumn>
+        <EndLine>36</EndLine>
+        <EndColumn>73</EndColumn>
+        <MarkerId>0</MarkerId>
+        <IsLineBased>0</IsLineBased>
+        <IsDocumentPathNotFound>0</IsDocumentPathNotFound>
+        <ShouldUpdateTextSpan>1</ShouldUpdateTextSpan>
+        <Checksum>
+          <Version>1</Version>
+          <Algorithm>00000000-0000-0000-0000-000000000000</Algorithm>
+          <ByteCount>0</ByteCount>
+          <Bytes />
+        </Checksum>
+      </TextPosition>
+      <NamedLocationText>IncidentIQ.Application.Incidents.HistoricalSearch.Retrieve.RetrieveHistoricalIncidentsHandler.HandleAsync(
+        RetrieveHistoricalIncidentsQuery query,
+        CancellationToken cancellationToken = default)</NamedLocationText>
+      <NamedLocationLine>4</NamedLocationLine>
+      <NamedLocationColumn>0</NamedLocationColumn>
+      <HitCountType>NoHitCount</HitCountType>
+      <HitCountTarget>1</HitCountTarget>
+      <Language>3f5162f8-07c6-11d3-9053-00c04fa302a1</Language>
+      <IsMapped>0</IsMapped>
+      <BreakpointType>PendingBreakpoint</BreakpointType>
+      <AddressLocation>
+        <Version>0</Version>
+        <MarkerId>0</MarkerId>
+        <FunctionLine>0</FunctionLine>
+        <FunctionColumn>0</FunctionColumn>
+        <Language>00000000-0000-0000-0000-000000000000</Language>
+      </AddressLocation>
+      <DataCount>4</DataCount>
+      <IsTracepointActive>0</IsTracepointActive>
+      <TracepointTargetType>VsOutputWindow</TracepointTargetType>
+      <TimeTravelTraceMarker>NoTracing</TimeTravelTraceMarker>
+      <IsBreakWhenHit>1</IsBreakWhenHit>
+      <IsRunMacroWhenHit>0</IsRunMacroWhenHit>
+      <UseChecksum>1</UseChecksum>
+      <Labels />
+      <RequestRemapped>0</RequestRemapped>
+      <IsSnapshotWhenHit>1</IsSnapshotWhenHit>
+      <SnapshotCountTarget>1</SnapshotCountTarget>
+      <parentIndex>-1</parentIndex>
+      <IsTemporary>0</IsTemporary>
+      <BreakpointId>44</BreakpointId>
+      <PrerequisiteBreakpointId>0</PrerequisiteBreakpointId>
+      <BreakpointIdForGroup>44</BreakpointIdForGroup>
     </Breakpoint>
   </Breakpoints>
   <BreakpointGroups>
     <BreakpointGroup>
-      <name>Runbook_Indexing_Flow</name>
-      <Id>192</Id>
-      <ParentId>0</ParentId>
+      <name>Incident_Analysis_Flow</name>
+      <Id>88</Id>
+      <ParentId>73</ParentId>
       <BreakpointIds>
-        <int>1</int>
-        <int>3</int>
-        <int>5</int>
-        <int>7</int>
-        <int>9</int>
-        <int>12</int>
-        <int>15</int>
-        <int>18</int>
-        <int>20</int>
-        <int>22</int>
-        <int>25</int>
-        <int>28</int>
-        <int>31</int>
+        <int>33</int>
         <int>34</int>
+        <int>35</int>
+        <int>36</int>
         <int>37</int>
+        <int>38</int>
+        <int>39</int>
         <int>40</int>
+        <int>41</int>
+        <int>42</int>
         <int>43</int>
-        <int>46</int>
-        <int>49</int>
       </BreakpointIds>
       <PrereqBreakpointId>0</PrereqBreakpointId>
       <IsExpanded>false</IsExpanded>
+      <IsDefault>false</IsDefault>
+    </BreakpointGroup>
+    <BreakpointGroup>
+      <name>Incidents</name>
+      <Id>293</Id>
+      <ParentId>298</ParentId>
+      <PrereqBreakpointId>0</PrereqBreakpointId>
+      <IsExpanded>true</IsExpanded>
+      <IsDefault>false</IsDefault>
+    </BreakpointGroup>
+    <BreakpointGroup>
+      <name>HistoricalIncident_Indexing_Flow</name>
+      <Id>60</Id>
+      <ParentId>73</ParentId>
+      <BreakpointIds>
+        <int>18</int>
+        <int>19</int>
+        <int>20</int>
+        <int>21</int>
+        <int>24</int>
+        <int>25</int>
+        <int>26</int>
+        <int>27</int>
+        <int>32</int>
+      </BreakpointIds>
+      <PrereqBreakpointId>0</PrereqBreakpointId>
+      <IsExpanded>true</IsExpanded>
+      <IsDefault>false</IsDefault>
+    </BreakpointGroup>
+    <BreakpointGroup>
+      <name>Incident_Create</name>
+      <Id>73</Id>
+      <ParentId>293</ParentId>
+      <PrereqBreakpointId>0</PrereqBreakpointId>
+      <IsExpanded>false</IsExpanded>
+      <IsDefault>false</IsDefault>
+    </BreakpointGroup>
+    <BreakpointGroup>
+      <name>Incident_Create_SynchronousFlow</name>
+      <Id>262</Id>
+      <ParentId>73</ParentId>
+      <BreakpointIds>
+        <int>28</int>
+        <int>29</int>
+        <int>30</int>
+        <int>31</int>
+      </BreakpointIds>
+      <PrereqBreakpointId>0</PrereqBreakpointId>
+      <IsExpanded>false</IsExpanded>
+      <IsDefault>false</IsDefault>
+    </BreakpointGroup>
+    <BreakpointGroup>
+      <name>Runbooks</name>
+      <Id>292</Id>
+      <ParentId>298</ParentId>
+      <PrereqBreakpointId>0</PrereqBreakpointId>
+      <IsExpanded>false</IsExpanded>
+      <IsDefault>false</IsDefault>
+    </BreakpointGroup>
+    <BreakpointGroup>
+      <name>Runbook_Indexing_Flow</name>
+      <Id>55</Id>
+      <ParentId>292</ParentId>
+      <BreakpointIds>
+        <int>1</int>
+        <int>2</int>
+        <int>3</int>
+        <int>4</int>
+        <int>5</int>
+        <int>6</int>
+        <int>7</int>
+        <int>8</int>
+        <int>9</int>
+        <int>10</int>
+        <int>11</int>
+        <int>12</int>
+        <int>13</int>
+        <int>14</int>
+        <int>15</int>
+        <int>16</int>
+        <int>17</int>
+        <int>22</int>
+        <int>23</int>
+      </BreakpointIds>
+      <PrereqBreakpointId>0</PrereqBreakpointId>
+      <IsExpanded>false</IsExpanded>
+      <IsDefault>false</IsDefault>
+    </BreakpointGroup>
+    <BreakpointGroup>
+      <name>All</name>
+      <Id>298</Id>
+      <ParentId>0</ParentId>
+      <PrereqBreakpointId>0</PrereqBreakpointId>
+      <IsExpanded>true</IsExpanded>
+      <IsDefault>false</IsDefault>
+    </BreakpointGroup>
+    <BreakpointGroup>
+      <name>Retrieve_SimilarHistoricalIncidents</name>
+      <Id>294</Id>
+      <ParentId>293</ParentId>
+      <BreakpointIds>
+        <int>44</int>
+      </BreakpointIds>
+      <PrereqBreakpointId>0</PrereqBreakpointId>
+      <IsExpanded>true</IsExpanded>
       <IsDefault>false</IsDefault>
     </BreakpointGroup>
   </BreakpointGroups>

@@ -19,6 +19,37 @@ function shouldPoll(status: Incident["status"]) {
 }
 
 /**
+ * Generates a human-readable label for an evidence item within an incident analysis.
+ * @param referenceId The reference ID of the evidence item.
+ * @param analysis The incident analysis containing the evidence.
+ * @returns A human-readable label for the evidence item, including its title if available.
+ */
+function getEvidenceLabel(
+    referenceId: string,
+    analysis: IncidentAnalysis,
+) {
+    const historicalIncident =
+        analysis.evidence.historicalIncidents.find(
+            item => item.referenceId === referenceId,
+        );
+
+    if (historicalIncident) {
+        return `${referenceId} · ${historicalIncident.title}`;
+    }
+
+    const runbookChunk =
+        analysis.evidence.runbookChunks.find(
+            item => item.referenceId === referenceId,
+        );
+
+    if (runbookChunk) {
+        return `${referenceId} · ${runbookChunk.title}`;
+    }
+
+    return referenceId;
+}
+
+/**
  * Displays the details of a single incident and, once processing completes,
  * its persisted AI-generated analysis.
  *
@@ -287,6 +318,7 @@ export default function IncidentDetailPage() {
                     </div>
                 )}
 
+
                 {incident.status === "Completed" && analysis && (
                     <div className="incident-analysis__content">
                         <section className="analysis-section">
@@ -307,6 +339,25 @@ export default function IncidentDetailPage() {
                                                 {Math.round(cause.confidence * 100)}%
                                             </span>
                                         </div>
+
+                                        {cause.evidenceReferences.length > 0 && (
+                                            <div className="analysis-evidence-references">
+                                                <span className="analysis-evidence-label">
+                                                    Supporting evidence
+                                                </span>
+
+                                                <div className="analysis-evidence-chips">
+                                                    {cause.evidenceReferences.map(reference => (
+                                                        <span
+                                                            key={reference}
+                                                            className="analysis-evidence-chip"
+                                                        >
+                                                            {getEvidenceLabel(reference, analysis)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
                                 ))}
                             </div>
@@ -317,10 +368,115 @@ export default function IncidentDetailPage() {
 
                             <ol className="analysis-actions">
                                 {analysis.recommendedActions.map((action, index) => (
-                                    <li key={index}>{action.action}</li>
+                                    <li key={index}>
+                                        <div>{action.action}</div>
+
+                                        {action.evidenceReferences.length > 0 && (
+                                            <div className="analysis-evidence-references">
+                                                <span className="analysis-evidence-label">
+                                                    Supporting evidence
+                                                </span>
+
+                                                <div className="analysis-evidence-chips">
+                                                    {action.evidenceReferences.map(reference => (
+                                                        <span
+                                                            key={reference}
+                                                            className="analysis-evidence-chip"
+                                                        >
+                                                            {getEvidenceLabel(reference, analysis)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </li>
                                 ))}
                             </ol>
                         </section>
+
+                        {analysis.evidence.historicalIncidents.length > 0 && (
+                            <section className="analysis-section">
+                                <div className="analysis-section__header">
+                                    <h3>Similar Historical Incidents</h3>
+
+                                    <span className="analysis-section__count">
+                                        {analysis.evidence.historicalIncidents.length}
+                                    </span>
+                                </div>
+
+                                <div className="analysis-evidence-list">
+                                    {analysis.evidence.historicalIncidents.map(item => (
+                                        <Link
+                                            key={item.referenceId}
+                                            to={`/incidents/${item.incidentId}`}
+                                            className="analysis-evidence-card"
+                                            aria-label={`View historical incident ${item.title}`}
+                                        >
+                                            <div className="analysis-evidence-card__header">
+                                                <span className="analysis-evidence-reference">
+                                                    {item.referenceId}
+                                                </span>
+
+                                                <strong>{item.title}</strong>
+                                            </div>
+
+                                            <p>{item.description}</p>
+
+                                            {item.symptoms && (
+                                                <p className="analysis-evidence-card__symptoms">
+                                                    Symptoms: {item.symptoms}
+                                                </p>
+                                            )}
+
+                                            <div className="analysis-evidence-meta">
+                                                <span>{item.service}</span>
+                                                <span>{item.environment}</span>
+                                                <span>{item.severity}</span>
+                                                <span>{formatDate(item.completedAtUtc)}</span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
+
+                        {analysis.evidence.runbookChunks.length > 0 && (
+                            <section className="analysis-section">
+                                <div className="analysis-section__header">
+                                    <h3>Runbook Evidence</h3>
+
+                                    <span className="analysis-section__count">
+                                        {analysis.evidence.runbookChunks.length}
+                                    </span>
+                                </div>
+
+                                <div className="analysis-evidence-list">
+                                    {analysis.evidence.runbookChunks.map(item => (
+                                        <Link
+                                            key={item.referenceId}
+                                            to={`/runbooks/${item.runbookId}`}
+                                            className="analysis-evidence-card"
+                                            aria-label={`View runbook ${item.title}`}
+                                        >
+                                            <div className="analysis-evidence-card__header">
+                                                <span className="analysis-evidence-reference">
+                                                    {item.referenceId}
+                                                </span>
+
+                                                <strong>{item.title}</strong>
+                                            </div>
+
+                                            <p>{item.content}</p>
+
+                                            <div className="analysis-evidence-meta">
+                                                <span>{item.service}</span>
+                                                <span>Chunk {item.chunkIndex}</span>
+                                            </div>
+                                        </Link>
+                                    ))}
+                                </div>
+                            </section>
+                        )}
 
                         <footer className="incident-analysis__meta">
                             <span>Model: {analysis.model}</span>
@@ -328,6 +484,7 @@ export default function IncidentDetailPage() {
                         </footer>
                     </div>
                 )}
+
             </section>
         </main>
     );

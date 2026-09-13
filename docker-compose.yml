@@ -9,6 +9,7 @@ services:
       - ServiceBus__FullyQualifiedNamespace=servicebus-emulator
       - ServiceBus__AnalyseIncidentQueueName=analyse-incident
       - ServiceBus__IndexRunbookQueueName=index-runbook
+      - ServiceBus__IndexHistoricalIncidentQueueName=index-historical-incident
     depends_on:
       cosmos:
         condition: service_healthy
@@ -33,6 +34,7 @@ services:
       Cosmos__Key: "${COSMOS_EMULATOR_KEY}"
       Cosmos__DatabaseName: "IncidentIQ"
       Cosmos__IncidentsContainerName: "Incidents"
+      Cosmos__HistoricalIncidentVectorsContainerName: "HistoricalIncidentVectors"
       Cosmos__RunbooksContainerName: "Runbooks"
       Cosmos__RunbookChunksContainerName: "RunbookChunks"
       Cosmos__ChangeFeedLeasesContainerName: "ChangeFeedLeases"
@@ -41,6 +43,7 @@ services:
       ServiceBus__FullyQualifiedNamespace: "servicebus-emulator"
       ServiceBus__AnalyseIncidentQueueName: "analyse-incident"
       ServiceBus__IndexRunbookQueueName: "index-runbook"
+      ServiceBus__IndexHistoricalIncidentQueueName: "index-historical-incident"
 
       SSL_CERT_FILE: "/cosmos-certs/ca-bundle.crt"
 

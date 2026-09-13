@@ -1,5 +1,6 @@
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Grounding;
 using IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
@@ -28,7 +29,7 @@ internal sealed class CosmosIncidentAnalysisReader : IIncidentAnalysisReader
     /// is partitioned by /incidentId, so the partition key is the raw incident ID.
     /// Knowing both values allows a cheap point read instead of a Cosmos SQL query.
     /// </remarks>
-    public async Task<IncidentAnalysisResult?> GetByIncidentIdAsync(string incidentId, CancellationToken cancellationToken = default)
+    public async Task<GroundedIncidentAnalysis?> GetByIncidentIdAsync(string incidentId, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -39,7 +40,7 @@ internal sealed class CosmosIncidentAnalysisReader : IIncidentAnalysisReader
                 new PartitionKey(incidentId), // the partition key for the analysis document (based on the Incident that it belongs to)
                 cancellationToken: cancellationToken);
 
-            return response.Resource.ToApplication(); // convert back to the application-level IncidentAnalysisResult from Infrastructure level document
+            return response.Resource.ToApplication(); // Convert the persisted Cosmos document into the complete grounded Application read model, including the analysis and its evidence snapshot.
         }
         catch (CosmosException exception) when (exception.StatusCode == HttpStatusCode.NotFound)
         {

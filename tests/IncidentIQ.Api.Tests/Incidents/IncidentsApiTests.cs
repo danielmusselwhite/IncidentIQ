@@ -1,7 +1,7 @@
 ﻿using IncidentIQ.Api.Contracts.Incidents;
 using IncidentIQ.Api.Tests.Infrastructure;
 using IncidentIQ.Application.Incidents.Analyse;
-using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Application.Incidents.Analyse.Grounding;
 using IncidentIQ.Domain.Incidents;
 using System.Net;
 using System.Text.Json;
@@ -64,12 +64,15 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
 
         Assert.True(response.Headers.Contains("X-Correlation-ID"));
 
-        var correlationId = response.Headers.GetValues("X-Correlation-ID").Single();
+        var correlationId = response.Headers
+            .GetValues("X-Correlation-ID")
+            .Single();
 
         Assert.False(string.IsNullOrWhiteSpace(correlationId));
 
-        // Creating an incident should atomically persist its analysis request alongside it.
-        var analyseCommand = Assert.Single(_factory.IncidentSubmissionStore.Commands);
+        // Creating an Incident should atomically persist its analysis request alongside it.
+        var analyseCommand = Assert.Single(
+            _factory.IncidentSubmissionStore.Commands);
 
         Assert.Equal(incident.Id, analyseCommand.IncidentId);
         Assert.Equal(correlationId, analyseCommand.CorrelationId);
@@ -88,18 +91,32 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
             IncidentSeverity.High,
             null);
 
-        var response = await _client.PostAsJsonAsync("/api/incidents", request);
+        var response = await _client.PostAsJsonAsync(
+            "/api/incidents",
+            request);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.BadRequest,
+            response.StatusCode);
 
-        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var json = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
+
         var root = json.RootElement;
 
-        Assert.Equal("Validation failed", root.GetProperty("title").GetString());
-        Assert.True(root.GetProperty("errors").TryGetProperty("Title", out _));
+        Assert.Equal(
+            "Validation failed",
+            root.GetProperty("title").GetString());
 
-        Assert.Empty(_factory.IncidentSubmissionStore.Commands);
-        Assert.Empty(await _factory.IncidentRepository.GetAllAsync());
+        Assert.True(
+            root.GetProperty("errors")
+                .TryGetProperty("Title", out _));
+
+        Assert.Empty(
+            _factory.IncidentSubmissionStore.Commands);
+
+        Assert.Empty(
+            await _factory.IncidentRepository.GetAllAsync());
     }
 
     [Fact]
@@ -109,11 +126,15 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
 
         await _factory.IncidentRepository.CreateAsync(incident);
 
-        var response = await _client.GetAsync($"/api/incidents/{incident.Id}");
+        var response = await _client.GetAsync(
+            $"/api/incidents/{incident.Id}");
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
 
-        var result = await response.Content.ReadFromJsonAsync<IncidentResponse>(JsonOptions);
+        var result = await response.Content
+            .ReadFromJsonAsync<IncidentResponse>(JsonOptions);
 
         Assert.NotNull(result);
         Assert.Equal(incident.Id, result.Id);
@@ -123,26 +144,41 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     [Fact]
     public async Task GetById_WhenIncidentDoesNotExist_ReturnsNotFound()
     {
-        var response = await _client.GetAsync("/api/incidents/missing-id");
+        var response = await _client.GetAsync(
+            "/api/incidents/missing-id");
 
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            response.StatusCode);
 
-        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var json = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
 
-        Assert.Equal("Incident not found", json.RootElement.GetProperty("title").GetString());
+        Assert.Equal(
+            "Incident not found",
+            json.RootElement
+                .GetProperty("title")
+                .GetString());
     }
 
     [Fact]
     public async Task GetAll_WhenIncidentsExist_ReturnsIncidents()
     {
-        await _factory.IncidentRepository.CreateAsync(CreateIncident());
-        await _factory.IncidentRepository.CreateAsync(CreateIncident());
+        await _factory.IncidentRepository.CreateAsync(
+            CreateIncident());
 
-        var response = await _client.GetAsync("/api/incidents");
+        await _factory.IncidentRepository.CreateAsync(
+            CreateIncident());
 
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var response = await _client.GetAsync(
+            "/api/incidents");
 
-        var incidents = await response.Content.ReadFromJsonAsync<IncidentResponse[]>(JsonOptions);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var incidents = await response.Content
+            .ReadFromJsonAsync<IncidentResponse[]>(JsonOptions);
 
         Assert.NotNull(incidents);
         Assert.Equal(2, incidents.Length);
@@ -156,49 +192,226 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         // Arrange
         var incident = CreateIncident();
         var analysis = CreateAnalysis();
+        var evidence = CreateEvidence();
 
-        _factory.IncidentAnalysisReader.Set(incident.Id, analysis);
+        _factory.IncidentAnalysisReader.Set(
+            incident.Id,
+            new GroundedIncidentAnalysis(
+                Analysis: analysis,
+                Evidence: evidence));
 
         // Act
-        var response = await _client.GetAsync($"/api/incidents/{incident.Id}/analysis");
+        var response = await _client.GetAsync(
+            $"/api/incidents/{incident.Id}/analysis");
 
         // Assert
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
 
-        var result = await response.Content.ReadFromJsonAsync<IncidentAnalysisResponse>(JsonOptions);
+        var result = await response.Content
+            .ReadFromJsonAsync<IncidentAnalysisResponse>(
+                JsonOptions);
 
         Assert.NotNull(result);
 
-        Assert.Equal(analysis.Summary, result.Summary);
-        Assert.Equal(analysis.Model, result.Model);
-        Assert.Equal(analysis.AnalysedAtUtc, result.AnalysedAtUtc);
+        Assert.Equal(
+            analysis.Summary,
+            result.Summary);
 
-        var likelyCause = Assert.Single(result.LikelyCauses);
+        Assert.Equal(
+            analysis.Model,
+            result.Model);
 
-        Assert.Equal("Database connection pool exhaustion.", likelyCause.Cause);
-        Assert.Equal(0.85, likelyCause.Confidence);
+        Assert.Equal(
+            analysis.AnalysedAtUtc,
+            result.AnalysedAtUtc);
 
-        var recommendedAction = Assert.Single(result.RecommendedActions);
+        var likelyCause = Assert.Single(
+            result.LikelyCauses);
+
+        Assert.Equal(
+            "Database connection pool exhaustion.",
+            likelyCause.Cause);
+
+        Assert.Equal(
+            0.85,
+            likelyCause.Confidence);
+
+        Assert.Equal(
+            new[] { "HI-1", "RB-1" },
+            likelyCause.EvidenceReferences);
+
+        var recommendedAction = Assert.Single(
+            result.RecommendedActions);
 
         Assert.Equal(
             "Review database connection pool metrics and recent database failures.",
             recommendedAction.Action);
+
+        Assert.Equal(
+            new[] { "RB-1" },
+            recommendedAction.EvidenceReferences);
+
+        var historicalIncident = Assert.Single(
+            result.Evidence.HistoricalIncidents);
+
+        Assert.Equal(
+            "HI-1",
+            historicalIncident.ReferenceId);
+
+        Assert.Equal(
+            evidence.HistoricalIncidents[0].IncidentId,
+            historicalIncident.IncidentId);
+
+        Assert.Equal(
+            "Previous Payments database timeout",
+            historicalIncident.Title);
+
+        Assert.Equal(
+            "Payments",
+            historicalIncident.Service);
+
+        Assert.Equal(
+            "Production",
+            historicalIncident.Environment);
+
+        Assert.Equal(
+            IncidentSeverity.High.ToString(),
+            historicalIncident.Severity);
+
+        Assert.Equal(
+            0.82,
+            historicalIncident.Distance);
+
+        var runbookChunk = Assert.Single(
+            result.Evidence.RunbookChunks);
+
+        Assert.Equal(
+            "RB-1",
+            runbookChunk.ReferenceId);
+
+        Assert.Equal(
+            evidence.RunbookChunks[0].RunbookId,
+            runbookChunk.RunbookId);
+
+        Assert.Equal(
+            "Payments Database Recovery",
+            runbookChunk.Title);
+
+        Assert.Equal(
+            2,
+            runbookChunk.ChunkIndex);
+
+        Assert.Equal(
+            "Payments",
+            runbookChunk.Service);
+
+        Assert.Equal(
+            "Inspect database connection pool usage and database latency before recycling affected instances.",
+            runbookChunk.Content);
+
+        Assert.Equal(
+            0.76,
+            runbookChunk.Distance);
+    }
+
+    [Fact]
+    public async Task GetAnalysis_WhenAnalysisHasNoEvidence_ReturnsEmptyEvidence()
+    {
+        // Arrange
+        var incident = CreateIncident();
+
+        var analysis = new IncidentAnalysisResult(
+            Summary: "The Payments API is experiencing elevated checkout latency.",
+            LikelyCauses:
+            [
+                new LikelyCause(
+                    "Database connection pool exhaustion.",
+                    0.85,
+                    [])
+            ],
+            RecommendedActions:
+            [
+                new RecommendedAction(
+                    "Review database connection pool metrics and recent database failures.",
+                    [])
+            ],
+            Model: "test-model",
+            AnalysedAtUtc: new DateTimeOffset(
+                2026,
+                9,
+                4,
+                12,
+                0,
+                0,
+                TimeSpan.Zero));
+
+        var evidence = new IncidentAnalysisEvidence(
+            HistoricalIncidents: [],
+            RunbookChunks: []);
+
+        _factory.IncidentAnalysisReader.Set(
+            incident.Id,
+            new GroundedIncidentAnalysis(
+                Analysis: analysis,
+                Evidence: evidence));
+
+        // Act
+        var response = await _client.GetAsync(
+            $"/api/incidents/{incident.Id}/analysis");
+
+        // Assert
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var result = await response.Content
+            .ReadFromJsonAsync<IncidentAnalysisResponse>(
+                JsonOptions);
+
+        Assert.NotNull(result);
+
+        Assert.Empty(
+            result.LikelyCauses[0].EvidenceReferences);
+
+        Assert.Empty(
+            result.RecommendedActions[0].EvidenceReferences);
+
+        Assert.Empty(
+            result.Evidence.HistoricalIncidents);
+
+        Assert.Empty(
+            result.Evidence.RunbookChunks);
     }
 
     [Fact]
     public async Task GetAnalysis_WhenAnalysisDoesNotExist_ReturnsNotFoundProblemDetails()
     {
         // Act
-        var response = await _client.GetAsync("/api/incidents/missing-id/analysis");
+        var response = await _client.GetAsync(
+            "/api/incidents/missing-id/analysis");
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal("application/json", response.Content.Headers.ContentType?.MediaType);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            response.StatusCode);
 
-        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        Assert.Equal(
+            "application/json",
+            response.Content.Headers.ContentType?.MediaType);
 
-        Assert.True(json.RootElement.TryGetProperty("title", out var title));
-        Assert.False(string.IsNullOrWhiteSpace(title.GetString()));
+        var json = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
+
+        Assert.True(
+            json.RootElement.TryGetProperty(
+                "title",
+                out var title));
+
+        Assert.False(
+            string.IsNullOrWhiteSpace(
+                title.GetString()));
     }
 
     #endregion
@@ -211,16 +424,26 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         // Arrange
         var incident = CreateFailedIncident();
 
-        await _factory.IncidentRepository.CreateAsync(incident);
+        await _factory.IncidentRepository.CreateAsync(
+            incident);
 
         // Act
-        var response = await _client.PostAsync($"/api/incidents/{incident.Id}/retry", null);
+        var response = await _client.PostAsync(
+            $"/api/incidents/{incident.Id}/retry",
+            null);
 
         // Assert
-        Assert.Equal(HttpStatusCode.Accepted, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Accepted,
+            response.StatusCode);
 
-        var retriedIncidentResponse = await response.Content.ReadFromJsonAsync<IncidentResponse>(JsonOptions);
-        var retriedIncident = await _factory.IncidentRepository.GetByIdAsync(incident.Id);
+        var retriedIncidentResponse = await response.Content
+            .ReadFromJsonAsync<IncidentResponse>(
+                JsonOptions);
+
+        var retriedIncident =
+            await _factory.IncidentRepository
+                .GetByIdAsync(incident.Id);
 
         Assert.NotNull(retriedIncident);
         Assert.Equal(incident.Id, retriedIncident.Id);
@@ -233,39 +456,73 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         Assert.Null(retriedIncident.FailedAt);
 
         Assert.NotNull(retriedIncidentResponse);
-        Assert.Equal(incident.Id, retriedIncidentResponse.Id);
-        Assert.Equal(IncidentStatus.Queued, retriedIncidentResponse.Status);
+        Assert.Equal(
+            incident.Id,
+            retriedIncidentResponse.Id);
 
-        Assert.True(response.Headers.Contains("X-Correlation-ID"));
+        Assert.Equal(
+            IncidentStatus.Queued,
+            retriedIncidentResponse.Status);
 
-        var correlationId = response.Headers.GetValues("X-Correlation-ID").Single();
+        Assert.True(
+            response.Headers.Contains(
+                "X-Correlation-ID"));
 
-        Assert.False(string.IsNullOrWhiteSpace(correlationId));
+        var correlationId = response.Headers
+            .GetValues("X-Correlation-ID")
+            .Single();
 
-        var analyseCommand = Assert.Single(_factory.IncidentSubmissionStore.Commands);
+        Assert.False(
+            string.IsNullOrWhiteSpace(
+                correlationId));
 
-        Assert.Equal(incident.Id, analyseCommand.IncidentId);
-        Assert.Equal(correlationId, analyseCommand.CorrelationId);
-        Assert.NotEqual(Guid.Empty, analyseCommand.CommandId);
+        var analyseCommand = Assert.Single(
+            _factory.IncidentSubmissionStore.Commands);
 
-        Assert.NotNull(response.Headers.Location);
-        Assert.Contains(incident.Id, response.Headers.Location.ToString());
+        Assert.Equal(
+            incident.Id,
+            analyseCommand.IncidentId);
+
+        Assert.Equal(
+            correlationId,
+            analyseCommand.CorrelationId);
+
+        Assert.NotEqual(
+            Guid.Empty,
+            analyseCommand.CommandId);
+
+        Assert.NotNull(
+            response.Headers.Location);
+
+        Assert.Contains(
+            incident.Id,
+            response.Headers.Location.ToString());
     }
 
     [Fact]
     public async Task Retry_WhenIncidentDoesNotExist_ReturnsNotFoundAndDoesNotPersistAnalysisRequest()
     {
         // Act
-        var response = await _client.PostAsync("/api/incidents/missing-id/retry", null);
+        var response = await _client.PostAsync(
+            "/api/incidents/missing-id/retry",
+            null);
 
         // Assert
-        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.NotFound,
+            response.StatusCode);
 
-        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var json = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
 
-        Assert.Equal("Incident not found", json.RootElement.GetProperty("title").GetString());
+        Assert.Equal(
+            "Incident not found",
+            json.RootElement
+                .GetProperty("title")
+                .GetString());
 
-        Assert.Empty(_factory.IncidentSubmissionStore.Commands);
+        Assert.Empty(
+            _factory.IncidentSubmissionStore.Commands);
     }
 
     [Fact]
@@ -274,19 +531,30 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         // Arrange
         var incident = CreateIncident();
 
-        await _factory.IncidentRepository.CreateAsync(incident);
+        await _factory.IncidentRepository.CreateAsync(
+            incident);
 
         // Act
-        var response = await _client.PostAsync($"/api/incidents/{incident.Id}/retry", null);
+        var response = await _client.PostAsync(
+            $"/api/incidents/{incident.Id}/retry",
+            null);
 
         // Assert
-        Assert.Equal(HttpStatusCode.Conflict, response.StatusCode);
+        Assert.Equal(
+            HttpStatusCode.Conflict,
+            response.StatusCode);
 
-        var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var json = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync());
 
-        Assert.Equal("Incident not retryable", json.RootElement.GetProperty("title").GetString());
+        Assert.Equal(
+            "Incident not retryable",
+            json.RootElement
+                .GetProperty("title")
+                .GetString());
 
-        Assert.Empty(_factory.IncidentSubmissionStore.Commands);
+        Assert.Empty(
+            _factory.IncidentSubmissionStore.Commands);
     }
 
     #endregion
@@ -307,7 +575,8 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         var incident = CreateIncident();
 
         incident.StartProcessingAttempt();
-        incident.MarkFailed("Analysis failed.");
+        incident.MarkFailed(
+            "Analysis failed.");
 
         return incident;
     }
@@ -315,17 +584,82 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     private static IncidentAnalysisResult CreateAnalysis()
     {
         return new IncidentAnalysisResult(
-            "The Payments API is experiencing elevated checkout latency.",
+            Summary:
+                "The Payments API is experiencing elevated checkout latency.",
+            LikelyCauses:
             [
                 new LikelyCause(
                     "Database connection pool exhaustion.",
-                    0.85)
+                    0.85,
+                    ["HI-1", "RB-1"])
             ],
+            RecommendedActions:
             [
                 new RecommendedAction(
-                    "Review database connection pool metrics and recent database failures.")
+                    "Review database connection pool metrics and recent database failures.",
+                    ["RB-1"])
             ],
-            "test-model",
-            new DateTimeOffset(2026, 9, 4, 12, 0, 0, TimeSpan.Zero));
+            Model:
+                "test-model",
+            AnalysedAtUtc:
+                new DateTimeOffset(
+                    2026,
+                    9,
+                    4,
+                    12,
+                    0,
+                    0,
+                    TimeSpan.Zero));
+    }
+
+    private static IncidentAnalysisEvidence CreateEvidence()
+    {
+        return new IncidentAnalysisEvidence(
+            HistoricalIncidents:
+            [
+                new HistoricalIncidentEvidence(
+                    ReferenceId: "HI-1",
+                    IncidentId: Guid.Parse(
+                        "11111111-1111-1111-1111-111111111111"),
+                    Title:
+                        "Previous Payments database timeout",
+                    Description:
+                        "Checkout requests previously failed because database connections were exhausted.",
+                    Symptoms:
+                        "Database timeout errors and elevated checkout latency",
+                    Service:
+                        "Payments",
+                    Environment:
+                        "Production",
+                    Severity:
+                        IncidentSeverity.High,
+                    CompletedAtUtc:
+                        new DateTimeOffset(
+                            2026,
+                            9,
+                            1,
+                            10,
+                            0,
+                            0,
+                            TimeSpan.Zero),
+                    Distance:
+                        0.82)
+            ],
+            RunbookChunks:
+            [
+                new RunbookChunkEvidence(
+                    ReferenceId: "RB-1",
+                    RunbookId: Guid.Parse(
+                        "22222222-2222-2222-2222-222222222222"),
+                    ChunkIndex: 2,
+                    Title:
+                        "Payments Database Recovery",
+                    Service:
+                        "Payments",
+                    Content:
+                        "Inspect database connection pool usage and database latency before recycling affected instances.",
+                    Distance:
+                        0.76)
+            ]);
     }
 }

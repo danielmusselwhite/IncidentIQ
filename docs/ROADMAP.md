@@ -202,6 +202,8 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 
 ## Stage 11 — Runbook Ingestion & Vector Search
 
+Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are indexed asynchronously into derived vector chunks, and the API can retrieve semantically related chunks through Cosmos vector search.
+
 ### 11A — Runbook Vector Ingestion
 
 * [x] Define `IndexRunbookCommand` and the indexing workflow.
@@ -218,42 +220,100 @@ Integrate real Azure AI analysis into the deployed IncidentIQ workflow.
 * [x] Generate and persist vectorised Runbook chunks.
 * [x] Verify create/update indexing end-to-end locally.
 * [x] Remove indexed chunks before deleting a Runbook.
-* [x] Add final ingestion tests and edge-case coverage.
+* [x] Add ingestion tests and edge-case coverage.
 * [x] Deploy Runbook ingestion changes to Azure.
 * [x] Verify real Azure embeddings, re-indexing, and deletion cleanup in Azure.
 * [x] Update ingestion documentation and architecture notes.
 
 ### 11B — Runbook Vector Retrieval
 
-* [x] Define Runbook retrieval abstraction/result model.
-* [x] Generate embeddings for retrieval queries.
-* [x] Implement Cosmos `VectorDistance` Runbook chunk retrieval.
+* [x] Define `IRunbookChunkRetriever` and the `RunbookChunkMatch` result model.
+* [x] Generate embeddings for retrieval queries through `IEmbeddingGenerator`.
+* [x] Implement Cosmos `VectorDistance` retrieval in `CosmosRunbookChunkRetriever`.
 * [x] Return top-K relevant Runbook chunks.
 * [x] Add metadata filtering, including service filtering.
 * [x] Handle empty/no-result retrieval scenarios.
-* [x] Add retrieval tests.
+* [x] Add retrieval and API coverage.
 * [x] Measure retrieval latency.
-* [x] Measure Cosmos RU usage (response units which we are costed on).
-* [x] Verify vector retrieval in Azure.
-* [ ] Configure API Managed Identity/RBAC for Azure AI embedding access.
-* [ ] Pass Azure AI embedding configuration into the API Container App through Bicep.
-* [ ] Deploy Stage 11B infrastructure changes to Azure.
-* [ ] Verify vector retrieval end-to-end in Azure.
-* [ ] Update documentation and architecture notes.
+* [x] Measure Cosmos request-unit (RU) usage.
+* [x] Expose Runbook vector retrieval through `GET /api/Runbooks/search`.
+* [x] Fix Cosmos vector-query projection/deserialization into `CosmosRunbookChunkMatchResult`.
+* [x] Configure API Managed Identity/RBAC for Azure OpenAI embedding access.
+* [x] Pass Azure OpenAI embedding configuration into the API Container App through Bicep.
+* [x] Deploy Stage 11B infrastructure/application changes to Azure.
+* [x] Verify Runbook vector retrieval end-to-end locally and in Azure.
+* [x] Update retrieval documentation and architecture notes.
 
-## Stage 12 — Historical Incident Retrieval & RAG
+## Stage 12 — Historical Incident Retrieval & Grounded RAG
 
-* [ ] Define searchable historical Incident representation/vector persistence.
-* [ ] Generate historical Incident embeddings.
+### 12A — Historical Incident Vector Retrieval
 
-* [ ] Implement similar-Incident retrieval.
-* [ ] Keep historical Incident and Runbook evidence separate.
+* [x] Define the searchable historical Incident representation.
+* [x] Define dedicated historical Incident vector persistence model and store abstraction.
+* [x] Configure the `HistoricalIncidentVectors` Cosmos container locally and through Bicep.
+* [x] Configure the `/embedding` 1536-dimension cosine vector index.
+* [x] Reuse `IEmbeddingGenerator` to generate embeddings for completed historical Incidents.
+* [x] Implement `IndexHistoricalIncidentHandler`.
+* [x] Add the `index-historical-incident` Service Bus queue locally and through Bicep.
+* [x] Publish historical Incident indexing commands from the `Incidents` Cosmos Change Feed.
+* [x] Consume indexing commands with `IndexHistoricalIncidentWorker`.
+* [x] Verify completed Incident indexing end-to-end locally.
+* [x] Define similar-Incident retrieval abstraction and result model.
+* [x] Implement Cosmos `VectorDistance` retrieval for historical Incidents.
+* [x] Add service/environment metadata filtering, top-K retrieval and relevance threshold behaviour.
+* [x] Add historical Incident retrieval tests and telemetry.
+* [x] Verify historical Incident retrieval locally.
+* [x] Deploy historical Incident indexing/retrieval changes to Azure.
+* [x] Verify historical Incident indexing and retrieval end-to-end in Azure.
+* [ ] Update historical Incident retrieval documentation and architecture notes.
 
-* [ ] Build combined RAG context.
-* [ ] Generate evidence-backed analysis.
+### 12B — Combined RAG Context & Grounded Incident Analysis
 
-* [ ] Validate citations against retrieved evidence.
-* [ ] Display similar Incidents and supporting evidence.
+### 12B — Combined RAG Context & Grounded Incident Analysis
+
+* [x] Keep historical Incident evidence and Runbook evidence separate in the retrieval model.
+* [x] Define the combined RAG context supplied to Incident analysis.
+* [x] Build retrieval input from the Incident title, description, symptoms and relevant metadata.
+* [x] Retrieve similar historical Incidents.
+* [x] Retrieve relevant Runbook chunks.
+* [x] Apply relevance gating before retrieved evidence is supplied to the AI.
+* [x] Build combined RAG context from historical Incidents and Runbook chunks.
+* [x] Generate evidence-backed Incident analysis.
+* [x] Include historical Incident and Runbook references in the structured analysis result.
+* [x] Validate returned references/citations against the evidence actually retrieved.
+* [x] Persist the grounded analysis and the evidence used to generate it.
+* [x] Display the persisted analysis, similar-Incident evidence and Runbook evidence in the frontend.
+* [x] Add RAG orchestration and evidence-validation tests.
+* [x] Verify grounded Incident analysis end-to-end locally.
+* [ ] Verify grounded Incident analysis end-to-end in Azure.
+* [ ] Update RAG documentation and architecture diagrams.
+
+### 12C — Live Similar Incident Discovery
+
+* [ ] Add an endpoint for retrieving current similar Incidents for an existing Incident.
+* [ ] Reuse the Incident's persisted embedding rather than generating a new embedding on every request.
+* [ ] Exclude the current Incident from its own similarity results.
+* [ ] Display current similar Incidents on the Incident details page.
+* [ ] Keep current similarity results separate from the historical evidence used by the original AI analysis.
+* [ ] Add caching TODO/design notes for Azure Cache for Redis.
+* [ ] Add endpoint/retrieval tests.
+* [ ] Verify live similar-Incident discovery in Azure.
+
+### 12D — Interactive Grounded RAG Assistant
+
+* [ ] Define a grounded operational question/answer request and response model.
+* [ ] Accept natural-language operational questions such as payment gateway failures or service errors.
+* [ ] Generate an embedding for the user's question.
+* [ ] Retrieve relevant historical Incidents.
+* [ ] Retrieve relevant Runbook chunks.
+* [ ] Build grounded conversational RAG context.
+* [ ] Generate an answer constrained to the retrieved operational evidence.
+* [ ] Return supporting historical Incident and Runbook references with the answer.
+* [ ] Validate returned references against retrieved evidence.
+* [ ] Add an operational assistant/chat interface to the frontend.
+* [ ] Add conversational RAG tests and grounding checks.
+* [ ] Verify the interactive assistant end-to-end in Azure.
+* [ ] Update architecture and RAG documentation.
 
 ## Stage 13 — AI Evaluation
 
@@ -357,21 +417,7 @@ Provision Event Grid and Functions before integrating them.
 - [ ] Revisit a circuit breaker/named resilience pipeline in Stage 15 if telemetry shows it adds value; avoid adding another retry layer by default.
 - [ ] Atm we just have basic state-based idempotency by disallowing work on incidents that are already marked as completed. Could strengthen this by implementing more robust idempotency mechanisms, such as request tokens, distributed locks, or optimistic concurrecy/ eTags.
 
-- [x] Add architecture and create-incident message-flow diagrams. 
+- [x] Add architecture **and** create-incident message-flow diagrams. 
 - [ ] See about integrating with repo eg github so it can analyse for potentially breaking changes. (Eg if payments fail it may notice that a commit changed the payment service just before these related incidents started rolling in)
-
-## Stage 20 — Optional AI-200 Experiments
-
-Keep experiments isolated from the primary architecture and document the trade-offs discovered.
-
-* [ ] PostgreSQL + pgvector retriever.
-* [ ] Azure Managed Redis experiment.
-
-* [ ] AKS Worker deployment.
-* [ ] App Service API container deployment.
-
-* [ ] Cosmos Change Feed Runbook indexing experiment.
-* [ ] Define experiment infrastructure through Bicep.
-
-* [ ] Compare each experiment against the primary architecture.
-* [ ] Document findings and architectural trade-offs.
+- [ ] **Add redis cache on the similar incidents for faster retrieval and reduced load on the primary datastore.**
+- [ ] Maybe add some sort of Agentic automation for handling repetitive incident management tasks. Unsure how well this will fit in though.

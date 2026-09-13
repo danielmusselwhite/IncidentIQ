@@ -138,7 +138,7 @@ module cosmos './modules/cosmos.bicep' = {
     apiPrincipalId: apiIdentity.outputs.principalId
     workerPrincipalId: workerIdentity.outputs.principalId
 
-    runbookEmbeddingDimensions: azureAiEmbeddingDimensions
+    embeddingDimensions : azureAiEmbeddingDimensions
   }
 }
 
@@ -254,6 +254,7 @@ module apiContainerApp './modules/api-container-app.bicep' = {
     cosmosEndpoint: cosmos.outputs.endpoint
     cosmosDatabaseName: cosmos.outputs.databaseName
     cosmosIncidentsContainerName: cosmos.outputs.incidentsContainerName
+    cosmosHistoricalIncidentVectorsContainerName: cosmos.outputs.historicalIncidentVectorsContainerName
     cosmosRunbooksContainerName: cosmos.outputs.runbooksContainerName
     cosmosRunbookChunksContainerName: cosmos.outputs.runbookChunksContainerName
     cosmosChangeFeedLeasesContainerName: cosmos.outputs.changeFeedLeasesContainerName
@@ -300,6 +301,7 @@ module workerContainerApp './modules/worker-container-app.bicep' = {
     cosmosEndpoint: cosmos.outputs.endpoint
     cosmosDatabaseName: cosmos.outputs.databaseName
     cosmosIncidentsContainerName: cosmos.outputs.incidentsContainerName
+    cosmosHistoricalIncidentVectorsContainerName: cosmos.outputs.historicalIncidentVectorsContainerName
     cosmosRunbooksContainerName: cosmos.outputs.runbooksContainerName
     cosmosRunbookChunksContainerName: cosmos.outputs.runbookChunksContainerName
     cosmosChangeFeedLeasesContainerName: cosmos.outputs.changeFeedLeasesContainerName
@@ -308,6 +310,7 @@ module workerContainerApp './modules/worker-container-app.bicep' = {
     serviceBusFullyQualifiedNamespace: serviceBus.outputs.fullyQualifiedNamespace
     analyseIncidentQueueName: serviceBus.outputs.analyseIncidentQueueName
     indexRunbookQueueName: serviceBus.outputs.indexRunbookQueueName
+    indexHistoricalIncidentQueueName: serviceBus.outputs.indexHistoricalIncidentQueueName
     maxDeliveryCount: serviceBusMaxDeliveryCount
 
     // Observability
@@ -333,6 +336,7 @@ output cosmosAccountName string = cosmos.outputs.accountName
 output cosmosEndpoint string = cosmos.outputs.endpoint
 output cosmosDatabaseName string = cosmos.outputs.databaseName
 output cosmosIncidentsContainerName string = cosmos.outputs.incidentsContainerName
+output cosmosHistoricalIncidentVectorsContainerName string = cosmos.outputs.historicalIncidentVectorsContainerName
 output cosmosRunbooksContainerName string = cosmos.outputs.runbooksContainerName
 output cosmosRunbookChunksContainerName string = cosmos.outputs.runbookChunksContainerName
 output cosmosChangeFeedLeasesContainerName string = cosmos.outputs.changeFeedLeasesContainerName
@@ -350,6 +354,7 @@ output serviceBusNamespaceName string = serviceBus.outputs.namespaceName
 output serviceBusFullyQualifiedNamespace string = serviceBus.outputs.fullyQualifiedNamespace
 output analyseIncidentQueueName string = serviceBus.outputs.analyseIncidentQueueName
 output indexRunbookQueueName string = serviceBus.outputs.indexRunbookQueueName
+output indexHistoricalIncidentQueueName string = serviceBus.outputs.indexHistoricalIncidentQueueName
 
 output acrId string = acr.outputs.acrId
 output acrName string = acr.outputs.acrName
