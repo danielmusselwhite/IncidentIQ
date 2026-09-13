@@ -1,4 +1,5 @@
-﻿using IncidentIQ.Application.Common.Abstractions;
+﻿using IncidentIQ.Application.Assistant.Conversation;
+using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Incidents.Retrieve;
 using IncidentIQ.Application.Runbooks.RetrieveChunks;
 

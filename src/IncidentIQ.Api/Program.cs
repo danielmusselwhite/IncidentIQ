@@ -42,16 +42,20 @@ builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddInfrastructureDependencies(builder.Configuration);
 builder.Services.AddApplicationDependencies();
 
-// Semantic Runbook search requires embedding generation but does not require
-// the incident-analysis ChatClient or IIncidentAnalyzer.
+// The API uses embeddings for semantic retrieval and the Operational Assistant
+// for grounded conversational questions.
+//
+// Development and Testing use deterministic AI implementations so local and
+// automated tests do not require Azure OpenAI. Other environments use the
+// real Azure AI implementations.
 if (builder.Environment.IsDevelopment() ||
     builder.Environment.IsEnvironment("Testing"))
 {
-    builder.Services.AddDevelopmentEmbeddingDependencies();
+    builder.Services.AddDevelopmentAIDependencies();
 }
 else
 {
-    builder.Services.AddAzureEmbeddingDependencies(builder.Configuration);
+    builder.Services.AddAzureAIDependencies(builder.Configuration);
 }
 
 // CORS.
