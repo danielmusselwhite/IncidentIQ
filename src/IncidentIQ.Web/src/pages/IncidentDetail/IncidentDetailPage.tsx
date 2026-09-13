@@ -10,8 +10,10 @@ import "./IncidentDetailPage.css";
 
 const POLL_INTERVAL_MS = 2000;
 
+type AnalysisTab = "overview" | "historical" | "runbooks";
+
 /**
- * Determines whether an incident should continue being polled.
+ * Determines whether an Incident should continue being polled.
  * Queued and Processing are temporary states, while Completed and Failed are terminal.
  */
 function shouldPoll(status: Incident["status"]) {
@@ -19,12 +21,10 @@ function shouldPoll(status: Incident["status"]) {
 }
 
 /**
- * Generates a human-readable label for an evidence item within an incident analysis.
- * @param referenceId The reference ID of the evidence item.
- * @param analysis The incident analysis containing the evidence.
- * @returns A human-readable label for the evidence item, including its title if available.
+ * Resolves a request-scoped evidence reference such as HI-1 or RB-2 to
+ * its persisted evidence snapshot and source route.
  */
-function getEvidenceLabel(
+function getEvidenceDetails(
     referenceId: string,
     analysis: IncidentAnalysis,
 ) {
@@ -34,7 +34,13 @@ function getEvidenceLabel(
         );
 
     if (historicalIncident) {
-        return `${referenceId} · ${historicalIncident.title}`;
+        return {
+            referenceId,
+            title: historicalIncident.title,
+            kind: "Historical Incident",
+            preview: historicalIncident.description,
+            href: `/incidents/${historicalIncident.incidentId}`,
+        };
     }
 
     const runbookChunk =
@@ -43,18 +49,21 @@ function getEvidenceLabel(
         );
 
     if (runbookChunk) {
-        return `${referenceId} · ${runbookChunk.title}`;
+        return {
+            referenceId,
+            title: runbookChunk.title,
+            kind: `Runbook · Chunk ${runbookChunk.chunkIndex}`,
+            preview: runbookChunk.content,
+            href: `/runbooks/${runbookChunk.runbookId}`,
+        };
     }
 
-    return referenceId;
+    return null;
 }
 
 /**
- * Displays the details of a single incident and, once processing completes,
- * its persisted AI-generated analysis.
- *
- * The incident ID is read from the URL, for example:
- * /incidents/123 -> id = "123"
+ * Displays the details of a single Incident and, once processing completes,
+ * its persisted grounded AI analysis.
  */
 export default function IncidentDetailPage() {
     const { id } = useParams<{ id: string }>();
@@ -66,9 +75,11 @@ export default function IncidentDetailPage() {
     const [analysis, setAnalysis] = useState<IncidentAnalysis | null>(null);
     const [analysisError, setAnalysisError] = useState<string | null>(null);
     const [isAnalysisLoading, setIsAnalysisLoading] = useState(false);
+    const [activeAnalysisTab, setActiveAnalysisTab] =
+        useState<AnalysisTab>("overview");
 
     /**
-     * Loads the incident when the route ID changes and continues polling while
+     * Loads the Incident when the route ID changes and continues polling while
      * the asynchronous analysis workflow is still Queued or Processing.
      */
     useEffect(() => {
@@ -81,10 +92,10 @@ export default function IncidentDetailPage() {
         let isCancelled = false;
         let pollTimeout: number | undefined;
 
-        // Reset route-specific state when moving between incidents.
         setAnalysis(null);
         setAnalysisError(null);
         setError(null);
+        setActiveAnalysisTab("overview");
 
         async function loadIncident(isInitialLoad: boolean) {
             try {
@@ -115,7 +126,8 @@ export default function IncidentDetailPage() {
                     setAnalysisError(null);
 
                     try {
-                        const loadedAnalysis = await getIncidentAnalysis(id!);
+                        const loadedAnalysis =
+                            await getIncidentAnalysis(id!);
 
                         if (isCancelled) {
                             return;
@@ -124,7 +136,9 @@ export default function IncidentDetailPage() {
                         setAnalysis(loadedAnalysis);
                     } catch {
                         if (!isCancelled) {
-                            setAnalysisError("Unable to load incident analysis.");
+                            setAnalysisError(
+                                "Unable to load incident analysis.",
+                            );
                         }
                     } finally {
                         if (!isCancelled) {
@@ -137,16 +151,14 @@ export default function IncidentDetailPage() {
                     return;
                 }
 
-                if (caughtError instanceof ApiError && caughtError.status === 404) {
+                if (
+                    caughtError instanceof ApiError &&
+                    caughtError.status === 404
+                ) {
                     setError("Incident not found.");
                     return;
                 }
 
-                /*
-                 * An initial failure prevents the page from loading.
-                 * A polling failure keeps the already-loaded incident visible
-                 * and retries after the polling interval.
-                 */
                 if (isInitialLoad) {
                     setError("Unable to load incident.");
                 } else {
@@ -164,7 +176,6 @@ export default function IncidentDetailPage() {
 
         void loadIncident(true);
 
-        // Prevent pending polling or API responses from updating state after navigation.
         return () => {
             isCancelled = true;
 
@@ -177,7 +188,9 @@ export default function IncidentDetailPage() {
     if (isLoading) {
         return (
             <main className="incident-detail">
-                <p className="incident-detail__state">Loading incident...</p>
+                <p className="incident-detail__state">
+                    Loading incident...
+                </p>
             </main>
         );
     }
@@ -194,16 +207,24 @@ export default function IncidentDetailPage() {
         );
     }
 
+    const historicalCount =
+        analysis?.evidence.historicalIncidents.length ?? 0;
+
+    const runbookCount =
+        analysis?.evidence.runbookChunks.length ?? 0;
+
     return (
         <main className="incident-detail">
             <div className="incident-detail__toolbar">
                 <Link to="/incidents">← Back to incidents</Link>
             </div>
 
-            <header className="incident-detail__header">
-                <div>
+            <header className="incident-detail__hero">
+                <div className="incident-detail__hero-main">
                     <div className="incident-detail__badges">
-                        <span className={`badge badge--${incident.severity.toLowerCase()}`}>
+                        <span
+                            className={`badge badge--${incident.severity.toLowerCase()}`}
+                        >
                             {incident.severity}
                         </span>
 
@@ -217,15 +238,11 @@ export default function IncidentDetailPage() {
                     <h1>{incident.title}</h1>
 
                     <p className="incident-detail__id">
-                        Incident ID: {incident.id}
+                        {incident.id}
                     </p>
                 </div>
-            </header>
 
-            <section className="incident-detail__card">
-                <h2>Incident Details</h2>
-
-                <dl className="incident-detail__metadata">
+                <dl className="incident-detail__hero-metadata">
                     <div>
                         <dt>Service</dt>
                         <dd>{incident.service}</dd>
@@ -246,255 +263,584 @@ export default function IncidentDetailPage() {
                         <dd>{formatDate(incident.updatedAt)}</dd>
                     </div>
                 </dl>
+            </header>
+
+            <section className="incident-context-grid">
+                <article className="incident-context-card">
+                    <span className="incident-context-card__label">
+                        Description
+                    </span>
+
+                    <p>{incident.description}</p>
+                </article>
+
+                <article className="incident-context-card">
+                    <span className="incident-context-card__label">
+                        Symptoms
+                    </span>
+
+                    <p>
+                        {incident.symptoms ||
+                            "No symptoms provided."}
+                    </p>
+                </article>
             </section>
 
-            <section className="incident-detail__card">
-                <h2>Description</h2>
-                <p>{incident.description}</p>
-            </section>
+            <section className="incident-analysis">
+                <header className="incident-analysis__header">
+                    <div className="incident-analysis__heading">
+                        <div
+                            className="incident-analysis__icon"
+                            aria-hidden="true"
+                        >
+                            AI
+                        </div>
 
-            <section className="incident-detail__card">
-                <h2>Symptoms</h2>
-                <p>{incident.symptoms || "No symptoms provided."}</p>
-            </section>
-
-            <section className="incident-detail__card incident-detail__analysis">
-                <div className="incident-analysis__header">
-                    <div className="incident-analysis__icon" aria-hidden="true">
-                        AI
-                    </div>
-
-                    <div>
-                        <span className="incident-analysis__eyebrow">AI Analysis</span>
-                        <h2>Incident Analysis</h2>
-                    </div>
-                </div>
-
-                {incident.status === "Queued" && (
-                    <div className="incident-analysis__status">
-                        <span className="incident-analysis__status-dot" />
                         <div>
-                            <strong>Waiting for analysis</strong>
-                            <p>The incident has been queued and will be analysed shortly.</p>
+                            <span className="incident-analysis__eyebrow">
+                                Grounded analysis
+                            </span>
+                            <h2>Incident Analysis</h2>
                         </div>
                     </div>
+
+                    {analysis && (
+                        <div className="incident-analysis__stats">
+                            <div>
+                                <strong>{historicalCount}</strong>
+                                <span>Historical</span>
+                            </div>
+
+                            <div>
+                                <strong>{runbookCount}</strong>
+                                <span>Runbook chunks</span>
+                            </div>
+                        </div>
+                    )}
+                </header>
+
+                {incident.status === "Queued" && (
+                    <AnalysisStatus
+                        title="Waiting for analysis"
+                        description="The Incident has been queued and will be analysed shortly."
+                    />
                 )}
 
                 {incident.status === "Processing" && (
-                    <div className="incident-analysis__status">
-                        <span className="incident-analysis__status-dot incident-analysis__status-dot--processing" />
-                        <div>
-                            <strong>Analysis in progress</strong>
-                            <p>IncidentIQ is currently analysing the incident.</p>
-                        </div>
-                    </div>
+                    <AnalysisStatus
+                        title="Analysis in progress"
+                        description="IncidentIQ is retrieving operational context and analysing the Incident."
+                        processing
+                    />
                 )}
 
                 {incident.status === "Failed" && (
-                    <div className="incident-analysis__status incident-analysis__status--failed">
-                        <div>
-                            <strong>Analysis failed</strong>
-                            <p>The incident could not be analysed successfully.</p>
-                        </div>
-                    </div>
+                    <AnalysisStatus
+                        title="Analysis failed"
+                        description="The Incident could not be analysed successfully."
+                        failed
+                    />
                 )}
 
-                {incident.status === "Completed" && isAnalysisLoading && (
-                    <div className="incident-analysis__status">
-                        <span className="incident-analysis__status-dot incident-analysis__status-dot--processing" />
-                        <div>
-                            <strong>Loading analysis</strong>
-                            <p>Retrieving the completed analysis result.</p>
-                        </div>
-                    </div>
-                )}
+                {incident.status === "Completed" &&
+                    isAnalysisLoading && (
+                        <AnalysisStatus
+                            title="Loading analysis"
+                            description="Retrieving the completed grounded analysis."
+                            processing
+                        />
+                    )}
 
-                {incident.status === "Completed" && analysisError && (
-                    <div className="incident-analysis__status incident-analysis__status--failed">
-                        <div>
-                            <strong>Unable to load analysis</strong>
-                            <p>{analysisError}</p>
-                        </div>
-                    </div>
-                )}
-
+                {incident.status === "Completed" &&
+                    analysisError && (
+                        <AnalysisStatus
+                            title="Unable to load analysis"
+                            description={analysisError}
+                            failed
+                        />
+                    )}
 
                 {incident.status === "Completed" && analysis && (
-                    <div className="incident-analysis__content">
-                        <section className="analysis-section">
-                            <h3>Summary</h3>
-                            <p>{analysis.summary}</p>
-                        </section>
+                    <>
+                        <nav
+                            className="analysis-tabs"
+                            aria-label="Incident analysis sections"
+                        >
+                            <button
+                                type="button"
+                                className={
+                                    activeAnalysisTab === "overview"
+                                        ? "analysis-tab analysis-tab--active"
+                                        : "analysis-tab"
+                                }
+                                onClick={() =>
+                                    setActiveAnalysisTab("overview")
+                                }
+                            >
+                                Overview
+                            </button>
 
-                        <section className="analysis-section">
-                            <h3>Likely Causes</h3>
+                            {historicalCount > 0 && (
+                                <button
+                                    type="button"
+                                    className={
+                                        activeAnalysisTab ===
+                                            "historical"
+                                            ? "analysis-tab analysis-tab--active"
+                                            : "analysis-tab"
+                                    }
+                                    onClick={() =>
+                                        setActiveAnalysisTab(
+                                            "historical",
+                                        )
+                                    }
+                                >
+                                    Historical Incidents
+                                    <span>{historicalCount}</span>
+                                </button>
+                            )}
 
-                            <div className="analysis-causes">
-                                {analysis.likelyCauses.map((cause, index) => (
-                                    <div key={index} className="analysis-cause">
-                                        <div className="analysis-cause__header">
-                                            <strong>{cause.cause}</strong>
+                            {runbookCount > 0 && (
+                                <button
+                                    type="button"
+                                    className={
+                                        activeAnalysisTab ===
+                                            "runbooks"
+                                            ? "analysis-tab analysis-tab--active"
+                                            : "analysis-tab"
+                                    }
+                                    onClick={() =>
+                                        setActiveAnalysisTab(
+                                            "runbooks",
+                                        )
+                                    }
+                                >
+                                    Runbooks
+                                    <span>{runbookCount}</span>
+                                </button>
+                            )}
+                        </nav>
 
-                                            <span className="analysis-cause__confidence">
-                                                {Math.round(cause.confidence * 100)}%
-                                            </span>
-                                        </div>
+                        <div className="incident-analysis__content">
+                            {activeAnalysisTab === "overview" && (
+                                <AnalysisOverview
+                                    analysis={analysis}
+                                />
+                            )}
 
-                                        {cause.evidenceReferences.length > 0 && (
-                                            <div className="analysis-evidence-references">
-                                                <span className="analysis-evidence-label">
-                                                    Supporting evidence
-                                                </span>
+                            {activeAnalysisTab ===
+                                "historical" && (
+                                    <HistoricalEvidence
+                                        analysis={analysis}
+                                    />
+                                )}
 
-                                                <div className="analysis-evidence-chips">
-                                                    {cause.evidenceReferences.map(reference => (
-                                                        <span
-                                                            key={reference}
-                                                            className="analysis-evidence-chip"
-                                                        >
-                                                            {getEvidenceLabel(reference, analysis)}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section className="analysis-section">
-                            <h3>Recommended Actions</h3>
-
-                            <ol className="analysis-actions">
-                                {analysis.recommendedActions.map((action, index) => (
-                                    <li key={index}>
-                                        <div>{action.action}</div>
-
-                                        {action.evidenceReferences.length > 0 && (
-                                            <div className="analysis-evidence-references">
-                                                <span className="analysis-evidence-label">
-                                                    Supporting evidence
-                                                </span>
-
-                                                <div className="analysis-evidence-chips">
-                                                    {action.evidenceReferences.map(reference => (
-                                                        <span
-                                                            key={reference}
-                                                            className="analysis-evidence-chip"
-                                                        >
-                                                            {getEvidenceLabel(reference, analysis)}
-                                                        </span>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
-                                    </li>
-                                ))}
-                            </ol>
-                        </section>
-
-                        {analysis.evidence.historicalIncidents.length > 0 && (
-                            <section className="analysis-section">
-                                <div className="analysis-section__header">
-                                    <h3>Similar Historical Incidents</h3>
-
-                                    <span className="analysis-section__count">
-                                        {analysis.evidence.historicalIncidents.length}
-                                    </span>
-                                </div>
-
-                                <div className="analysis-evidence-list">
-                                    {analysis.evidence.historicalIncidents.map(item => (
-                                        <Link
-                                            key={item.referenceId}
-                                            to={`/incidents/${item.incidentId}`}
-                                            className="analysis-evidence-card"
-                                            aria-label={`View historical incident ${item.title}`}
-                                        >
-                                            <div className="analysis-evidence-card__header">
-                                                <span className="analysis-evidence-reference">
-                                                    {item.referenceId}
-                                                </span>
-
-                                                <strong>{item.title}</strong>
-                                            </div>
-
-                                            <p>{item.description}</p>
-
-                                            {item.symptoms && (
-                                                <p className="analysis-evidence-card__symptoms">
-                                                    Symptoms: {item.symptoms}
-                                                </p>
-                                            )}
-
-                                            <div className="analysis-evidence-meta">
-                                                <span>{item.service}</span>
-                                                <span>{item.environment}</span>
-                                                <span>{item.severity}</span>
-                                                <span>{formatDate(item.completedAtUtc)}</span>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                            </section>
-                        )}
-
-                        {analysis.evidence.runbookChunks.length > 0 && (
-                            <section className="analysis-section">
-                                <div className="analysis-section__header">
-                                    <h3>Runbook Evidence</h3>
-
-                                    <span className="analysis-section__count">
-                                        {analysis.evidence.runbookChunks.length}
-                                    </span>
-                                </div>
-
-                                <div className="analysis-evidence-list">
-                                    {analysis.evidence.runbookChunks.map(item => (
-                                        <Link
-                                            key={item.referenceId}
-                                            to={`/runbooks/${item.runbookId}`}
-                                            className="analysis-evidence-card"
-                                            aria-label={`View runbook ${item.title}`}
-                                        >
-                                            <div className="analysis-evidence-card__header">
-                                                <span className="analysis-evidence-reference">
-                                                    {item.referenceId}
-                                                </span>
-
-                                                <strong>{item.title}</strong>
-                                            </div>
-
-                                            <p>{item.content}</p>
-
-                                            <div className="analysis-evidence-meta">
-                                                <span>{item.service}</span>
-                                                <span>Chunk {item.chunkIndex}</span>
-                                            </div>
-                                        </Link>
-                                    ))}
-                                </div>
-                            </section>
-                        )}
+                            {activeAnalysisTab === "runbooks" && (
+                                <RunbookEvidence
+                                    analysis={analysis}
+                                />
+                            )}
+                        </div>
 
                         <footer className="incident-analysis__meta">
-                            <span>Model: {analysis.model}</span>
-                            <span>Analysed {formatDate(analysis.analysedAtUtc)}</span>
-                        </footer>
-                    </div>
-                )}
+                            <span>
+                                Model: {analysis.model}
+                            </span>
 
+                            <span>
+                                Analysed{" "}
+                                {formatDate(
+                                    analysis.analysedAtUtc,
+                                )}
+                            </span>
+                        </footer>
+                    </>
+                )}
             </section>
         </main>
     );
 }
 
+function AnalysisOverview({
+    analysis,
+}: {
+    analysis: IncidentAnalysis;
+}) {
+    return (
+        <div className="analysis-overview">
+            <section className="analysis-summary">
+                <span className="analysis-section-label">
+                    Summary
+                </span>
+
+                <p>{analysis.summary}</p>
+            </section>
+
+            <div className="analysis-overview__grid">
+                <section className="analysis-panel">
+                    <div className="analysis-panel__heading">
+                        <div>
+                            <span className="analysis-section-label">
+                                Diagnosis
+                            </span>
+                            <h3>Likely Causes</h3>
+                        </div>
+
+                        <span className="analysis-panel__count">
+                            {analysis.likelyCauses.length}
+                        </span>
+                    </div>
+
+                    <div className="analysis-causes">
+                        {analysis.likelyCauses.map(
+                            (cause, index) => (
+                                <article
+                                    key={index}
+                                    className="analysis-cause"
+                                >
+                                    <div className="analysis-cause__header">
+                                        <div className="analysis-cause__number">
+                                            {index + 1}
+                                        </div>
+
+                                        <strong>
+                                            {cause.cause}
+                                        </strong>
+
+                                        <span className="analysis-cause__confidence">
+                                            {Math.round(
+                                                cause.confidence *
+                                                100,
+                                            )}
+                                            %
+                                        </span>
+                                    </div>
+
+                                    <EvidenceReferences
+                                        references={
+                                            cause.evidenceReferences
+                                        }
+                                        analysis={analysis}
+                                    />
+                                </article>
+                            ),
+                        )}
+                    </div>
+                </section>
+
+                <section className="analysis-panel">
+                    <div className="analysis-panel__heading">
+                        <div>
+                            <span className="analysis-section-label">
+                                Response
+                            </span>
+                            <h3>Recommended Actions</h3>
+                        </div>
+
+                        <span className="analysis-panel__count">
+                            {
+                                analysis.recommendedActions
+                                    .length
+                            }
+                        </span>
+                    </div>
+
+                    <ol className="analysis-actions">
+                        {analysis.recommendedActions.map(
+                            (action, index) => (
+                                <li key={index}>
+                                    <div className="analysis-action__content">
+                                        <strong>
+                                            {action.action}
+                                        </strong>
+
+                                        <EvidenceReferences
+                                            references={
+                                                action.evidenceReferences
+                                            }
+                                            analysis={analysis}
+                                        />
+                                    </div>
+                                </li>
+                            ),
+                        )}
+                    </ol>
+                </section>
+            </div>
+        </div>
+    );
+}
+
+function EvidenceReferences({
+    references,
+    analysis,
+}: {
+    references: string[];
+    analysis: IncidentAnalysis;
+}) {
+    if (references.length === 0) {
+        return null;
+    }
+
+    return (
+        <div className="analysis-evidence-references">
+            <span className="analysis-evidence-label">
+                Supporting evidence
+            </span>
+
+            <div className="analysis-evidence-chips">
+                {references.map(reference => {
+                    const evidence = getEvidenceDetails(
+                        reference,
+                        analysis,
+                    );
+
+                    if (!evidence) {
+                        return (
+                            <span
+                                key={reference}
+                                className="analysis-evidence-chip"
+                            >
+                                {reference}
+                            </span>
+                        );
+                    }
+
+                    return (
+                        <Link
+                            key={reference}
+                            to={evidence.href}
+                            className="analysis-evidence-chip analysis-evidence-chip--linked"
+                            aria-label={`Open ${evidence.kind} ${evidence.title}`}
+                        >
+                            <span className="analysis-evidence-chip__reference">
+                                {evidence.referenceId}
+                            </span>
+
+                            <span className="analysis-evidence-chip__title">
+                                {evidence.title}
+                            </span>
+
+                            <span
+                                className="analysis-evidence-preview"
+                                role="tooltip"
+                            >
+                                <span className="analysis-evidence-preview__type">
+                                    {evidence.kind}
+                                </span>
+
+                                <strong>
+                                    {evidence.title}
+                                </strong>
+
+                                <span>
+                                    {truncate(
+                                        evidence.preview,
+                                        220,
+                                    )}
+                                </span>
+
+                                <span className="analysis-evidence-preview__cta">
+                                    Open source →
+                                </span>
+                            </span>
+                        </Link>
+                    );
+                })}
+            </div>
+        </div>
+    );
+}
+
+function HistoricalEvidence({
+    analysis,
+}: {
+    analysis: IncidentAnalysis;
+}) {
+    return (
+        <section className="analysis-evidence-view">
+            <div className="analysis-view-heading">
+                <div>
+                    <span className="analysis-section-label">
+                        Retrieved context
+                    </span>
+                    <h3>Similar Historical Incidents</h3>
+                </div>
+
+                <p>
+                    Incidents retrieved during the original
+                    analysis and preserved as evidence snapshots.
+                </p>
+            </div>
+
+            <div className="historical-evidence-grid">
+                {analysis.evidence.historicalIncidents.map(
+                    item => (
+                        <Link
+                            key={item.referenceId}
+                            to={`/incidents/${item.incidentId}`}
+                            className="historical-evidence-card"
+                            aria-label={`View historical incident ${item.title}`}
+                        >
+                            <div className="evidence-card__topline">
+                                <span className="evidence-reference evidence-reference--historical">
+                                    {item.referenceId}
+                                </span>
+
+                                <span className="evidence-card__date">
+                                    {formatDate(
+                                        item.completedAtUtc,
+                                    )}
+                                </span>
+                            </div>
+
+                            <h4>{item.title}</h4>
+
+                            <p>
+                                {truncate(
+                                    item.description,
+                                    210,
+                                )}
+                            </p>
+
+                            {item.symptoms && (
+                                <div className="evidence-card__symptoms">
+                                    <span>Symptoms</span>
+                                    <p>
+                                        {truncate(
+                                            item.symptoms,
+                                            150,
+                                        )}
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="evidence-card__meta">
+                                <span>{item.service}</span>
+                                <span>{item.environment}</span>
+                                <span>{item.severity}</span>
+                            </div>
+
+                            <span className="evidence-card__open">
+                                View Incident →
+                            </span>
+                        </Link>
+                    ),
+                )}
+            </div>
+        </section>
+    );
+}
+
+function RunbookEvidence({
+    analysis,
+}: {
+    analysis: IncidentAnalysis;
+}) {
+    return (
+        <section className="analysis-evidence-view">
+            <div className="analysis-view-heading">
+                <div>
+                    <span className="analysis-section-label">
+                        Operational guidance
+                    </span>
+                    <h3>Runbook Evidence</h3>
+                </div>
+
+                <p>
+                    Relevant Runbook excerpts supplied to the AI
+                    when this Incident was analysed.
+                </p>
+            </div>
+
+            <div className="runbook-evidence-list">
+                {analysis.evidence.runbookChunks.map(item => (
+                    <Link
+                        key={item.referenceId}
+                        to={`/runbooks/${item.runbookId}`}
+                        className="runbook-evidence-card"
+                        aria-label={`View runbook ${item.title}`}
+                    >
+                        <div className="runbook-evidence-card__side">
+                            <span className="evidence-reference evidence-reference--runbook">
+                                {item.referenceId}
+                            </span>
+
+                            <span>
+                                Chunk {item.chunkIndex}
+                            </span>
+                        </div>
+
+                        <div className="runbook-evidence-card__body">
+                            <div className="runbook-evidence-card__heading">
+                                <div>
+                                    <span>{item.service}</span>
+                                    <h4>{item.title}</h4>
+                                </div>
+
+                                <span className="evidence-card__open">
+                                    View Runbook →
+                                </span>
+                            </div>
+
+                            <p>
+                                {truncate(item.content, 360)}
+                            </p>
+                        </div>
+                    </Link>
+                ))}
+            </div>
+        </section>
+    );
+}
+
+function AnalysisStatus({
+    title,
+    description,
+    processing = false,
+    failed = false,
+}: {
+    title: string;
+    description: string;
+    processing?: boolean;
+    failed?: boolean;
+}) {
+    return (
+        <div
+            className={
+                failed
+                    ? "incident-analysis__status incident-analysis__status--failed"
+                    : "incident-analysis__status"
+            }
+        >
+            {!failed && (
+                <span
+                    className={
+                        processing
+                            ? "incident-analysis__status-dot incident-analysis__status-dot--processing"
+                            : "incident-analysis__status-dot"
+                    }
+                />
+            )}
+
+            <div>
+                <strong>{title}</strong>
+                <p>{description}</p>
+            </div>
+        </div>
+    );
+}
+
+function truncate(value: string, maxLength: number) {
+    if (value.length <= maxLength) {
+        return value;
+    }
+
+    return `${value.slice(0, maxLength).trimEnd()}…`;
+}
+
 /**
  * Converts an ISO/date string from the API into a readable UK date and time.
- *
- * Example:
- * "2026-08-23T14:30:00Z" -> "23 Aug 2026, 15:30"
  */
 function formatDate(value: string) {
     return new Intl.DateTimeFormat("en-GB", {
