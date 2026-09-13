@@ -12,6 +12,7 @@ const navigation = [
     { label: "Dashboard", path: "/incidents" },
     { label: "Submit Incident", path: "/incidents/new" },
     { label: "Runbooks", path: "/runbooks" },
+    { label: "Assistant", path: "/assistant" },
     { label: "Operations", path: "/operations" },
 ];
 
@@ -69,10 +70,9 @@ export default function AppLayout() {
                              * the selected navigation item can be highlighted.
                              */
                             className={({ isActive }) =>
-                                `app-sidebar__link${
-                                    isActive
-                                        ? " app-sidebar__link--active"
-                                        : ""
+                                `app-sidebar__link${isActive
+                                    ? " app-sidebar__link--active"
+                                    : ""
                                 }`
                             }
                         >

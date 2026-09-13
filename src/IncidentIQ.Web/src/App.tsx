@@ -8,6 +8,7 @@ import RunbooksPage from "./pages/Runbooks/RunbooksPage";
 import CreateRunbookPage from "./pages/CreateRunbook/CreateRunbookPage";
 import EditRunbookPage from "./pages/EditRunbook/EditRunbookPage";
 import RunbookDetailPage from "./pages/RunbookDetail/RunbookDetailPage";
+import AssistantPage from "./pages/Assistant/AssistantPage";
 
 /**
  * Defines the application's top-level routes.
@@ -87,6 +88,12 @@ export default function App() {
                 <Route
                     path="runbooks/:id/edit"
                     element={<EditRunbookPage />}
+                />
+
+                {/* Displays the assistant page. */}
+                <Route
+                    path="assistant"
+                    element={<AssistantPage />}
                 />
             </Route>
         </Routes>

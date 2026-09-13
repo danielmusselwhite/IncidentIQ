@@ -1,7 +1,10 @@
 ﻿using Azure.AI.OpenAI;
 using Azure.Identity;
+using IncidentIQ.Application.Assistant.Generate;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Incidents.Analyse;
+using IncidentIQ.Infrastructure.AI.Assistant;
+using IncidentIQ.Infrastructure.AzureAI.Assistant;
 using IncidentIQ.Infrastructure.AzureAI.Embedding;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -36,12 +39,18 @@ public static class DependencyInjection
         // DefaultAzureCredential allows deployed workloads to authenticate using Managed Identity.
         services.AddSingleton(sp =>
         {
-            var options = sp.GetRequiredService<IOptions<AzureAIOptions>>().Value;
+            var options =
+                sp.GetRequiredService<IOptions<AzureAIOptions>>().Value;
 
             var clientOptions = new AzureOpenAIClientOptions
             {
-                NetworkTimeout = TimeSpan.FromSeconds(options.NetworkTimeoutSeconds),
-                RetryPolicy = new ClientRetryPolicy(maxRetries: options.MaxRetries)
+                NetworkTimeout =
+                    TimeSpan.FromSeconds(
+                        options.NetworkTimeoutSeconds),
+
+                RetryPolicy =
+                    new ClientRetryPolicy(
+                        maxRetries: options.MaxRetries)
             };
 
             return new AzureOpenAIClient(
@@ -51,42 +60,58 @@ public static class DependencyInjection
         });
 
         // EmbeddingClient targets the Azure OpenAI deployment used to vectorise
-        // Runbook content and semantic search queries.
+        // Runbook content, historical Incidents and semantic search queries.
         services.AddSingleton(sp =>
         {
-            var azureOpenAIClient = sp.GetRequiredService<AzureOpenAIClient>();
-            var options = sp.GetRequiredService<IOptions<AzureEmbeddingOptions>>().Value;
+            var azureOpenAIClient =
+                sp.GetRequiredService<AzureOpenAIClient>();
 
-            return azureOpenAIClient.GetEmbeddingClient(options.DeploymentName);
+            var options =
+                sp.GetRequiredService<IOptions<AzureEmbeddingOptions>>().Value;
+
+            return azureOpenAIClient.GetEmbeddingClient(
+                options.DeploymentName);
         });
 
-        services.AddScoped<IEmbeddingGenerator, AzureEmbeddingGenerator>();
+        services.AddScoped<
+            IEmbeddingGenerator,
+            AzureEmbeddingGenerator>();
 
         return services;
     }
 
     /// <summary>
     /// Registers the full Azure OpenAI dependency set used by the Worker,
-    /// including embeddings and structured incident analysis.
+    /// including embeddings, Incident analysis and the Operational Assistant.
     /// </summary>
     public static IServiceCollection AddAzureAIDependencies(
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // The Worker requires embeddings as well as incident analysis, so build
-        // the full AI dependency set on top of the shared embedding services.
+        // Build the full AI dependency set on top of the shared embedding services.
         services.AddAzureEmbeddingDependencies(configuration);
 
-        // ChatClient represents the Azure OpenAI deployment used for incident analysis.
+        // ChatClient targets the Azure OpenAI chat deployment shared by
+        // Incident analysis and the Operational Assistant.
         services.AddSingleton(sp =>
         {
-            var azureOpenAIClient = sp.GetRequiredService<AzureOpenAIClient>();
-            var options = sp.GetRequiredService<IOptions<AzureAIOptions>>().Value;
+            var azureOpenAIClient =
+                sp.GetRequiredService<AzureOpenAIClient>();
 
-            return azureOpenAIClient.GetChatClient(options.DeploymentName);
+            var options =
+                sp.GetRequiredService<IOptions<AzureAIOptions>>().Value;
+
+            return azureOpenAIClient.GetChatClient(
+                options.DeploymentName);
         });
 
-        services.AddScoped<IIncidentAnalyzer, AzureIncidentAnalyzer>();
+        services.AddScoped<
+            IIncidentAnalyzer,
+            AzureIncidentAnalyzer>();
+
+        services.AddScoped<
+            IOperationalAssistant,
+            AzureOperationalAssistant>();
 
         return services;
     }
@@ -98,20 +123,29 @@ public static class DependencyInjection
     public static IServiceCollection AddDevelopmentEmbeddingDependencies(
         this IServiceCollection services)
     {
-        services.AddScoped<IEmbeddingGenerator, DevelopmentDummyEmbeddingGenerator>();
+        services.AddScoped<
+            IEmbeddingGenerator,
+            DevelopmentDummyEmbeddingGenerator>();
 
         return services;
     }
 
     /// <summary>
-    /// Registers the deterministic AI implementations used during local development.
-    /// This allows the asynchronous analysis and indexing workflows to run without Azure OpenAI.
+    /// Registers deterministic AI implementations used during local development.
+    /// This allows analysis, retrieval and Assistant workflows to run without Azure OpenAI.
     /// </summary>
     public static IServiceCollection AddDevelopmentAIDependencies(
         this IServiceCollection services)
     {
         services.AddDevelopmentEmbeddingDependencies();
-        services.AddScoped<IIncidentAnalyzer, DevelopmentDummyIncidentAnalyzer>();
+
+        services.AddScoped<
+            IIncidentAnalyzer,
+            DevelopmentDummyIncidentAnalyzer>();
+
+        services.AddScoped<
+            IOperationalAssistant,
+            DevelopmentDummyOperationalAssistant>();
 
         return services;
     }

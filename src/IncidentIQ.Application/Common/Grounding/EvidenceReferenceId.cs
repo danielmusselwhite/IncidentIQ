@@ -1,4 +1,4 @@
-﻿namespace IncidentIQ.Application.Incidents.Analyse.Grounding;
+﻿namespace IncidentIQ.Application.Common.Grounding;
 
 /// <summary>
 /// Generates request-scoped identifiers used to reference grounding evidence

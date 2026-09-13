@@ -1,4 +1,6 @@
-﻿namespace IncidentIQ.Application.Incidents.Analyse.Grounding;
+﻿using IncidentIQ.Application.Common.Grounding;
+
+namespace IncidentIQ.Application.Incidents.Analyse.Grounding;
 
 /// <summary>
 /// Creates the durable evidence snapshot corresponding to an Incident analysis context.
