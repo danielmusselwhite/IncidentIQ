@@ -415,6 +415,7 @@ Provision Event Grid and Functions before integrating them.
 - [ ] Revisit a circuit breaker/named resilience pipeline in Stage 15 if telemetry shows it adds value; avoid adding another retry layer by default.
 - [ ] Atm we just have basic state-based idempotency by disallowing work on incidents that are already marked as completed. Could strengthen this by implementing more robust idempotency mechanisms, such as request tokens, distributed locks, or optimistic concurrecy/ eTags.
 
-- [x] Add architecture and create-incident message-flow diagrams. 
+- [x] Add architecture **and** create-incident message-flow diagrams. 
 - [ ] See about integrating with repo eg github so it can analyse for potentially breaking changes. (Eg if payments fail it may notice that a commit changed the payment service just before these related incidents started rolling in)
-- [ ] Add redis cache on the similar incidents for faster retrieval and reduced load on the primary datastore.
+- [ ] **Add redis cache on the similar incidents for faster retrieval and reduced load on the primary datastore.**
+- [ ] Maybe add some sort of Agentic automation for handling repetitive incident management tasks. Unsure how well this will fit in though.
