@@ -269,8 +269,6 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 
 ### 12B — Combined RAG Context & Grounded Incident Analysis
 
-### 12B — Combined RAG Context & Grounded Incident Analysis
-
 * [x] Keep historical Incident evidence and Runbook evidence separate in the retrieval model.
 * [x] Define the combined RAG context supplied to Incident analysis.
 * [x] Build retrieval input from the Incident title, description, symptoms and relevant metadata.
@@ -288,21 +286,6 @@ Stage 11 builds a complete Runbook vector-search subsystem: source Runbooks are 
 * [x] Verify grounded Incident analysis end-to-end in Azure.
 * [ ] Update RAG documentation and architecture diagrams.
 
-### 12C — Live Similar Incident Discovery
-
-> Deferred — possible future enhancement.
-> The persisted analysis already exposes the historical Incidents used during
-> analysis. Live similarity could later provide a current view as new Incidents
-> are indexed, but it is not required for the core grounded RAG workflow.
-
-* [ ] Add an endpoint for retrieving current similar Incidents for an existing Incident.
-* [ ] Reuse the Incident's persisted embedding rather than generating a new embedding on every request.
-* [ ] Exclude the current Incident from its own similarity results.
-* [ ] Display current similar Incidents on the Incident details page.
-* [ ] Keep current similarity results separate from the historical evidence used by the original AI analysis.
-* [ ] Add caching TODO/design notes for Azure Cache for Redis.
-* [ ] Add endpoint/retrieval tests.
-* [ ] Verify live similar-Incident discovery in Azure.
 ### 12C — Live Similar Incident Discovery
 
 > Deferred — possible future enhancement.
@@ -507,16 +490,72 @@ vector-search and grounded-AI flows are implemented.
 
 ## Stage 13 — AI Evaluation
 
-* [ ] Create realistic synthetic/demo data.
-* [ ] Create controlled AI evaluation dataset.
+Build a repeatable evaluation framework for IncidentIQ's retrieval and grounded AI behaviour.
 
-* [ ] Measure retrieval relevance / Recall\@K.
-* [ ] Measure citation validity.
+### 13A — Evaluation Dataset
 
-* [ ] Evaluate likely-cause and recommendation quality.
-* [ ] Record AI/retrieval evaluation metrics.
+### 13A — Controlled Evaluation Dataset
 
-* [ ] Add engineer analysis feedback functionality.
+* [x] Create an `IncidentIQ.Evaluation` tooling project.
+* [x] Define version-controlled evaluation scenario contracts.
+* [x] Create realistic synthetic historical Incidents with stable IDs.
+* [x] Create realistic synthetic Runbooks with stable IDs.
+* [ ] Create evaluation scenarios with known expected evidence.
+* [ ] Include:
+  * [ ] clear positive retrieval cases.
+  * [ ] ambiguous cases with multiple relevant sources.
+  * [ ] irrelevant semantic distractors.
+  * [ ] no-evidence cases.
+  * [ ] Service filtering cases.
+  * [ ] Environment filtering cases.
+* [ ] Validate that expected evidence IDs exist in the synthetic corpus.
+* [ ] Keep the dataset deterministic and safe to run repeatedly.
+* [ ] Document the purpose and limitations of the evaluation dataset.
+
+### 13B — Retrieval Evaluation
+
+* [ ] Build an evaluation runner for historical-Incident retrieval.
+* [ ] Build an evaluation runner for Runbook retrieval.
+* [ ] Measure Recall@K against expected relevant evidence.
+* [ ] Record returned rank and similarity/distance values.
+* [ ] Verify metadata filtering behaviour.
+* [ ] Add evaluation cases where irrelevant but semantically similar evidence exists.
+* [ ] Produce a machine-readable retrieval evaluation report.
+
+### 13C — Citation & Grounding Evaluation
+
+* [ ] Measure citation validity for generated answers.
+* [ ] Verify every returned `HI-*` / `RB-*` reference exists in supplied evidence.
+* [ ] Measure citation coverage for material claims where practical.
+* [ ] Verify no-evidence answers do not invent citations.
+* [ ] Record citation evaluation results.
+
+### 13D — Generated Analysis Quality
+
+* [ ] Define a small scoring rubric for generated analysis quality.
+* [ ] Evaluate summary quality.
+* [ ] Evaluate likely-cause relevance.
+* [ ] Evaluate recommended-action relevance.
+* [ ] Evaluate appropriate uncertainty when evidence is weak.
+* [ ] Record evaluation results separately from deterministic retrieval metrics.
+* [ ] Document which quality measures require human judgement.
+
+### 13E — Evaluation Reporting
+
+* [ ] Aggregate retrieval and generation metrics.
+* [ ] Record Recall@K and citation-validity results.
+* [ ] Add a concise evaluation report under `docs/`.
+* [ ] Document dataset size, limitations and known failure cases.
+* [ ] Add representative evaluation results to the README without overstating model quality.
+
+### 13F — Engineer Feedback
+
+* [ ] Add useful / not useful feedback for Incident analysis.
+* [ ] Add optional engineer feedback comments.
+* [ ] Persist feedback against the analysed Incident.
+* [ ] Expose feedback through the API.
+* [ ] Add frontend feedback controls.
+* [ ] Keep feedback separate from automated evaluation metrics.
 
 ## Stage 14 — Security, Configuration & API Gateway
 

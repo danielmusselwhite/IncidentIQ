@@ -1,0 +1,30 @@
+[
+  {
+    "runbookId": "20000000-0000-0000-0000-000000000001",
+    "title": "Payment Gateway Recovery",
+    "description": "Investigation and recovery guidance for failures communicating with the external payment gateway.",
+    "service": "Payments",
+    "content": "Use this runbook when payment requests experience gateway timeouts, elevated provider latency, HTTP 5xx responses, connectivity failures or widespread checkout failures.\n\nFirst confirm whether internal Payments endpoints are healthy and determine whether failures occur only when communicating with the external gateway. Inspect dependency telemetry for latency, timeout exceptions, HTTP status codes and connection failures.\n\nCheck the external provider status and compare the beginning of the incident with recent deployments, configuration changes, DNS changes or network policy changes.\n\nFor connectivity failures verify DNS resolution, outbound network access and TLS connectivity to the provider endpoint. For elevated provider latency avoid aggressive retries that could increase load or create duplicate payment attempts.\n\nAfter remediation verify payment success rate, external dependency latency and error rate before declaring recovery."
+  },
+  {
+    "runbookId": "20000000-0000-0000-0000-000000000002",
+    "title": "Payment Provider Rate Limiting",
+    "description": "Operational guidance for HTTP 429 responses and provider-side payment rate limiting.",
+    "service": "Payments",
+    "content": "Use this runbook when the payment provider returns HTTP 429 responses or when transaction volume exceeds provider limits.\n\nConfirm the provider response code and inspect request volume. Determine whether application retries are increasing request pressure. Apply exponential backoff and respect Retry-After guidance where available.\n\nCheck configured provider quotas and contact the payment provider when sustained legitimate traffic exceeds the contracted limit.\n\nMonitor successful payment rate and 429 response volume after mitigation."
+  },
+  {
+    "runbookId": "20000000-0000-0000-0000-000000000003",
+    "title": "Database Connection Pool Exhaustion",
+    "description": "Guidance for diagnosing exhausted database connection pools and SQL timeout failures.",
+    "service": "Payments",
+    "content": "Use this runbook when the service reports SQL connection acquisition timeouts, connection pool exhaustion or abnormally high database latency.\n\nInspect active connection counts, long-running queries and request concurrency. Confirm connections are correctly disposed and review recent changes to database access behaviour.\n\nReduce unnecessary concurrency where appropriate and investigate slow queries before increasing pool limits."
+  },
+  {
+    "runbookId": "20000000-0000-0000-0000-000000000004",
+    "title": "Orders Downstream Dependency Recovery",
+    "description": "Investigation guidance for downstream timeouts affecting the Orders service.",
+    "service": "Orders",
+    "content": "Use this runbook when Orders requests fail because a downstream fulfilment or logistics dependency is unavailable or slow.\n\nInspect downstream request latency, HTTP 5xx and 504 responses, timeout exceptions and provider status. Verify connectivity and recent configuration changes before escalating to the downstream provider."
+  }
+]
