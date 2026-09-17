@@ -492,25 +492,23 @@ vector-search and grounded-AI flows are implemented.
 
 Build a repeatable evaluation framework for IncidentIQ's retrieval and grounded AI behaviour.
 
-### 13A — Evaluation Dataset
-
 ### 13A — Controlled Evaluation Dataset
 
 * [x] Create an `IncidentIQ.Evaluation` tooling project.
 * [x] Define version-controlled evaluation scenario contracts.
 * [x] Create realistic synthetic historical Incidents with stable IDs.
 * [x] Create realistic synthetic Runbooks with stable IDs.
-* [ ] Create evaluation scenarios with known expected evidence.
-* [ ] Include:
-  * [ ] clear positive retrieval cases.
-  * [ ] ambiguous cases with multiple relevant sources.
-  * [ ] irrelevant semantic distractors.
-  * [ ] no-evidence cases.
-  * [ ] Service filtering cases.
-  * [ ] Environment filtering cases.
-* [ ] Validate that expected evidence IDs exist in the synthetic corpus.
-* [ ] Keep the dataset deterministic and safe to run repeatedly.
-* [ ] Document the purpose and limitations of the evaluation dataset.
+* [x] Create evaluation scenarios with known expected evidence.
+* [x] Include:
+  * [x] clear positive retrieval cases.
+  * [x] ambiguous cases with multiple relevant sources.
+  * [x] irrelevant semantic distractors.
+  * [x] no-evidence cases.
+  * [x] Service filtering cases.
+  * [x] Environment filtering cases.
+* [x] Validate that expected evidence IDs exist in the synthetic corpus.
+* [x] Keep the dataset deterministic and safe to run repeatedly.
+* [x] Document the purpose and limitations of the evaluation dataset.
 
 ### 13B — Retrieval Evaluation
 

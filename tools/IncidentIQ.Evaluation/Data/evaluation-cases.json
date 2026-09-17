@@ -1,3 +1,370 @@
-{
-
-}
+[
+  {
+    "id": "assistant-payment-gateway-timeout-001",
+    "name": "Payment gateway timeout in Production",
+    "scenarioType": "OperationalQuestion",
+    "input": {
+      "question": "Why are payment requests timing out when calling the external gateway?",
+      "incident": null,
+      "serviceFilter": "Payments",
+      "environmentFilter": "Production"
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000001"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000001"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "external payment gateway latency",
+        "gateway connectivity"
+      ],
+      "recommendedActionConcepts": [
+        "inspect dependency telemetry",
+        "check provider status",
+        "verify network connectivity"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "assistant",
+      "payments",
+      "positive-retrieval"
+    ],
+    "notes": "Clear positive retrieval case."
+  },
+  {
+    "id": "assistant-payment-rate-limit-001",
+    "name": "Payment provider rate limiting",
+    "scenarioType": "OperationalQuestion",
+    "input": {
+      "question": "Payments are receiving HTTP 429 responses from the provider. What should I investigate?",
+      "incident": null,
+      "serviceFilter": "Payments",
+      "environmentFilter": "Production"
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000002"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000002"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "provider rate limiting",
+        "request volume exceeding provider limits"
+      ],
+      "recommendedActionConcepts": [
+        "inspect request volume",
+        "apply exponential backoff",
+        "check provider quotas"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "assistant",
+      "payments",
+      "rate-limiting",
+      "positive-retrieval"
+    ]
+  },
+  {
+    "id": "assistant-payment-database-001",
+    "name": "Payment database connection exhaustion",
+    "scenarioType": "OperationalQuestion",
+    "input": {
+      "question": "Payment processing is slow and we are seeing SQL connection timeouts. What is likely happening?",
+      "incident": null,
+      "serviceFilter": "Payments",
+      "environmentFilter": "Production"
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000004"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000003"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "database connection pool exhaustion"
+      ],
+      "recommendedActionConcepts": [
+        "inspect connection counts",
+        "inspect long-running queries",
+        "check connection disposal"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "assistant",
+      "payments",
+      "database",
+      "positive-retrieval"
+    ]
+  },
+  {
+    "id": "assistant-orders-timeout-001",
+    "name": "Orders downstream timeout",
+    "scenarioType": "OperationalQuestion",
+    "input": {
+      "question": "Order creation is returning HTTP 504 responses while waiting for a downstream provider.",
+      "incident": null,
+      "serviceFilter": "Orders",
+      "environmentFilter": "Production"
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000005"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000004"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "downstream provider latency",
+        "downstream dependency failure"
+      ],
+      "recommendedActionConcepts": [
+        "inspect downstream latency",
+        "check provider status",
+        "verify connectivity"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "assistant",
+      "orders",
+      "positive-retrieval"
+    ]
+  },
+  {
+    "id": "assistant-ambiguous-timeout-001",
+    "name": "Ambiguous external dependency timeout",
+    "scenarioType": "OperationalQuestion",
+    "input": {
+      "question": "An external dependency is timing out and requests are returning HTTP 504 responses. What should I investigate?",
+      "incident": null,
+      "serviceFilter": null,
+      "environmentFilter": null
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000001",
+        "10000000-0000-0000-0000-000000000005",
+        "10000000-0000-0000-0000-000000000007"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000001",
+        "20000000-0000-0000-0000-000000000004"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "external dependency latency",
+        "connectivity failure"
+      ],
+      "recommendedActionConcepts": [
+        "inspect dependency telemetry",
+        "check provider status",
+        "verify connectivity"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "assistant",
+      "ambiguous",
+      "multiple-relevant-sources"
+    ]
+  },
+  {
+    "id": "assistant-service-filter-001",
+    "name": "Payment timeout scoped by Service",
+    "scenarioType": "OperationalQuestion",
+    "input": {
+      "question": "Requests are timing out with HTTP 504 responses. What should I investigate?",
+      "incident": null,
+      "serviceFilter": "Payments",
+      "environmentFilter": null
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000001",
+        "10000000-0000-0000-0000-000000000007"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000001"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "payment gateway latency",
+        "payment gateway connectivity"
+      ],
+      "recommendedActionConcepts": [
+        "inspect payment dependency telemetry",
+        "verify gateway connectivity"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "assistant",
+      "filter",
+      "service"
+    ]
+  },
+  {
+    "id": "assistant-environment-filter-001",
+    "name": "Payment timeout scoped to Production",
+    "scenarioType": "OperationalQuestion",
+    "input": {
+      "question": "Payment gateway calls are timing out with HTTP 504 responses.",
+      "incident": null,
+      "serviceFilter": "Payments",
+      "environmentFilter": "Production"
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000001"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000001"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "payment gateway latency",
+        "gateway connectivity"
+      ],
+      "recommendedActionConcepts": [
+        "inspect dependency telemetry",
+        "verify connectivity"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "assistant",
+      "filter",
+      "environment"
+    ],
+    "notes": "The similar Staging Incident must not satisfy the Production historical-Incident expectation."
+  },
+  {
+    "id": "assistant-no-evidence-001",
+    "name": "No indexed evidence for Inventory",
+    "scenarioType": "OperationalQuestion",
+    "input": {
+      "question": "Why are Inventory Kafka consumers experiencing severe consumer lag?",
+      "incident": null,
+      "serviceFilter": "Inventory",
+      "environmentFilter": "Production"
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [],
+      "runbookIds": []
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [],
+      "recommendedActionConcepts": [],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "assistant",
+      "no-evidence"
+    ],
+    "notes": "No Inventory evidence exists in the controlled corpus."
+  },
+  {
+    "id": "incident-payment-timeout-001",
+    "name": "Grounded analysis of current Payment timeout",
+    "scenarioType": "IncidentAnalysis",
+    "input": {
+      "question": null,
+      "incident": {
+        "title": "Checkout payments returning gateway timeouts",
+        "description": "Customers cannot complete checkout because calls from Payments to the external payment provider are timing out.",
+        "symptoms": "HTTP 504 responses, elevated dependency latency and failed checkout attempts.",
+        "service": "Payments",
+        "environment": "Production",
+        "severity": "High"
+      },
+      "serviceFilter": null,
+      "environmentFilter": null
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000001"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000001"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "external payment gateway latency",
+        "gateway connectivity"
+      ],
+      "recommendedActionConcepts": [
+        "inspect external dependency telemetry",
+        "check provider status",
+        "verify connectivity"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "incident-analysis",
+      "payments",
+      "positive-retrieval"
+    ]
+  },
+  {
+    "id": "incident-orders-timeout-001",
+    "name": "Grounded analysis of current Orders timeout",
+    "scenarioType": "IncidentAnalysis",
+    "input": {
+      "question": null,
+      "incident": {
+        "title": "Order creation requests timing out",
+        "description": "Order creation is failing while waiting for the external fulfilment provider.",
+        "symptoms": "HTTP 504 responses, downstream timeouts and elevated order latency.",
+        "service": "Orders",
+        "environment": "Production",
+        "severity": "High"
+      },
+      "serviceFilter": null,
+      "environmentFilter": null
+    },
+    "expectedEvidence": {
+      "historicalIncidentIds": [
+        "10000000-0000-0000-0000-000000000005"
+      ],
+      "runbookIds": [
+        "20000000-0000-0000-0000-000000000004"
+      ]
+    },
+    "expectedOutcome": {
+      "likelyCauseConcepts": [
+        "downstream fulfilment provider latency",
+        "downstream dependency failure"
+      ],
+      "recommendedActionConcepts": [
+        "inspect downstream latency",
+        "verify connectivity",
+        "check provider status"
+      ],
+      "expectUncertainty": true
+    },
+    "tags": [
+      "incident-analysis",
+      "orders",
+      "positive-retrieval"
+    ]
+  }
+]

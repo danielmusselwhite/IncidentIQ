@@ -11,4 +11,10 @@
     <ProjectReference Include="..\..\src\IncidentIQ.Domain\IncidentIQ.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+  <None Update="Data\*.json">
+    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+  </None>
+</ItemGroup>
+
 </Project>
