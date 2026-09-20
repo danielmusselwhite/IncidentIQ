@@ -514,11 +514,11 @@ Build a repeatable evaluation framework for IncidentIQ's retrieval and grounded 
 
 * [x] Build an evaluation runner for historical-Incident retrieval.
 * [x] Build an evaluation runner for Runbook retrieval.
-* [ ] Measure Recall@K against expected relevant evidence.
-* [ ] Measure Precision@K against expected relevant evidence.
+* [x] Measure Recall@K against expected relevant evidence.
+* [x] Measure Precision@K against expected relevant evidence.
 * [x] Record returned rank and similarity/distance values.
-* [ ] Measure no-evidence retrieval behaviour separately.
-* [ ] Verify metadata filtering behaviour.
+* [x] Measure no-evidence retrieval behaviour separately.
+* [x] Verify metadata filtering behaviour.
 * [x] Add evaluation cases where irrelevant but semantically similar evidence exists.
 * [ ] Produce a machine-readable retrieval evaluation report.
 
