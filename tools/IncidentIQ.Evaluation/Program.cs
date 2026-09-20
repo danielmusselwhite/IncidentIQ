@@ -2,6 +2,7 @@
 using IncidentIQ.Application.Runbooks.Index;
 using IncidentIQ.Evaluation.Data;
 using IncidentIQ.Evaluation.Models;
+using IncidentIQ.Evaluation.Reporting;
 using IncidentIQ.Evaluation.Retrieval;
 using IncidentIQ.Infrastructure.AzureAI;
 using Microsoft.Extensions.Configuration;
@@ -108,8 +109,48 @@ try
             result);
     }
 
-    RetrievalConsoleReporter.WriteSummary(
-        results);
+    #region evaluation report
+    var embeddingDeployment =
+    builder.Configuration["AzureAI:Embedding:DeploymentName"]
+    ?? throw new InvalidOperationException(
+        "AzureAI:Embedding:DeploymentName is not configured.");
+
+    var embeddingModel =
+        builder.Configuration["AzureAI:Embedding:ModelName"]
+        ?? throw new InvalidOperationException(
+            "AzureAI:Embedding:ModelName is not configured.");
+
+    var embeddingDimensions =
+        builder.Configuration.GetValue<int?>(
+            "AzureAI:Embedding:Dimensions")
+        ?? throw new InvalidOperationException(
+            "AzureAI:Embedding:Dimensions is not configured.");
+
+    var report =
+    EvaluationReportBuilder.Build(
+        results,
+        historicalIncidentCount: dataset.HistoricalIncidents.Count,
+        runbookCount: dataset.Runbooks.Count,
+        embeddingDeployment: embeddingDeployment,
+        embeddingModel: embeddingModel,
+        embeddingDimensions: embeddingDimensions);
+
+    RetrievalConsoleReporter.WriteSummary(report);
+    #endregion
+
+    var resultsDirectory =
+        Path.Combine(
+            AppContext.BaseDirectory,
+            "Results");
+
+    var reportPath =
+        await EvaluationReportWriter.WriteAsync(
+            report,
+            resultsDirectory);
+
+    Console.WriteLine();
+    Console.WriteLine(
+        $"Machine-readable report written to: {reportPath}");
 }
 catch (Exception exception)
 {

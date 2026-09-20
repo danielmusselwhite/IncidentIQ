@@ -1,11 +1,12 @@
 ﻿using IncidentIQ.Evaluation.Models;
+using IncidentIQ.Evaluation.Reporting;
 
 namespace IncidentIQ.Evaluation.Retrieval;
 
 /// <summary>
 /// Writes human-readable retrieval evaluation results to the console.
 /// </summary>
-public static class RetrievalConsoleReporter
+internal static class RetrievalConsoleReporter
 {
     public static void WriteCase(
         RetrievalEvaluationResult result)
@@ -22,7 +23,7 @@ public static class RetrievalConsoleReporter
     }
 
     public static void WriteSummary(
-        IReadOnlyList<RetrievalEvaluationResult> results)
+        EvaluationReport report)
     {
         Console.WriteLine();
         Console.WriteLine("========================================");
@@ -33,21 +34,21 @@ public static class RetrievalConsoleReporter
         Console.WriteLine("Historical Incidents");
 
         WriteMetricSummary(
-            results
-                .SelectMany(result =>
-                    result.HistoricalIncidents.Metrics)
-                .ToList());
+            report.HistoricalIncidentMetrics);
 
         Console.WriteLine();
         Console.WriteLine("Runbooks");
 
         WriteMetricSummary(
-            results
-                .SelectMany(result =>
-                    result.Runbooks.Metrics)
-                .ToList());
+            report.RunbookMetrics);
 
-        WriteNoEvidenceSummary(results);
+        if (report.NoEvidence.Total > 0)
+        {
+            Console.WriteLine();
+            Console.WriteLine(
+                $"No-evidence checks: " +
+                $"{report.NoEvidence.Passed}/{report.NoEvidence.Total} passed");
+        }
     }
 
     private static void WriteHistoricalIncidents(
@@ -108,55 +109,15 @@ public static class RetrievalConsoleReporter
     }
 
     private static void WriteMetricSummary(
-        IReadOnlyList<RetrievalMetric> metrics)
+        IReadOnlyList<RetrievalMetricSummary> metrics)
     {
-        foreach (var group in metrics
-                     .GroupBy(metric => metric.K)
-                     .OrderBy(group => group.Key))
+        foreach (var metric in metrics)
         {
-            var averagePrecision =
-                group.Average(metric => metric.Precision);
-
-            var averageRecall =
-                group.Average(metric => metric.Recall);
+            Console.WriteLine(
+                $"  Mean P@{metric.K}: {metric.MeanPrecision:F3}");
 
             Console.WriteLine(
-                $"  Mean P@{group.Key}: {averagePrecision:F3}");
-
-            Console.WriteLine(
-                $"  Mean R@{group.Key}: {averageRecall:F3}");
+                $"  Mean R@{metric.K}: {metric.MeanRecall:F3}");
         }
-    }
-
-    private static void WriteNoEvidenceSummary(
-        IReadOnlyList<RetrievalEvaluationResult> results)
-    {
-        var checks =
-            results
-                .SelectMany(result => new bool?[]
-                {
-                    result.HistoricalIncidents.ExpectsNoEvidence
-                        ? result.HistoricalIncidents.NoEvidenceCorrect
-                        : null,
-
-                    result.Runbooks.ExpectsNoEvidence
-                        ? result.Runbooks.NoEvidenceCorrect
-                        : null
-                })
-                .Where(result => result.HasValue)
-                .Select(result => result!.Value)
-                .ToList();
-
-        if (checks.Count == 0)
-        {
-            return;
-        }
-
-        var passed =
-            checks.Count(result => result);
-
-        Console.WriteLine();
-        Console.WriteLine(
-            $"No-evidence checks: {passed}/{checks.Count} passed");
     }
 }
