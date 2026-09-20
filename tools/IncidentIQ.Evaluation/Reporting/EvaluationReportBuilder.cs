@@ -1,4 +1,5 @@
-﻿using IncidentIQ.Evaluation.Models;
+﻿using IncidentIQ.Evaluation.Citations;
+using IncidentIQ.Evaluation.Models;
 
 namespace IncidentIQ.Evaluation.Reporting;
 
@@ -9,6 +10,7 @@ internal static class EvaluationReportBuilder
 {
     public static EvaluationReport Build(
     IReadOnlyList<RetrievalEvaluationResult> results,
+    IReadOnlyList<CitationEvaluationResult> citationResults,
     int historicalIncidentCount,
     int runbookCount,
     string embeddingDeployment,
@@ -16,6 +18,7 @@ internal static class EvaluationReportBuilder
     int embeddingDimensions)
     {
         ArgumentNullException.ThrowIfNull(results);
+        ArgumentNullException.ThrowIfNull(citationResults);
 
         if (string.IsNullOrWhiteSpace(embeddingDeployment))
         {
@@ -51,6 +54,10 @@ internal static class EvaluationReportBuilder
         var noEvidenceSummary =
             BuildNoEvidenceSummary(results);
 
+        var citationEvaluation =
+            CitationEvaluationSummaryBuilder.Build(
+                citationResults);
+
         return new EvaluationReport(
             GeneratedAtUtc: DateTimeOffset.UtcNow,
             EmbeddingDeployment: embeddingDeployment,
@@ -62,7 +69,9 @@ internal static class EvaluationReportBuilder
             HistoricalIncidentMetrics: historicalIncidentMetrics,
             RunbookMetrics: runbookMetrics,
             NoEvidence: noEvidenceSummary,
-            Cases: results);
+            CitationEvaluation: citationEvaluation,
+            Cases: results,
+            CitationCases: citationResults);
     }
 
     private static IReadOnlyList<RetrievalMetricSummary> BuildMetricSummary(

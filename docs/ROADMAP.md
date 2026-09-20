@@ -520,15 +520,15 @@ Build a repeatable evaluation framework for IncidentIQ's retrieval and grounded 
 * [x] Measure no-evidence retrieval behaviour separately.
 * [x] Verify metadata filtering behaviour.
 * [x] Add evaluation cases where irrelevant but semantically similar evidence exists.
-* [ ] Produce a machine-readable retrieval evaluation report.
+* [x] Produce a machine-readable retrieval evaluation report.
 
 ### 13C — Citation & Grounding Evaluation
 
-* [ ] Measure citation validity for generated answers.
-* [ ] Verify every returned `HI-*` / `RB-*` reference exists in supplied evidence.
+* [x] Measure citation validity for generated answers.
+* [x] Verify every returned `HI-*` / `RB-*` reference exists in supplied evidence.
 * [ ] Measure citation coverage for material claims where practical.
-* [ ] Verify no-evidence answers do not invent citations.
-* [ ] Record citation evaluation results.
+* [x] Verify no-evidence answers do not invent citations.
+* [x] Record citation evaluation results.
 
 ### 13D — Generated Analysis Quality
 

@@ -1,4 +1,5 @@
-﻿using IncidentIQ.Evaluation.Models;
+﻿using IncidentIQ.Evaluation.Citations;
+using IncidentIQ.Evaluation.Models;
 
 namespace IncidentIQ.Evaluation.Reporting;
 
@@ -16,7 +17,9 @@ internal sealed record EvaluationReport(
     IReadOnlyList<RetrievalMetricSummary> HistoricalIncidentMetrics,
     IReadOnlyList<RetrievalMetricSummary> RunbookMetrics,
     NoEvidenceSummary NoEvidence,
-    IReadOnlyList<RetrievalEvaluationResult> Cases);
+    CitationEvaluationSummary CitationEvaluation,
+    IReadOnlyList<RetrievalEvaluationResult> Cases,
+    IReadOnlyList<CitationEvaluationResult> CitationCases);
 
 /// <summary>
 /// Represents the aggregate result of no-evidence evaluation cases.
