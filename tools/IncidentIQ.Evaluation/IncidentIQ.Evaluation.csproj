@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\src\IncidentIQ.Application\IncidentIQ.Application.csproj" />
     <ProjectReference Include="..\..\src\IncidentIQ.Domain\IncidentIQ.Domain.csproj" />
   </ItemGroup>
 

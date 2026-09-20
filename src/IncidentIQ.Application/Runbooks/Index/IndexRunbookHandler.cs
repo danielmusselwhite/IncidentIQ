@@ -50,10 +50,11 @@ public sealed class IndexRunbookHandler(
             // Include useful Runbook metadata in the text sent to the embedding
             // model so semantically similar queries can benefit from context
             // such as the Runbook title and owning service.
-            var textToEmbed = BuildEmbeddingText(
-                runbook.Title,
-                runbook.Service,
-                content);
+            var textToEmbed =
+                RunbookEmbeddingTextBuilder.Build(
+                    runbook.Title,
+                    runbook.Service,
+                    content);
 
             var embedding = await embeddingGenerator.GenerateAsync(
                 textToEmbed,

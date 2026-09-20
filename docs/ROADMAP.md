@@ -512,12 +512,14 @@ Build a repeatable evaluation framework for IncidentIQ's retrieval and grounded 
 
 ### 13B — Retrieval Evaluation
 
-* [ ] Build an evaluation runner for historical-Incident retrieval.
-* [ ] Build an evaluation runner for Runbook retrieval.
+* [x] Build an evaluation runner for historical-Incident retrieval.
+* [x] Build an evaluation runner for Runbook retrieval.
 * [ ] Measure Recall@K against expected relevant evidence.
-* [ ] Record returned rank and similarity/distance values.
+* [ ] Measure Precision@K against expected relevant evidence.
+* [x] Record returned rank and similarity/distance values.
+* [ ] Measure no-evidence retrieval behaviour separately.
 * [ ] Verify metadata filtering behaviour.
-* [ ] Add evaluation cases where irrelevant but semantically similar evidence exists.
+* [x] Add evaluation cases where irrelevant but semantically similar evidence exists.
 * [ ] Produce a machine-readable retrieval evaluation report.
 
 ### 13C — Citation & Grounding Evaluation
