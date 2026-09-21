@@ -1,656 +1,149 @@
-# IncidentIQ — Design Decisions & Trade-offs
+# Design Decisions & Trade-offs
 
-This document records the main architecture, reliability, messaging, persistence, and AI-integration decisions in IncidentIQ and explains **why** they were chosen.
+This document records the decisions that materially shape IncidentIQ. Runtime details live in [Development](DEVELOPMENT.md) and [Runtime Flows](flows/README.md).
 
-For runtime setup see [DEVELOPMENT.md](DEVELOPMENT.md). For test coverage and manual verification see [tests/ReadMe.md](../tests/ReadMe.md).
+## 1. Clean Architecture Boundaries
 
-## 1. Asynchronous Incident Processing
+- **Domain:** entities and business state.
+- **Application:** use cases and interfaces.
+- **Infrastructure:** Azure/Cosmos/Service Bus implementations.
+- **API/Worker:** transport hosts.
 
-Incident analysis runs outside the HTTP request:
+**Why:** application logic stays testable and independent of Azure SDKs.
+
+## 2. Incident Analysis Is Asynchronous
 
 ```text
-API accepts Incident
-      ↓
-durable asynchronous work
-      ↓
-Worker processes analysis
+API → durable work → Service Bus → Worker → analysis
 ```
 
-**Why:** API requests stay responsive and analysis can retry or scale independently.
+- Keeps HTTP requests fast.
+- Allows independent retry, buffering and scaling.
+- Incident state is eventually consistent: `Queued → Processing → Completed/Failed`.
 
-**Trade-off:** the system is eventually consistent, so an Incident may remain `Queued` or `Processing` before reaching a terminal state.
+## 3. Transactional Outbox Solves the Dual Write
 
-## 2. Processing State and Attempt Metadata
-
-Current lifecycle:
-
-```text
-Queued → Processing → Completed
-                  └──→ Failed
-```
-
-The Incident tracks `AttemptCount`, `LastAttemptAt`, `ProcessingStartedAt`, `CompletedAt`, `FailedAt`, and `FailureReason`.
-
-**Why:** processing state and operational metadata remain visible in the application rather than existing only in logs.
-
-**Trade-off:** this is not a full historical audit of every attempt.
-
-## 3. Service Bus Retries and DLQ
-
-Message-level processing failures use Service Bus redelivery rather than a custom application retry scheduler.
+Incident creation atomically writes:
 
 ```text
-Processing succeeds
-→ complete message
-
-Processing fails before max deliveries
-→ leave unsettled / redeliver
-
-Invalid payload
-→ immediate DLQ
-
-Final allowed processing failure
-→ mark Incident Failed
-→ DLQ
-```
-
-**Why:** Service Bus already provides durable retry and dead-letter semantics.
-
-**Trade-off:** the outer retry unit is the complete analysis message. Azure AI performs only a small bounded set of SDK-level retries for short-lived transport/service faults before allowing the failure to propagate back to the Worker.
-
-The DLQ preserves failed work for investigation and deliberate backend retry/requeue rather than silently discarding it.
-
-## 4. Basic Idempotency and Duplicate Detection
-
-IncidentIQ assumes messages may be delivered more than once.
-
-An Incident already in `Completed` state is treated as a no-op. An Incident in `Processing` can be attempted again because that may represent a legitimate retry.
-
-Each `AnalyseIncidentCommand` has a stable `CommandId`, which is used as the Service Bus `MessageId`.
-
-```text
-same CommandId
-      ↓
-same MessageId
-      ↓
-Service Bus duplicate detection
-      +
-Completed-state idempotency
-```
-
-**Why:** the goal is safe repeated delivery, not an unrealistic end-to-end exactly-once guarantee.
-
-**Trade-off:** the current state check is intentionally basic. Cosmos ETags/optimistic concurrency or explicit command-processing records can strengthen protection before high-concurrency Worker scaling.
-
-## 5. Cosmos + Service Bus Dual-Write Problem
-
-The original flow performed two independent writes:
-
-```text
-Create Incident in Cosmos
-      ↓
-Publish Service Bus command
-```
-
-If Cosmos succeeded and Service Bus failed, the Incident could remain `Queued` with no durable analysis request. A normal transaction cannot span Cosmos DB and Service Bus.
-
-## 6. Transactional Outbox
-
-Incident creation now writes both documents atomically:
-
-```text
-Cosmos TransactionalBatch
-├── IncidentDocument
+Incidents partition
+├── Incident
 └── IncidentAnalysisOutboxDocument
 ```
 
-The API no longer publishes directly to Service Bus.
+A Change Feed relay publishes the outbox command to Service Bus.
 
-The `Incidents` container uses `/incidentId` so the Incident and its outbox document share one logical partition while retaining different document IDs.
+**Why:** avoids an Incident being saved while its analysis command is lost.
 
-```text
-Incident
-id = incident-123
-incidentId = incident-123
+**Trade-off:** Change Feed is at-least-once, so duplicates must be safe.
 
-Outbox
-id = outbox-command-456
-incidentId = incident-123
-```
+## 4. At-Least-Once Delivery, Not Exactly-Once
 
-**Why:** either both the business state and durable analysis request are created, or neither is.
+Protection includes:
+- stable `CommandId` → Service Bus `MessageId`,
+- Service Bus duplicate detection,
+- completed-state idempotency,
+- bounded delivery attempts and DLQ.
 
-**Trade-off:** the `Incidents` container contains multiple document types, so queries use a `documentType` discriminator where appropriate.
+**Trade-off:** concurrent Workers could still duplicate expensive work before one completes. ETags/optimistic concurrency are a future hardening option.
 
-## 7. Change Feed Outbox Relay
+## 5. Analysis and Completed State Persist Atomically
 
-The durable outbox is relayed asynchronously:
+A successful analysis writes the completed Incident and analysis/evidence documents in one Cosmos transactional batch.
 
-```text
-Incidents container
-      ↓
-Cosmos Change Feed
-      ↓
-IncidentOutboxWorker
-      ↓
-IIncidentAnalysisQueue
-      ↓
-Service Bus
-```
+**Why:** avoids `Completed` without an analysis, or an analysis without completed state.
 
-`ChangeFeedLeases` is an SDK-managed Cosmos container used to track Change Feed ownership and checkpoint progress.
+## 6. Purpose-Specific Persistence Interfaces
 
-**Why:** Change Feed avoids custom polling, distributed locking, checkpointing, and multi-Worker coordination.
+Examples:
+- `IIncidentRepository` — source Incident state.
+- `IIncidentSubmissionStore` — atomic Incident + outbox write.
+- `IIncidentAnalysisStore` / `Reader` — analysis write/read.
+- retrievers — semantic search.
 
-**Trade-off:** Change Feed is at-least-once. The same outbox record may be observed again, which is why stable command IDs and idempotent processing remain necessary.
+**Why:** repositories do not become catch-all persistence/search/messaging interfaces.
 
-Outbox documents are not currently updated with a `Published` flag; Change Feed lease/checkpoint state tracks relay progress. Historical outbox cleanup can later be handled through TTL or another retention policy.
-
-## 8. Atomic Completed State + Analysis Persistence
-
-A successful AI analysis changes two pieces of durable state:
+## 7. Source Data and Vector Indexes Stay Separate
 
 ```text
-Incident → Completed
-+
-IncidentAnalysisDocument
+Runbooks → RunbookChunks
+Incidents → HistoricalIncidentVectors
 ```
 
-`IIncidentAnalysisStore` is implemented by `CosmosIncidentAnalysisStore`, which persists both in one Cosmos transactional batch inside the Incident partition.
+Derived vectors can be rebuilt when chunking/models/indexes change without changing source records.
 
-**Why:** the system should not expose `Completed` while the corresponding analysis document failed to persist, or persist an analysis while the Incident still appears incomplete.
+## 8. Indexing Uses Change Feed + Service Bus
 
-**Trade-off:** this relies on keeping analysis documents in the same logical Incident partition.
+Runbook and historical-Incident indexing are asynchronous.
 
-## 9. Separate Analysis Read Path
+**Why:** CRUD/completion paths do not wait for embeddings; indexing gets durable retry/DLQ behavior.
 
-Analysis retrieval is deliberately separate from `IIncidentRepository`:
+## 9. AI Capabilities Are Provider-Independent
+
+Application owns:
+- `IIncidentAnalyzer`
+- `IEmbeddingGenerator`
+- `IOperationalAssistant`
+
+Infrastructure supplies deterministic Development and Azure implementations.
+
+## 10. Structured Output + Semantic Validation
+
+Azure OpenAI schemas validate response shape. Application code validates request-specific meaning, especially `HI-*` / `RB-*` references.
+
+**Why:** a static schema cannot know which evidence was retrieved for one request.
+
+## 11. Grounding Uses Two Evidence Types
+
+- Historical Incidents: previous observations.
+- Runbooks: operational guidance.
+
+One query/Incident embedding is reused for both retrieval paths where appropriate.
+
+**Trade-off:** retrieval ranking is a similarity signal, not calibrated AI confidence.
+
+## 12. Assistant Conversation Is Stateless on the Backend
+
+React keeps recent conversation state and resends it with each request.
+
+- Current question drives retrieval.
+- History provides language continuity only.
+- Evidence remains answer-scoped.
+
+Persisted conversations are deferred until they provide enough product value to justify ownership/retention rules.
+
+## 13. AI Retry and Telemetry Stay Bounded
+
+- Azure SDK: small transient retry policy.
+- Adapter: overall timeout + failure classification.
+- Service Bus: durable outer retry for asynchronous work.
+- Logs record metadata, not raw prompts/evidence/model responses.
+
+## 14. User Identity and Workload Identity Are Separate
 
 ```text
-IIncidentRepository
-→ Incident state
-
-IIncidentAnalysisReader
-→ persisted AI analysis
+User → Entra → React/MSAL → API
+API / Worker → Managed Identity → Azure resources
 ```
 
-`CosmosIncidentAnalysisReader` performs a point read of the deterministic analysis document ID for the Incident partition.
+- API validates Entra JWTs and requires `access_as_user`.
+- Managed Identities access Cosmos, Service Bus, Azure OpenAI and ACR.
+- User access tokens are not forwarded to Azure dependencies.
 
-**Why:** Incident persistence and AI-analysis persistence have different responsibilities and evolve independently.
+Entra app registrations are stable tenant bootstrap configuration; normal Azure infrastructure remains in Bicep.
 
-## 10. Provider-Independent AI Boundary
+## 15. Bootstrap Infrastructure Is Separate
 
-Application defines the capabilities it needs; Infrastructure supplies the Azure or deterministic Development implementations:
+`rg-incidentiq-bootstrap` holds GitHub deployment identity/OIDC. `rg-incidentiq-dev` is disposable.
 
-```text
-IIncidentAnalyzer
-├── DevelopmentDummyIncidentAnalyzer
-└── AzureIncidentAnalyzer
-
-IEmbeddingGenerator
-├── DevelopmentDummyEmbeddingGenerator
-└── AzureEmbeddingGenerator
-
-IOperationalAssistant
-├── DevelopmentDummyOperationalAssistant
-└── AzureOperationalAssistant
-```
-
-`IncidentAnalysisResult`, `OperationalAnswer`, retrieval matches, likely causes and recommended actions remain Application models rather than Azure SDK types.
-
-**Why:** Application owns the use cases without depending on Azure OpenAI, Cosmos, or model-provider contracts. Normal local development can still exercise the complete orchestration flow without Azure credentials.
-
-## 11. Structured AI Output
-
-Both Azure chat integrations require structured output:
-
-- `AzureIncidentAnalysisSchema` defines the expected Incident-analysis JSON shape.
-- `AzureOperationalAssistantSchema` defines the Assistant answer-section shape.
-
-Azure responses are deserialised into Infrastructure DTOs and then mapped into provider-independent Application models.
-
-**Why:** persistence, API and frontend code receive predictable contracts rather than arbitrary prose.
-
-**Trade-off:** JSON-schema validity does not guarantee that a citation is real or that an answer is operationally correct. Request-specific evidence validation is therefore handled separately in Application, and formal answer/retrieval quality evaluation remains a later stage.
-
-## 12. AI Resilience Boundaries
-
-IncidentIQ deliberately avoids stacking multiple large retry layers.
-
-```text
-Azure AI SDK
-→ small bounded retry policy
-→ individual network timeout
-
-AzureIncidentAnalyzer
-→ overall request timeout
-→ classify failure
-→ rethrow
-
-AnalyseIncidentWorker / Service Bus
-→ durable message redelivery
-→ DLQ after retry exhaustion
-```
-
-The analyzer classifies failures as timeout, throttled, service failure, client failure, or invalid response. Genuine caller/Worker cancellation remains `OperationCanceledException` and is not turned into an AI failure.
-
-**Why:** SDK retries handle very short-lived service/network faults, while Service Bus remains the durable outer retry mechanism for the complete workflow.
-
-**Trade-off:** a future circuit breaker or richer resilience pipeline may still be useful, but adding another retry layer now could multiply AI calls unnecessarily.
-
-## 13. AI Telemetry Without Payload Logging
-
-The Azure analyzer records structured success/failure logs including:
-
-```text
-DurationMs
-FailureCategory
-DeploymentName
-ModelName
-```
-
-It deliberately does not log Incident descriptions, symptoms, prompts, or raw model responses.
-
-**Why:** The analysis pipeline needs enough telemetry to diagnose latency and failure behaviour without unnecessarily recording potentially sensitive operational payloads.
-
-Full dependency metrics, distributed tracing, dashboards, and KQL remain future work.
-
-## 14. At-Least-Once by Design
-
-The reliability model combines:
-
-```text
-Transactional Outbox
-        +
-Change Feed checkpoints
-        +
-Stable CommandId / MessageId
-        +
-Service Bus duplicate detection
-        +
-Application state-based idempotency
-```
-
-This provides **at-least-once delivery with duplicate-safe processing** and is intentionally preferred over a complex distributed exactly-once guarantee.
-
-## 15. Editable Runbooks and Derived Vector Chunks Are Separate
-
-The editable `Runbook` remains the source of truth in the `Runbooks` container. Vector-search data is stored separately as derived `RunbookChunk` documents.
-
-```text
-Runbooks /id
-→ editable operational content
-
-RunbookChunks /runbookId
-→ chunk content + retrieval metadata + embedding[]
-```
-
-**Why:** embeddings and chunk boundaries are retrieval implementation details that can be regenerated when the model, chunking strategy, or vector index changes. They should not pollute the Domain entity or Runbook CRUD model.
-
-**Trade-off:** Runbook source data and its derived vector index are eventually consistent rather than one atomic document.
-
-## 16. Runbook Indexing Uses Change Feed + Service Bus
-
-Runbook creation/update stays fast and independent from embedding generation:
-
-```text
-Runbook persisted
-      ↓
-Runbooks Change Feed
-      ↓
-RunbookIndexChangeFeedWorker
-      ↓
-IndexRunbookCommand
-      ↓
-Service Bus: index-runbook
-      ↓
-IndexRunbookWorker
-      ↓
-IndexRunbookHandler
-```
-
-The handler reloads the current Runbook, chunks it, generates an embedding for each chunk, and replaces the persisted chunk set.
-
-**Why:** Runbook CRUD does not wait on Azure OpenAI, and indexing can use Service Bus redelivery/DLQ semantics independently. The Change Feed also provides a durable way to discover existing and updated Runbooks without introducing an API → Service Bus dual write.
-
-**Trade-off:** Change Feed is at-least-once, so the same Runbook revision may be observed more than once. Stable Runbook revision message IDs plus replace-based persistence make repeated indexing safe.
-
-## 17. Provider-Independent Embedding Boundary
-
-Application defines `IEmbeddingGenerator`. Infrastructure supplies:
-
-```text
-Development
-→ DevelopmentDummyEmbeddingGenerator
-
-Non-Development
-→ AzureEmbeddingGenerator
-→ runbook-embedding deployment
-→ text-embedding-3-small
-```
-
-Both implementations produce the same 1536-float Application-level vector shape. The local implementation is deterministic so the complete ingestion pipeline can run without Azure credentials or model cost.
-
-**Why:** chunking/indexing orchestration remains independent of the Azure SDK and local development exercises the real storage/messaging boundaries.
-
-## 18. Runbook Chunk Partitioning and Vector Index
-
-`RunbookChunks` uses `/runbookId` as its partition key. Chunk IDs are deterministic by Runbook and chunk position. The embedding path is configured as a 1536-dimension `float32` cosine vector with a `quantizedFlat` index.
-
-```text
-Runbook ABC partition
-├── ABC-chunk-0
-├── ABC-chunk-1
-└── ABC-chunk-2
-```
-
-**Why:** all derived chunks for one Runbook can be queried, replaced, and cleaned up within one logical partition. Deterministic IDs prevent duplicate documents from accumulating during re-indexing. The embedding path is excluded from the ordinary Cosmos index because the specialised vector index owns that data.
-
-**Trade-off:** the current replace operation is intentionally bounded by Cosmos transactional-batch limits; exceptionally large Runbooks would need a different batching strategy.
-
-## 19. Runbook Deletion Cleans Derived Search Data First
-
-Deleting a Runbook is orchestrated in Application:
-
-```text
-DeleteRunbookHandler
-      ↓
-IRunbookChunkStore → remove derived chunks
-      ↓
-IRunbookRepository → delete source Runbook
-```
-
-**Why:** if vector cleanup fails, the source Runbook remains visible and the delete can be retried. Deleting the source first could leave orphaned vector chunks that future retrieval might incorrectly surface.
-
-**Trade-off:** the two containers cannot participate in one Cosmos transaction, so deletion is not globally atomic. The chosen ordering prefers temporary missing derived data over stale evidence for a deleted source.
-
-## 20. Vector Retrieval Uses Dedicated Application Abstractions
-
-Runbook semantic search is intentionally modelled as two capabilities rather than being added to `IRunbookRepository`:
-
-```text
-Runbook search use case
-      ├── IEmbeddingGenerator
-      │      └── query text → embedding[]
-      │
-      └── IRunbookChunkRetriever
-             └── embedding[] + filter + topK → RunbookChunkMatch[]
-```
-
-Infrastructure supplies `DevelopmentDummyEmbeddingGenerator` / `AzureEmbeddingGenerator` and `CosmosRunbookChunkRetriever`.
-
-**Why:** `IRunbookRepository` represents persistence of the editable source Runbook. Vector retrieval operates over derived chunk documents, has different query semantics, and returns search-specific metadata such as distance. Keeping those responsibilities separate prevents the source repository from becoming a catch-all data-access interface.
-
-**Trade-off:** the API now has a direct dependency on the embedding capability for synchronous Runbook search. In Azure, its managed identity therefore requires Azure OpenAI access in addition to Cosmos access.
-
-## 21. Cosmos Vector Results Are Mapped at the Infrastructure Boundary
-
-Cosmos vector queries project only the fields required by retrieval. Infrastructure-specific projection models are mapped into Application-level results such as `RunbookChunkMatch` and `HistoricalIncidentMatch`.
-
-```text
-Cosmos vector document
-      ↓ VectorDistance query
-Infrastructure projection
-      ↓ explicit mapping
-Application retrieval model
-```
-
-**Why:** Cosmos SQL aliases, SDK result types, request-charge APIs and vector-query details remain Infrastructure concerns. Application only knows that it receives ranked retrieval matches.
-
-The ranking value is useful for retrieval but is **not exposed as an AI confidence score**. Retrieval-quality thresholds are evaluated separately from the generated answer.
-
-## 22. Historical Incidents Use a Separate Derived Vector Store
-
-Completed Incidents remain the source business records in `Incidents`. Searchable historical representations are written to `HistoricalIncidentVectors`.
-
-The embedded text is based on the original operational report:
-
-```text
-Title
-Description
-Symptoms
-```
-
-The previous AI analysis is not embedded.
-
-**Why:** future retrieval should represent the Incident that actually occurred, not compound an earlier model's interpretation. The derived vector document can also be rebuilt without changing the source Incident.
-
-**Trade-off:** completion and historical indexing are eventually consistent. A newly completed Incident may not immediately appear in retrieval results.
-
-## 23. Grounded Analysis Reuses One Embedding Across Two Retrieval Paths
-
-`IncidentAnalysisContextBuilder` generates one Incident embedding and uses it for both:
-
-```text
-IHistoricalIncidentRetriever
-IRunbookChunkRetriever
-```
-
-The independent retrievals can run concurrently.
-
-**Why:** both searches are trying to understand the same operational problem, so generating duplicate embeddings would add latency and cost without adding useful information.
-
-Historical Incident retrieval can apply service/environment metadata, while Runbook retrieval can apply service metadata.
-
-## 24. Historical Incidents and Runbooks Remain Distinct Evidence Types
-
-Grounding does not flatten all retrieved text into one anonymous source list.
-
-```text
-HI-* → similar historical observations
-RB-* → operational guidance
-```
-
-**Why:** they have different meanings. A similar previous Incident does not prove the current cause, and a Runbook describes what to do rather than what is currently happening.
-
-Keeping them distinct makes both the prompt and the UI more understandable.
-
-## 25. Evidence References Are Request-Scoped and Semantically Validated
-
-The model receives compact identifiers such as `HI-1` and `RB-2`.
-
-Those identifiers only exist within the current analysis or Assistant answer. After generation, Application validates that every returned reference was actually present in the supplied grounding context.
-
-**Why:** a static JSON schema can enforce "array of strings" but cannot know which evidence happened to be retrieved for one request.
-
-**Trade-off:** evidence identifiers are intentionally not globally stable IDs. The API/UI must keep each answer together with the evidence that produced it.
-
-## 26. Persist Incident-Analysis Evidence, Return Assistant Evidence Per Answer
-
-Grounded Incident analysis persists evidence snapshots with the analysis result. The Operational Assistant instead returns the exact retrieved evidence with each response.
-
-**Why:** persisted Incident analysis should remain explainable later even if the vector index changes. Assistant answers are currently ephemeral, so returning answer-scoped evidence is sufficient and avoids introducing conversation persistence before authentication exists.
-
-## 27. The Operational Assistant Is Stateless on the Backend
-
-The Assistant API accepts:
-
-```text
-current question
-+ optional service/environment filters
-+ recent conversation history
-```
-
-React keeps the conversation for the current browser session and resends recent turns with each request.
-
-**Why:** this supports useful follow-up questions without creating anonymous persisted conversation records that would later need ownership/security rules.
-
-**Trade-off:** refreshing the page loses the conversation. Persisted history is deferred until authenticated user identity is introduced.
-
-## 28. Conversation History Provides Context, Not Grounding
-
-For Assistant requests, semantic retrieval is driven by the **current question**. Previous user/Assistant turns are passed to the chat model for language continuity only.
-
-```text
-conversation history → understand "what should I check first?"
-current question     → embedding + vector retrieval
-retrieved evidence   → claims and citations
-```
-
-**Why:** long conversation history should not drown out the engineer's latest operational question, and model-generated previous answers should not become evidence for later answers.
-
-## 29. Retrieved and Conversational Content Is Treated as Untrusted Data
-
-Azure AI prompts explicitly distinguish system instructions from Incident text, Runbook content and previous conversation messages.
-
-The model is instructed not to follow instructions embedded inside those values and not to claim access to logs, metrics, deployments, source code or other systems unless the supplied evidence states that information.
-
-**Why:** RAG introduces external text into the prompt. Treating it as untrusted data reduces the risk that retrieved content overrides the intended Assistant behaviour.
-
-**Trade-off:** prompt-injection risk can be reduced but not eliminated solely through prompting; later security/evaluation work can add further controls.
-
-## 30. Azure AI Schema Validation and Application Validation Have Different Jobs
-
-The Azure schemas validate **shape**:
-
-```text
-required fields
-types
-arrays
-additional properties
-```
-
-Application validation checks **request-specific meaning**:
-
-```text
-does HI-2 actually exist in this context?
-does RB-1 belong to this answer?
-```
-
-**Why:** keeping these responsibilities separate makes the Azure adapter predictable while preserving provider-independent business rules in Application.
-
-For the full LLM/RAG flow, see [RAG & AI Design](RAG-AND-AI.md).
+**Why:** the dev environment can be destroyed to reduce cost without recreating GitHub federation each time.
 
 ## Current Accepted Trade-offs
 
-- Basic rather than full concurrency-safe idempotency.
-- No complete attempt-history audit yet.
-- No automatic DLQ reprocessing; requeue is deliberate through the backend capability.
-- No automatic outbox cleanup yet.
-- Final failure persistence can still be affected by Cosmos availability.
-- Source records and derived vector stores are eventually consistent by design.
-- Assistant conversation history is browser-only until authenticated conversation ownership is added.
-- AI telemetry is intentionally lightweight until the full observability stage.
-- Retrieval ranking is not treated as calibrated confidence; formal retrieval/answer evaluation is deferred to Stage 13.
-- Stronger optimistic concurrency can be added before significant Worker scaling.
-
-These are deliberate limits: the current design demonstrates realistic cloud reliability and grounded-AI patterns without adding production complexity before it is needed.
-
-## 31. # `docs/ARCHITECTURE.md` addition
-
-## Authentication Boundaries
-
-IncidentIQ has two distinct authentication boundaries.
-
-### User → API
-
-Human users authenticate through Microsoft Entra.
-
-```text
-Engineer
-   ↓
-Microsoft Entra
-   ↓
-React Web
-   ↓
-Bearer access token
-   ↓
-ASP.NET Core authentication
-   ↓
-access_as_user authorization
-   ↓
-Controllers
-   ↓
-Application
-```
-
-Microsoft Entra issues a signed access token for the IncidentIQ API.
-
-`Microsoft.Identity.Web` validates that token and ASP.NET Core constructs the authenticated `ClaimsPrincipal`.
-
-Application controllers currently require the delegated:
-
-```text
-access_as_user
-```
-
-scope.
-
-More granular Engineer and Administrator role authorization is layered on top of this authenticated identity separately.
-
-### API / Worker → Azure
-
-The API and Worker authenticate to Azure services using workload identities rather than the user's access token.
-
-```text
-API
-├── Managed Identity → Cosmos DB
-└── Managed Identity → Azure OpenAI
-
-Worker
-├── Managed Identity → Cosmos DB
-├── Managed Identity → Service Bus
-└── Managed Identity → Azure OpenAI
-```
-
-The user token therefore stops at the API security boundary.
-
-It is not forwarded to Cosmos, Service Bus or Azure OpenAI.
-
-This separation means:
-
-```text
-Microsoft Entra user identity
-→ controls access to IncidentIQ
-
-Managed Identity
-→ controls IncidentIQ's access to Azure resources
-```
-
-The health endpoint is outside the protected controller mapping so infrastructure health probes can call it anonymously.
-
----
-
-## 31. User Authentication Is Separate from Workload Identity
-
-IncidentIQ uses two independent identity models.
-
-Human access uses Microsoft Entra delegated authentication:
-
-```text
-User
-→ Entra
-→ React
-→ JWT access token
-→ API
-```
-
-Azure workload access uses Managed Identity:
-
-```text
-API / Worker
-→ Managed Identity
-→ Azure resource RBAC
-```
-
-The API validates Microsoft Entra bearer tokens with `Microsoft.Identity.Web`.
-
-All controller endpoints currently require:
-
-```text
-authenticated identity
-+
-access_as_user delegated scope
-```
-
-while `/api/health` remains anonymous.
-
-**Why:** a user's authority to enter the IncidentIQ application and a workload's authority to access Cosmos, Service Bus or Azure OpenAI are different security concerns.
-
-Forwarding user credentials into infrastructure dependencies would couple application authorization to Azure resource permissions and make service-to-service access dependent on the current interactive user.
-
-Instead, the HTTP boundary authenticates the human identity and the deployed workload independently authenticates itself to Azure.
-
-The API and SPA app registrations are treated as stable Microsoft Entra tenant bootstrap configuration. Environment-specific application infrastructure remains managed separately through Bicep.
-
-**Trade-off:** Microsoft Entra app-registration configuration currently has a small manual bootstrap step rather than being provisioned through the Microsoft Graph Bicep extension. This avoids granting the deployment identity broad directory-management permissions purely to automate two stable portfolio registrations. The registrations can be moved to tenant-level IaC later if IncidentIQ develops a stronger requirement for repeatable multi-environment identity provisioning.
+- Basic rather than concurrency-safe idempotency.
+- No complete attempt-history audit.
+- No automatic DLQ replay.
+- No outbox retention cleanup yet.
+- Source and derived vector stores are eventually consistent.
+- Assistant conversations are browser-only.
+- Full distributed tracing/KEDA are Stage 15.

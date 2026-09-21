@@ -1,51 +1,37 @@
-# Incident Submission and Asynchronous Analysis
-
-This is the main write path in IncidentIQ. The HTTP request creates durable work; the expensive AI analysis runs later in the Worker.
-
-## At a glance
+# Incident Submission and Analysis
 
 ```text
 React
-→ POST /api/incidents
-→ IncidentsController
-→ CreateIncidentCommand
+→ Bearer-authenticated POST /api/incidents
 → CreateIncidentHandler
-→ Incident + outbox written atomically to Cosmos
+→ Cosmos transactional batch: Incident + outbox
 
-                async boundary
+async
 
-Cosmos Change Feed
+Change Feed
 → IncidentOutboxWorker
-→ analyse-incident
+→ Service Bus: analyse-incident
 → AnalyseIncidentWorker
 → AnalyseIncidentHandler
 → grounded RAG analysis
-→ completed Incident + analysis persisted
+→ Completed Incident + analysis/evidence
 ```
-
-## Flow
 
 ```mermaid
 %%{init: {"theme":"base","themeVariables":{"background":"#ffffff"}} }%%
 flowchart TB
-    User["Engineer"]:::user -->|"submit"| Web["React Web"]:::web
-    Web -->|"POST /api/incidents"| Controller["IncidentsController"]:::host
-    Controller --> Command["CreateIncidentCommand"]:::app
-    Command --> Handler["CreateIncidentHandler"]:::app
-    Handler --> Store["IIncidentSubmissionStore"]:::app
-    Store -->|"transactional batch"| Incidents["Cosmos: Incidents<br/>Incident + outbox"]:::data
+    Web["React Web"]:::web -->|"POST /api/incidents"| API["IncidentsController"]:::host
+    API --> Create["CreateIncidentHandler"]:::app
+    Create -->|"transactional batch"| Cosmos["Cosmos: Incident + outbox"]:::data
 
-    Incidents ==>|"Change Feed"| Relay["IncidentOutboxWorker"]:::host
-    Relay --> QueuePort["IIncidentAnalysisQueue"]:::app
-    QueuePort ==>|"AnalyseIncidentCommand"| Queue["Service Bus<br/>analyse-incident"]:::msg
-
-    Queue ==>|"message"| Worker["AnalyseIncidentWorker"]:::host
+    Cosmos ==>|Change Feed| Relay["IncidentOutboxWorker"]:::host
+    Relay ==>|AnalyseIncidentCommand| Bus["Service Bus"]:::msg
+    Bus ==>|message| Worker["AnalyseIncidentWorker"]:::host
     Worker --> Analyse["AnalyseIncidentHandler"]:::app
-    Analyse --> RAG["Grounded analysis pipeline"]:::app
+    Analyse --> RAG["Grounded RAG"]:::app
     RAG --> AI["Azure OpenAI"]:::ai
-    Analyse -->|"completed state + analysis + evidence"| Incidents
+    Analyse -->|"Completed + analysis + evidence"| Cosmos
 
-    classDef user fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
     classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
     classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
     classDef app fill:#dcfce7,stroke:#16a34a,color:#14532d,stroke-width:2px;
@@ -54,12 +40,4 @@ flowchart TB
     classDef ai fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
 ```
 
-## Why the asynchronous split exists
-
-The API does not wait for embeddings, retrieval or an LLM call. It only needs to durably create the Incident and its `AnalyseIncidentCommand` outbox record.
-
-The transactional outbox prevents the classic dual-write failure where the Incident is stored successfully but publishing to Service Bus fails. Change Feed later relays the durable command to `analyse-incident`.
-
-`AnalyseIncidentWorker` is a transport boundary, not the business workflow itself. It resolves `AnalyseIncidentHandler`, which coordinates state changes, retrieval, AI generation and persistence through Application interfaces.
-
-For the RAG-specific part of the handler, see [Grounded Incident Analysis](grounded-incident-analysis.md).
+The transactional outbox removes the Cosmos/Service Bus dual-write gap. Service Bus then provides durable buffering, retries and DLQ behavior.
