@@ -87,16 +87,20 @@ builder.Services.AddApplicationDependencies();
 //
 // Development and Testing use deterministic AI implementations so local and
 // automated tests do not require Azure OpenAI.
-if (builder.Environment.IsDevelopment() ||
-    builder.Environment.IsEnvironment("Testing"))
+var useLiveAzureAi =
+    builder.Configuration.GetValue<bool>(
+        "Development:UseLiveAzureAI"); // flag so optionally use live Azure AI in development for testing purposes
+if ((builder.Environment.IsDevelopment() && !useLiveAzureAi)
+    || builder.Environment.IsEnvironment("Testing")
+    )
 {
     builder.Services.AddDevelopmentAIDependencies();
 }
 else
 {
-    builder.Services.AddAzureAIDependencies(
-        builder.Configuration);
+    builder.Services.AddAzureAIDependencies(builder.Configuration);
 }
+
 
 // -----------------------------------------------------------------------------
 // CORS
