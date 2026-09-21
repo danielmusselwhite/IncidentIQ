@@ -11,6 +11,9 @@
     <Project Path="tests/IncidentIQ.Application.Tests/IncidentIQ.Application.Tests.csproj" />
     <Project Path="tests/IncidentIQ.Worker.Tests/IncidentIQ.Worker.Tests.csproj" />
   </Folder>
+  <Folder Name="/tools/">
+    <Project Path="tools/IncidentIQ.Evaluation/IncidentIQ.Evaluation.csproj" />
+  </Folder>
   <Project Path="docker-compose.dcproj">
     <Build />
   </Project>

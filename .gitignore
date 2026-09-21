@@ -1,3 +1,7 @@
+# IncidentIQ evaluation output
+tools/IncidentIQ.Evaluation/Results/*
+!tools/IncidentIQ.Evaluation/Results/.gitkeep
+
 # Ignore infrastructure main configuration file
 infra/main.json
 

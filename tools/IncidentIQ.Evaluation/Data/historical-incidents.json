@@ -1,0 +1,82 @@
+[
+  {
+    "incidentId": "10000000-0000-0000-0000-000000000001",
+    "title": "Payment gateway requests timing out",
+    "description": "Customer payment requests experienced elevated latency and frequent timeouts when calling the external payment gateway. Internal Payments endpoints remained healthy.",
+    "symptoms": "HTTP 504 responses, gateway timeout exceptions, increased checkout failures and elevated external dependency latency.",
+    "service": "Payments",
+    "environment": "Production",
+    "severity": "High",
+    "completedAtUtc": "2026-01-10T14:30:00Z"
+  },
+  {
+    "incidentId": "10000000-0000-0000-0000-000000000002",
+    "title": "Payment provider rate limiting",
+    "description": "The Payments service received HTTP 429 responses from the external payment provider after transaction volume increased significantly.",
+    "symptoms": "HTTP 429 responses, payment retries, increased payment latency and intermittent checkout failures.",
+    "service": "Payments",
+    "environment": "Production",
+    "severity": "High",
+    "completedAtUtc": "2026-02-12T09:15:00Z"
+  },
+  {
+    "incidentId": "10000000-0000-0000-0000-000000000003",
+    "title": "Payment gateway authentication failure",
+    "description": "Payment processing failed after an expired provider credential was deployed to the Payments service.",
+    "symptoms": "HTTP 401 responses from the payment provider, authentication errors and failed checkout attempts.",
+    "service": "Payments",
+    "environment": "Production",
+    "severity": "Critical",
+    "completedAtUtc": "2026-03-03T11:00:00Z"
+  },
+  {
+    "incidentId": "10000000-0000-0000-0000-000000000004",
+    "title": "Payments database connection exhaustion",
+    "description": "The Payments service experienced database connection pool exhaustion during a traffic spike.",
+    "symptoms": "SQL connection timeouts, slow payment processing and increased HTTP 500 responses.",
+    "service": "Payments",
+    "environment": "Production",
+    "severity": "High",
+    "completedAtUtc": "2026-04-18T16:45:00Z"
+  },
+  {
+    "incidentId": "10000000-0000-0000-0000-000000000005",
+    "title": "Orders service downstream timeout",
+    "description": "Order creation requests timed out while waiting for an external fulfilment provider.",
+    "symptoms": "HTTP 504 responses, downstream timeout exceptions and elevated order creation latency.",
+    "service": "Orders",
+    "environment": "Production",
+    "severity": "High",
+    "completedAtUtc": "2026-05-06T13:20:00Z"
+  },
+  {
+    "incidentId": "10000000-0000-0000-0000-000000000006",
+    "title": "Identity provider latency",
+    "description": "Login requests became slow because calls to the external identity provider experienced elevated latency.",
+    "symptoms": "Authentication timeouts, slow login requests and external dependency latency.",
+    "service": "Identity",
+    "environment": "Production",
+    "severity": "Medium",
+    "completedAtUtc": "2026-05-22T08:40:00Z"
+  },
+  {
+    "incidentId": "10000000-0000-0000-0000-000000000007",
+    "title": "Payment gateway timeout in staging",
+    "description": "Staging payment requests timed out because outbound connectivity to the payment provider was blocked by a network configuration change.",
+    "symptoms": "Gateway connection timeouts, DNS and connectivity failures and HTTP 504 responses.",
+    "service": "Payments",
+    "environment": "Staging",
+    "severity": "Medium",
+    "completedAtUtc": "2026-06-01T10:05:00Z"
+  },
+  {
+    "incidentId": "10000000-0000-0000-0000-000000000008",
+    "title": "Product catalogue cache unavailable",
+    "description": "The Products service could not reach its distributed cache and fell back to the primary data store.",
+    "symptoms": "Cache connection errors, increased catalogue latency and elevated database load.",
+    "service": "Products",
+    "environment": "Production",
+    "severity": "Medium",
+    "completedAtUtc": "2026-06-17T17:10:00Z"
+  }
+]

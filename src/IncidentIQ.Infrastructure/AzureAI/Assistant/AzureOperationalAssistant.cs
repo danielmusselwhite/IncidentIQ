@@ -215,7 +215,9 @@ public sealed class AzureOperationalAssistant(
                         new OperationalAnswerSection(
                             Content: section.Content,
                             EvidenceReferences:
-                                section.EvidenceReferences))
+                                section.EvidenceReferences
+                                    .Distinct(StringComparer.Ordinal)
+                                    .ToList()))
                     .ToList(),
                 Model: _options.ModelName,
                 AnsweredAtUtc: DateTimeOffset.UtcNow);
