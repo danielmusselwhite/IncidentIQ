@@ -793,3 +793,8 @@ IncidentIQ operations experience becomes a product requirement.
 * [ ] Revisit circuit breakers if production telemetry demonstrates a need.
 * [ ] Add additional deployment/smoke-test automation if IncidentIQ becomes
       continuously operated rather than primarily demonstrated.
+
+## Extension J - Improved Evaluation
+
+
+* [ ] Add some form of automated evaluation for the AI analysis, as atm we only automatically evaluate the retrieval and ranking of similar Incidents. With the AI analysis done manually.
