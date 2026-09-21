@@ -490,167 +490,306 @@ vector-search and grounded-AI flows are implemented.
 
 ## Stage 13 — AI Evaluation
 
-Build a repeatable evaluation framework for IncidentIQ's retrieval and grounded AI behaviour.
+Build a concise, repeatable evaluation framework demonstrating that IncidentIQ's
+retrieval and grounded AI behaviour can be measured rather than assessed only
+through ad-hoc testing.
 
 ### 13A — Controlled Evaluation Dataset
 
 * [x] Create an `IncidentIQ.Evaluation` tooling project.
 * [x] Define version-controlled evaluation scenario contracts.
-* [x] Create realistic synthetic historical Incidents with stable IDs.
-* [x] Create realistic synthetic Runbooks with stable IDs.
+* [x] Create realistic synthetic historical Incidents and Runbooks with stable IDs.
 * [x] Create evaluation scenarios with known expected evidence.
-* [x] Include:
+* [x] Cover:
   * [x] clear positive retrieval cases.
-  * [x] ambiguous cases with multiple relevant sources.
+  * [x] ambiguous/multi-source cases.
   * [x] irrelevant semantic distractors.
   * [x] no-evidence cases.
-  * [x] Service filtering cases.
-  * [x] Environment filtering cases.
-* [x] Validate that expected evidence IDs exist in the synthetic corpus.
-* [x] Keep the dataset deterministic and safe to run repeatedly.
-* [x] Document the purpose and limitations of the evaluation dataset.
+  * [x] Service filtering.
+  * [x] Environment filtering.
+* [x] Validate expected evidence against the controlled corpus.
+* [x] Document dataset purpose and limitations.
 
 ### 13B — Retrieval Evaluation
 
-* [x] Build an evaluation runner for historical-Incident retrieval.
-* [x] Build an evaluation runner for Runbook retrieval.
-* [x] Measure Recall@K against expected relevant evidence.
-* [x] Measure Precision@K against expected relevant evidence.
-* [x] Record returned rank and similarity/distance values.
-* [x] Measure no-evidence retrieval behaviour separately.
+* [x] Evaluate historical-Incident retrieval.
+* [x] Evaluate Runbook retrieval.
+* [x] Measure Precision@K and Recall@K.
+* [x] Record ranking and cosine-distance information.
+* [x] Evaluate no-evidence behaviour separately.
 * [x] Verify metadata filtering behaviour.
-* [x] Add evaluation cases where irrelevant but semantically similar evidence exists.
-* [x] Produce a machine-readable retrieval evaluation report.
+* [x] Produce a machine-readable evaluation report.
 
 ### 13C — Citation & Grounding Evaluation
 
+* [x] Generate grounded responses through the real Azure AI implementations.
 * [x] Measure citation validity for generated answers.
 * [x] Verify every returned `HI-*` / `RB-*` reference exists in supplied evidence.
-* [ ] Measure citation coverage for material claims where practical.
 * [x] Verify no-evidence answers do not invent citations.
-* [x] Record citation evaluation results.
+* [x] Record citation evaluation results in the machine-readable report.
+* [x] Document semantic claim-level citation coverage as requiring human judgement rather than treating it as a deterministic metric.
 
 ### 13D — Generated Analysis Quality
 
-* [ ] Define a small scoring rubric for generated analysis quality.
-* [ ] Evaluate summary quality.
-* [ ] Evaluate likely-cause relevance.
-* [ ] Evaluate recommended-action relevance.
-* [ ] Evaluate appropriate uncertainty when evidence is weak.
-* [ ] Record evaluation results separately from deterministic retrieval metrics.
-* [ ] Document which quality measures require human judgement.
+* [x] Define a lightweight human-review rubric covering:
+  * [x] summary quality.
+  * [x] likely-cause relevance.
+  * [x] recommended-action relevance.
+  * [x] appropriate uncertainty.
+  * [x] grounding in supplied evidence.
+* [x] Keep subjective generated-answer quality separate from deterministic retrieval and citation metrics.
+* [x] Document the limitations of automated evaluation for these properties.
 
-### 13E — Evaluation Reporting
+### 13E — Evaluation Documentation
 
-* [ ] Aggregate retrieval and generation metrics.
-* [ ] Record Recall@K and citation-validity results.
-* [ ] Add a concise evaluation report under `docs/`.
-* [ ] Document dataset size, limitations and known failure cases.
-* [ ] Add representative evaluation results to the README without overstating model quality.
+* [x] Record retrieval and citation-validity baselines.
+* [x] Document dataset size and methodology.
+* [x] Document evaluation limitations and known imperfect retrieval behaviour.
+* [x] Add dedicated AI evaluation documentation.
+* [ ] Add a concise evaluation summary to the root README.
 
-### 13F — Engineer Feedback
+---
+
+## Stage 14 — Security & Configuration
+
+Complete the most valuable production-style security work without introducing
+infrastructure purely for technology breadth.
+
+### 14A — Authentication
+
+* [ ] Configure Microsoft Entra authentication for the API.
+* [ ] Authenticate the React application.
+* [ ] Validate access tokens in the API.
+* [ ] Protect authenticated API endpoints.
+* [ ] Verify the authentication flow locally and in Azure.
+
+### 14B — Authorization
+
+* [ ] Define Engineer and Administrator application roles.
+* [ ] Add role-based authorization policies.
+* [ ] Protect administrative functionality with Administrator authorization.
+* [ ] Keep normal Incident/Runbook functionality available to Engineers.
+
+### 14C — Secrets & Configuration
+
+* [ ] Create Azure Key Vault through Bicep.
+* [ ] Grant application Managed Identities least-privilege Key Vault access.
+* [ ] Move genuine secrets into Key Vault where required.
+* [ ] Keep non-secret configuration in normal Container App configuration /
+      environment settings.
+* [ ] Review existing Managed Identity and RBAC assignments for least privilege.
+* [ ] Document the final authentication, authorization and configuration model.
+
+---
+
+## Stage 15 — Observability & Scaling
+
+Demonstrate that the distributed workflow can be traced, measured and scaled.
+
+### 15A — OpenTelemetry
+
+* [ ] Add OpenTelemetry instrumentation to the API and Worker.
+* [ ] Export telemetry to Application Insights.
+* [ ] Instrument important HTTP, Cosmos, Service Bus and Azure AI dependencies.
+
+### 15B — Distributed Tracing
+
+* [ ] Propagate trace/correlation context through:
+  * API request.
+  * Service Bus command.
+  * Worker processing.
+  * retrieval.
+  * Azure AI generation.
+  * Cosmos persistence.
+* [ ] Verify a complete Incident-analysis workflow can be followed through
+      Application Insights.
+
+### 15C — Operational Metrics
+
+* [ ] Record useful application metrics including:
+  * queue wait duration.
+  * analysis duration.
+  * AI generation latency.
+  * analysis failures.
+* [ ] Add a small set of useful KQL queries for:
+  * processing failures.
+  * average/P95 processing duration.
+  * queue wait time.
+  * AI latency/failures.
+* [ ] Document representative telemetry/screenshots.
+
+### 15D — Worker Scaling
+
+* [ ] Configure Azure Container Apps KEDA scaling for the Worker based on
+      Service Bus queue depth.
+* [ ] Define sensible minimum/maximum replica limits.
+* [ ] Verify scale-out behaviour with a small controlled workload.
+* [ ] Document the scaling strategy.
+
+---
+
+## Stage 16 — Minimal Operations & Administration
+
+Provide enough operational functionality to demonstrate that failed asynchronous
+work can be inspected and recovered without building a full administration product.
+
+### 16A — Failed Analysis Operations
+
+* [ ] Complete the existing Operations frontend page.
+* [ ] Display failed Incident analyses.
+* [ ] Show useful failure metadata:
+  * Incident.
+  * failure reason.
+  * attempt count.
+  * timestamps.
+  * correlation ID.
+* [ ] Connect the UI to the existing retry/requeue functionality from Stage 8.
+* [ ] Restrict retry/requeue operations to Administrators.
+
+### 16B — Operational Links
+
+* [ ] Surface correlation IDs where useful.
+* [ ] Provide clear links/navigation from failed operations back to the Incident.
+* [ ] Document how operators use Application Insights for deeper diagnostics.
+
+Do not duplicate Azure Monitor/Application Insights by building custom dashboards
+for telemetry already available through Azure tooling.
+
+---
+
+## Stage 17 — Final Portfolio Hardening
+
+Turn the implemented system into a finished portfolio piece.
+
+### 17A — End-to-End Verification
+
+* [ ] Run the complete deployed workflow:
+  * authenticate.
+  * submit Incident.
+  * enqueue analysis.
+  * retrieve grounding evidence.
+  * generate grounded analysis.
+  * persist result.
+  * display result.
+* [ ] Verify failure and retry behaviour.
+* [ ] Verify authorization boundaries.
+* [ ] Verify distributed tracing.
+* [ ] Verify Worker scaling.
+* [ ] Run the AI evaluation suite and record the final baseline.
+
+### 17B — Demo Data & UX
+
+* [ ] Seed a small realistic demonstration dataset.
+* [ ] Perform final frontend styling and UX cleanup.
+* [ ] Ensure loading, empty, processing, failure and completed states are polished.
+* [ ] Ensure the Operational Assistant is demo-ready.
+
+### 17C — Portfolio Documentation
+
+* [ ] Update architecture diagrams to match the final implementation.
+* [ ] Update the root README.
+* [ ] Document:
+  * system architecture.
+  * asynchronous processing.
+  * RAG/grounding architecture.
+  * reliability/outbox design.
+  * security model.
+  * observability/scaling.
+  * AI evaluation.
+* [ ] Include representative screenshots.
+* [ ] Create a short architecture/demo video.
+* [ ] Perform final repository cleanup.
+
+### 17D — Final Release
+
+* [ ] Deploy the final portfolio version.
+* [ ] Perform final smoke testing.
+* [ ] Tag a portfolio/demo release.
+* [ ] Mark IncidentIQ feature-complete.
+
+---
+
+# Extensions / Future Work
+
+The following ideas are intentionally excluded from the core portfolio build.
+They may be revisited if IncidentIQ is developed beyond its portfolio scope.
+
+## Extension A — API Management & Centralised Configuration
+
+* [ ] Add Azure API Management.
+* [ ] Route public API traffic through APIM.
+* [ ] Add APIM policies such as rate limiting where useful.
+* [ ] Add Azure App Configuration.
+* [ ] Centralise application configuration.
+
+These are valuable production technologies, but the portfolio already demonstrates
+Azure infrastructure, authentication, Managed Identity, RBAC and configuration.
+They are not required to demonstrate the core IncidentIQ architecture.
+
+## Extension B — Event-Driven Integrations
+
+* [ ] Create Event Grid infrastructure.
+* [ ] Publish `AnalysisCompleted` / `AnalysisFailed` integration events.
+* [ ] Add a Python Azure Function consumer.
+* [ ] Use completion events for notifications, auditing or external integrations.
+
+The core asynchronous architecture is already demonstrated through Service Bus and
+the transactional outbox. Event Grid should be added only when a genuine integration
+requires fan-out rather than purely to demonstrate another Azure service.
+
+## Extension C — Engineer Feedback
 
 * [ ] Add useful / not useful feedback for Incident analysis.
-* [ ] Add optional engineer feedback comments.
-* [ ] Persist feedback against the analysed Incident.
-* [ ] Expose feedback through the API.
+* [ ] Add optional engineer comments.
+* [ ] Persist feedback against analysed Incidents.
 * [ ] Add frontend feedback controls.
-* [ ] Keep feedback separate from automated evaluation metrics.
+* [ ] Use feedback as a future evaluation/product-improvement signal.
 
-## Stage 14 — Security, Configuration & API Gateway
+## Extension D — Advanced Operations
 
-Complete the application's production-style security and configuration model.
+* [ ] Custom operational dashboard.
+* [ ] Queue-depth visualisation.
+* [ ] Worker replica/scaling visualisation.
+* [ ] DLQ browser.
+* [ ] Advanced replay/reprocessing tooling.
 
-* [ ] Create Key Vault Bicep module.
-* [ ] Create App Configuration Bicep module.
+Prefer Application Insights and Azure Monitor for these concerns unless a dedicated
+IncidentIQ operations experience becomes a product requirement.
 
-* [ ] Create APIM Bicep module.
-* [ ] Complete Managed Identity and least-privilege RBAC assignments through Bicep.
+## Extension E — Assistant Conversations
 
-* [ ] Deploy resources through Bicep.
-* [ ] Remove remaining connection-string authentication where Managed Identity can be used.
-
-* [ ] Move application configuration into App Configuration.
-* [ ] Store remaining secrets in Key Vault.
-
-* [ ] Route public API traffic through APIM.
-* [ ] Add Entra authentication.
-
-* [ ] Add Engineer / Administrator authorization.
-* [ ] Apply authorization to administrative and operational functionality.
-
-* [ ] Add authenticated Assistant conversation ownership.
 * [ ] Persist Assistant conversations per authenticated user.
-* [ ] Add conversation history, resume and deletion functionality.
+* [ ] Add conversation history.
+* [ ] Resume previous conversations.
+* [ ] Delete conversations.
+* [ ] Add conversation ownership rules.
 
-## Stage 15 — Scaling & Observability
+## Extension F — Advanced Retrieval
 
-Expand the telemetry introduced in earlier stages into full distributed observability.
+* [ ] Investigate Redis caching for frequently retrieved similar Incidents.
+* [ ] Evaluate retrieval thresholds/reranking.
+* [ ] Evaluate production Cosmos vector-engine parity against the controlled
+      evaluation corpus.
+* [ ] Expand the evaluation dataset using additional realistic scenarios.
 
-* [ ] Configure Worker KEDA scaling through Container Apps Bicep.
-* [ ] Add OpenTelemetry instrumentation.
+## Extension G — Change Intelligence
 
-* [ ] Propagate distributed trace/correlation information end-to-end.
-* [ ] Add analysis duration, queue wait and failure telemetry.
+* [ ] Integrate with source-control providers such as GitHub.
+* [ ] Retrieve recent deployments/commits for affected services.
+* [ ] Correlate operational failures with recent changes.
+* [ ] Include relevant changes as another grounded evidence source.
 
-* [ ] Add Service Bus, Cosmos and AI dependency telemetry.
-* [ ] Create useful KQL queries and dashboards.
+## Extension H — Agentic Operations
 
-* [ ] Monitor queue depth, Worker scaling and DLQ activity.
-* [ ] Verify end-to-end distributed tracing.
+* [ ] Investigate agentic workflows for repetitive Incident-management tasks.
+* [ ] Require explicit approval before performing operational actions.
+* [ ] Add appropriate audit and authorization boundaries before allowing
+      automated remediation.
 
-## Stage 16 — Operations & Administration
+## Extension I — Additional Reliability Hardening
 
-* [ ] Build Operations frontend.
-* [ ] Display queue depth and processing metrics.
-
-* [ ] Display Worker scaling information.
-* [ ] Display failed analyses and DLQ items.
-
-* [ ] Add retry/requeue administration to actually call the DLQ retry method we added in stage 8.
-* [ ] Add operational diagnostics.
-
-## Stage 17 — Event-Driven Integrations
-
-Provision Event Grid and Functions before integrating them.
-
-* [ ] Create Event Grid Bicep module.
-* [ ] Create Azure Function hosting/resources Bicep module.
-
-* [ ] Deploy Event Grid and Function infrastructure using Bicep.
-* [ ] Create supporting Python Azure Function.
-
-* [ ] Publish `AnalysisCompleted` / `AnalysisFailed` events.
-* [ ] Consume completion events for audit/notification processing.
-
-* [ ] Add Managed Identity and telemetry to the Function.
-
-## Stage 18 — Hardening & Portfolio Polish
-
-* [ ] Expand unit and integration test coverage.
-* [ ] Harden CI/CD and deployment workflows.
-
-* [ ] Add deployment verification/smoke tests.
-* [ ] Ensure repeatable development-environment deployment from IaC.
-
-* [ ] Seed realistic demo data.
-* [ ] Finalise frontend styling and UX.
-
-* [ ] Review error handling and edge cases.
-* [ ] Complete architecture documentation and ADRs.
-
-* [x] Add architecture diagrams.
-* [x] Create polished README with infrastructure, internal architecture, and message-flow Mermaid diagrams.
-
-* [ ] Create portfolio demo/video.
-* [ ] Perform final end-to-end testing.
-
-## Stage 19 - Optional other potential improvements
-
-- [ ] Revisit a circuit breaker/named resilience pipeline in Stage 15 if telemetry shows it adds value; avoid adding another retry layer by default.
-- [ ] Atm we just have basic state-based idempotency by disallowing work on incidents that are already marked as completed. Could strengthen this by implementing more robust idempotency mechanisms, such as request tokens, distributed locks, or optimistic concurrecy/ eTags.
-
-- [x] Add architecture **and** create-incident message-flow diagrams. 
-- [ ] See about integrating with repo eg github so it can analyse for potentially breaking changes. (Eg if payments fail it may notice that a commit changed the payment service just before these related incidents started rolling in)
-- [ ] **Add redis cache on the similar incidents for faster retrieval and reduced load on the primary datastore.**
-- [ ] Maybe add some sort of Agentic automation for handling repetitive incident management tasks. Unsure how well this will fit in though.
+* [ ] Evaluate stronger idempotency using request tokens / optimistic concurrency
+      if required.
+* [ ] Revisit circuit breakers if production telemetry demonstrates a need.
+* [ ] Add additional deployment/smoke-test automation if IncidentIQ becomes
+      continuously operated rather than primarily demonstrated.

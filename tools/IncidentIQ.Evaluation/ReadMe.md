@@ -2,9 +2,18 @@
 
 `IncidentIQ.Evaluation` is a standalone tooling project used to evaluate the retrieval and grounded-AI behaviour of IncidentIQ against a controlled, version-controlled dataset.
 
-The project exists to make AI behaviour measurable and repeatable rather than relying only on ad-hoc manual testing.
+The project makes AI behaviour measurable and repeatable rather than relying only on ad-hoc manual testing.
 
-It currently focuses on retrieval evaluation and will later support citation/grounding checks and generated-analysis quality evaluation.
+It currently evaluates:
+
+- historical-Incident retrieval,
+- Runbook retrieval,
+- metadata filtering,
+- no-evidence behaviour,
+- generated evidence-reference validity,
+- grounded no-evidence behaviour.
+
+Generated-analysis quality is reviewed separately using a lightweight human-review rubric because properties such as cause relevance and recommendation quality are not reliably represented by deterministic metrics.
 
 ---
 
@@ -234,6 +243,35 @@ The baseline also exposed a useful ranking case in the Service-filter scenario: 
 
 ---
 
+## Citation & Grounding Evaluation
+
+After retrieval evaluation, the evaluator generates grounded responses using the real Azure AI implementations used by IncidentIQ.
+
+Both supported generation paths are exercised:
+
+- Operational Assistant questions.
+- Incident analysis.
+
+Returned `HI-*` and `RB-*` evidence references are compared against the evidence supplied to the model.
+
+The current baseline produced:
+
+```text
+Cases evaluated: 10
+Citations returned: 35
+Valid citations: 35
+Invalid citations: 0
+Citation validity: 1.000
+Cases with invalid citations: 0
+No-evidence citation checks: 1/1 passed
+```
+
+The exact number of citations can vary because generated responses are non-deterministic.
+
+The important deterministic checks are that returned references are valid for the supplied context and that no-evidence responses do not invent evidence references.
+
+Citation validity does not attempt to automatically determine whether every citation semantically supports every material claim. That requires semantic judgement and is documented separately as part of generated-analysis quality review.
+
 ## Prerequisites
 
 Before running the evaluator, ensure you have:
@@ -338,11 +376,13 @@ The evaluator will:
 1. load and validate the controlled dataset,
 2. generate real Azure embeddings for the controlled corpus,
 3. build the isolated in-memory vector index,
-4. generate embeddings for each evaluation query,
-5. retrieve historical-Incident and Runbook evidence,
-6. compare retrieval results against expected evidence,
-7. print detailed per-case metrics,
-8. print aggregate retrieval metrics.
+4. evaluate historical-Incident and Runbook retrieval,
+5. calculate Precision@K and Recall@K,
+6. generate grounded responses using the Azure AI implementations,
+7. validate returned evidence references,
+8. evaluate no-evidence citation behaviour,
+9. print aggregate retrieval and citation metrics,
+10. write a timestamped machine-readable JSON report.
 
 A successful run begins with output similar to:
 
@@ -470,31 +510,26 @@ IncidentIQ.Evaluation/
 
 ---
 
-## Planned Evaluation Work
+## Evaluation Scope
 
-The evaluation project is intended to expand beyond retrieval.
-
-Planned Stage 13 work includes:
+The implemented evaluation framework covers:
 
 ```text
-13B — Retrieval Evaluation
-→ machine-readable retrieval report
-
-13C — Citation & Grounding Evaluation
-→ citation validity
-→ evidence-reference validation
-→ no invented citations
-
-13D — Generated Analysis Quality
-→ summary quality
-→ likely-cause relevance
-→ recommended-action relevance
-→ uncertainty
-
-13E — Evaluation Reporting
-→ aggregate results
-→ limitations
-→ representative documented baseline
+Controlled Dataset
+    ↓
+Retrieval Evaluation
+    ↓
+Precision@K / Recall@K
+    ↓
+Grounded Generation
+    ↓
+Citation Validity
+    ↓
+No-Evidence Validation
+    ↓
+Machine-Readable Report
 ```
 
-The goal is not to claim that a small synthetic benchmark fully represents production behaviour. The goal is to provide a repeatable engineering signal that makes retrieval and grounded-AI changes observable, comparable and easier to reason about.
+Generated-answer quality is intentionally evaluated separately through a small human-review rubric.
+
+The evaluation framework could be expanded in the future with a larger corpus, production-provider parity testing or more sophisticated semantic evaluation, but these are not required for the current IncidentIQ portfolio scope.
