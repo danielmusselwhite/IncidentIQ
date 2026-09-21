@@ -241,6 +241,281 @@ Prefer one of these when debugging a Worker:
 Do not point local code at production resources.
 
 ---
+## Microsoft Entra User Authentication
+
+IncidentIQ distinguishes between **user authentication** and **Azure workload authentication**.
+
+User authentication controls who may call the HTTP API:
+
+```text
+User
+→ Microsoft Entra ID
+→ React
+→ access token
+→ IncidentIQ API
+```
+
+Workload authentication controls which Azure resources the deployed API and Worker may access:
+
+```text
+API / Worker
+→ Managed Identity
+→ Cosmos / Service Bus / Azure OpenAI / ACR
+```
+
+Do not confuse the user's access token with the Managed Identity used by the deployed workloads.
+
+### Entra Tenant
+
+The IncidentIQ application registrations currently live in the existing Microsoft Entra tenant used by the Azure development subscription.
+
+A separate IncidentIQ tenant is not required for the portfolio environment.
+
+The application registrations are treated as stable tenant-level bootstrap configuration, while disposable Azure application infrastructure remains managed through Bicep.
+
+### IncidentIQ API App Registration
+
+Create the API registration in:
+
+```text
+Microsoft Entra ID
+→ App registrations
+→ New registration
+```
+
+Configuration:
+
+```text
+Name:
+IncidentIQ API
+
+Supported account types:
+Accounts in this organizational directory only
+```
+
+No redirect URI or client secret is required for the API registration.
+
+Record:
+
+```text
+Directory (tenant) ID
+Application (client) ID
+```
+
+### Expose the API Scope
+
+Under:
+
+```text
+IncidentIQ API
+→ Expose an API
+```
+
+configure the Application ID URI:
+
+```text
+api://<API_CLIENT_ID>
+```
+
+Then create the delegated scope:
+
+```text
+Scope name:
+access_as_user
+
+Who can consent:
+Admins and users
+
+Admin consent display name:
+Access IncidentIQ API
+
+Admin consent description:
+Allows the application to access IncidentIQ on behalf of the signed-in user.
+
+User consent display name:
+Access IncidentIQ
+
+User consent description:
+Allows this application to access IncidentIQ on your behalf.
+
+State:
+Enabled
+```
+
+The resulting scope identifier is:
+
+```text
+api://<API_CLIENT_ID>/access_as_user
+```
+
+The React application will request this scope when frontend authentication is configured.
+
+### Local API Configuration
+
+The API reads:
+
+```text
+AzureAd:Instance
+AzureAd:TenantId
+AzureAd:ClientId
+AzureAd:Scopes
+```
+
+`appsettings.json` contains the non-environment-specific values:
+
+```json
+{
+  "AzureAd": {
+    "Instance": "https://login.microsoftonline.com/",
+    "TenantId": "",
+    "ClientId": "",
+    "Scopes": "access_as_user"
+  }
+}
+```
+
+Configure the tenant and API client IDs locally:
+
+```powershell
+dotnet user-secrets set "AzureAd:TenantId" "<TENANT_ID>" `
+    --project src\IncidentIQ.Api
+
+dotnet user-secrets set "AzureAd:ClientId" "<API_CLIENT_ID>" `
+    --project src\IncidentIQ.Api
+```
+
+Tenant IDs and client IDs are identifiers rather than credentials. User-secrets are still useful for keeping machine/environment-specific configuration out of committed files.
+
+No API client secret is required.
+
+### How API Authentication Works
+
+Protected requests must include an OAuth access token:
+
+```http
+Authorization: Bearer <ACCESS_TOKEN>
+```
+
+The request flows through:
+
+```text
+HTTP request
+      ↓
+UseAuthentication()
+      ↓
+JWT bearer authentication
+      ↓
+Microsoft.Identity.Web
+      ↓
+validate token
+      ↓
+construct ClaimsPrincipal
+      ↓
+HttpContext.User
+      ↓
+UseAuthorization()
+      ↓
+require authenticated user
+      ↓
+require access_as_user
+      ↓
+controller
+```
+
+Token validation verifies properties including:
+
+```text
+signature
+issuer / tenant
+audience
+expiration
+```
+
+The API then requires the delegated scope:
+
+```text
+access_as_user
+```
+
+All controller endpoints are currently mapped through:
+
+```csharp
+app.MapControllers()
+    .RequireAuthorization()
+    .RequireScope("access_as_user");
+```
+
+The resulting behaviour is:
+
+```text
+missing / invalid access token
+→ 401 Unauthorized
+
+valid authenticated token without required scope
+→ 403 Forbidden
+
+valid token with access_as_user
+→ request reaches the controller
+```
+
+`GET /api/health` remains anonymous because it is mapped separately from the controllers.
+
+### Current Stage 14A Limitation
+
+The API authentication boundary is implemented, but the React application does not yet acquire access tokens.
+
+Until frontend authentication is added, normal React API requests will therefore receive:
+
+```text
+401 Unauthorized
+```
+
+This is expected.
+
+The next authentication stage adds a separate SPA registration and MSAL integration so React can:
+
+```text
+detect current authentication state
+        ↓
+sign the user into Microsoft Entra
+        ↓
+request access_as_user
+        ↓
+receive an access token
+        ↓
+send Authorization: Bearer <token>
+        ↓
+call the IncidentIQ API
+```
+
+### Automated Authentication Tests
+
+API integration tests do not request real Microsoft Entra tokens.
+
+The test server replaces production JWT authentication with a deterministic test scheme.
+
+```text
+Test request
+→ TestAuthenticationHandler
+→ test ClaimsPrincipal
+→ normal ASP.NET authorization
+→ controller
+```
+
+This allows the suite to verify:
+
+```text
+anonymous request → 401
+authenticated + correct scope → success
+authenticated + incorrect scope → 403
+health check without authentication → success
+```
+
+without depending on Microsoft Entra or network connectivity during automated test runs.
+
+Real Entra token verification is performed separately through local and Azure end-to-end authentication testing.
+
+---
 
 ## Local Configuration and User-Secrets
 
@@ -556,7 +831,7 @@ Historical Incident indexing relay + consumer
 
 ---
 
-## Authentication Notes
+## Azure Resource Authentication Notes
 
 Typical Azure-connected permissions include:
 

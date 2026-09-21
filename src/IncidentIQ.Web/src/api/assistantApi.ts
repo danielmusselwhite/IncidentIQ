@@ -2,11 +2,7 @@ import type {
     AskOperationalQuestionRequest,
     OperationalAssistantResponse,
 } from "../types/assistant";
-import { ApiError, type ApiProblemDetails } from "./apiError";
-
-const apiBaseUrl =
-    import.meta.env.VITE_API_BASE_URL ??
-    "https://localhost:7156";
+import { apiFetch, throwApiError } from "./apiClient";
 
 /**
  * Submits an operational question to the grounded IncidentIQ Assistant.
@@ -22,9 +18,7 @@ const apiBaseUrl =
 export async function askOperationalQuestion(
     request: AskOperationalQuestionRequest,
 ): Promise<OperationalAssistantResponse> {
-    const response = await fetch(
-        `${apiBaseUrl}/api/assistant/questions`,
-        {
+    const response = await apiFetch(`/api/assistant/questions`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
@@ -38,23 +32,4 @@ export async function askOperationalQuestion(
     }
 
     return response.json();
-}
-
-/**
- * Converts an unsuccessful API response into the shared ApiError type.
- */
-async function throwApiError(
-    response: Response,
-): Promise<never> {
-    const problem = await response
-        .json()
-        .catch(() => null) as ApiProblemDetails | null;
-
-    throw new ApiError(
-        problem?.detail ??
-            problem?.title ??
-            "An unexpected error occurred.",
-        response.status,
-        problem?.errors,
-    );
 }

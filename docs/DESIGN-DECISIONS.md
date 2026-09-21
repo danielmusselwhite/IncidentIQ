@@ -535,3 +535,122 @@ For the full LLM/RAG flow, see [RAG & AI Design](RAG-AND-AI.md).
 - Stronger optimistic concurrency can be added before significant Worker scaling.
 
 These are deliberate limits: the current design demonstrates realistic cloud reliability and grounded-AI patterns without adding production complexity before it is needed.
+
+## 31. # `docs/ARCHITECTURE.md` addition
+
+## Authentication Boundaries
+
+IncidentIQ has two distinct authentication boundaries.
+
+### User → API
+
+Human users authenticate through Microsoft Entra.
+
+```text
+Engineer
+   ↓
+Microsoft Entra
+   ↓
+React Web
+   ↓
+Bearer access token
+   ↓
+ASP.NET Core authentication
+   ↓
+access_as_user authorization
+   ↓
+Controllers
+   ↓
+Application
+```
+
+Microsoft Entra issues a signed access token for the IncidentIQ API.
+
+`Microsoft.Identity.Web` validates that token and ASP.NET Core constructs the authenticated `ClaimsPrincipal`.
+
+Application controllers currently require the delegated:
+
+```text
+access_as_user
+```
+
+scope.
+
+More granular Engineer and Administrator role authorization is layered on top of this authenticated identity separately.
+
+### API / Worker → Azure
+
+The API and Worker authenticate to Azure services using workload identities rather than the user's access token.
+
+```text
+API
+├── Managed Identity → Cosmos DB
+└── Managed Identity → Azure OpenAI
+
+Worker
+├── Managed Identity → Cosmos DB
+├── Managed Identity → Service Bus
+└── Managed Identity → Azure OpenAI
+```
+
+The user token therefore stops at the API security boundary.
+
+It is not forwarded to Cosmos, Service Bus or Azure OpenAI.
+
+This separation means:
+
+```text
+Microsoft Entra user identity
+→ controls access to IncidentIQ
+
+Managed Identity
+→ controls IncidentIQ's access to Azure resources
+```
+
+The health endpoint is outside the protected controller mapping so infrastructure health probes can call it anonymously.
+
+---
+
+## 31. User Authentication Is Separate from Workload Identity
+
+IncidentIQ uses two independent identity models.
+
+Human access uses Microsoft Entra delegated authentication:
+
+```text
+User
+→ Entra
+→ React
+→ JWT access token
+→ API
+```
+
+Azure workload access uses Managed Identity:
+
+```text
+API / Worker
+→ Managed Identity
+→ Azure resource RBAC
+```
+
+The API validates Microsoft Entra bearer tokens with `Microsoft.Identity.Web`.
+
+All controller endpoints currently require:
+
+```text
+authenticated identity
++
+access_as_user delegated scope
+```
+
+while `/api/health` remains anonymous.
+
+**Why:** a user's authority to enter the IncidentIQ application and a workload's authority to access Cosmos, Service Bus or Azure OpenAI are different security concerns.
+
+Forwarding user credentials into infrastructure dependencies would couple application authorization to Azure resource permissions and make service-to-service access dependent on the current interactive user.
+
+Instead, the HTTP boundary authenticates the human identity and the deployed workload independently authenticates itself to Azure.
+
+The API and SPA app registrations are treated as stable Microsoft Entra tenant bootstrap configuration. Environment-specific application infrastructure remains managed separately through Bicep.
+
+**Trade-off:** Microsoft Entra app-registration configuration currently has a small manual bootstrap step rather than being provisioned through the Microsoft Graph Bicep extension. This avoids granting the deployment identity broad directory-management permissions purely to automate two stable portfolio registrations. The registrations can be moved to tenant-level IaC later if IncidentIQ develops a stronger requirement for repeatable multi-environment identity provisioning.

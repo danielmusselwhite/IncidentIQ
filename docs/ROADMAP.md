@@ -567,29 +567,29 @@ existing Managed Identity model used for service-to-service Azure access.
 * [x] Create/configure a Microsoft Entra application registration for the IncidentIQ API.
 * [x] Expose a delegated API scope such as `access_as_user`.
 * [x] Add Microsoft Entra JWT bearer authentication to the ASP.NET Core API.
-* [ ] Validate issuer, audience and access tokens through the Microsoft identity platform integration.
-* [ ] Add authentication middleware before authorization middleware.
-* [ ] Protect application API controllers with authenticated-user authorization.
-* [ ] Keep `/api/health` anonymous for platform/container health checks.
-* [ ] Add API tests verifying:
-  * [ ] unauthenticated requests return `401 Unauthorized`.
-  * [ ] authenticated requests can reach protected endpoints.
-* [ ] Verify protected API behaviour locally.
+* [x] Validate issuer, audience and access tokens through the Microsoft identity platform integration.
+* [x] Add authentication middleware before authorization middleware.
+* [x] Protect application API controllers with authenticated-user authorization.
+* [x] Keep `/api/health` anonymous for platform/container health checks.
+* [x] Add API tests verifying:
+  * [x] unauthenticated requests return `401 Unauthorized`.
+  * [x] authenticated requests can reach protected endpoints.
+* [x] Verify protected API behaviour locally.
 
 ### 14B — Authenticate the React Application
 
-* [ ] Create/configure a separate Microsoft Entra SPA application registration.
-* [ ] Configure local and Azure Static Web Apps redirect URIs.
-* [ ] Grant the SPA delegated access to the IncidentIQ API scope.
-* [ ] Add MSAL authentication to the React application.
-* [ ] Add a shared authentication configuration.
-* [ ] Add a shared authenticated API client.
-* [ ] Acquire API access tokens silently where possible.
-* [ ] Send bearer access tokens with IncidentIQ API requests.
-* [ ] Show a sign-in experience for unauthenticated users.
-* [ ] Replace the hard-coded Development User profile with authenticated user information.
-* [ ] Add sign-out functionality.
-* [ ] Verify authentication locally through the complete React → API flow.
+* [x] Create/configure a separate Microsoft Entra SPA application registration.
+* [x] Configure local and Azure Static Web Apps redirect URIs.
+* [x] Grant the SPA delegated access to the IncidentIQ API scope.
+* [x] Add MSAL authentication to the React application.
+* [x] Add a shared authentication configuration.
+* [x] Add a shared authenticated API client.
+* [x] Acquire API access tokens silently where possible.
+* [x] Send bearer access tokens with IncidentIQ API requests.
+* [x] Show a sign-in experience for unauthenticated users.
+* [x] Replace the hard-coded Development User profile with authenticated user information.
+* [x] Add sign-out functionality.
+* [x] Verify authentication locally through the complete React → API flow.
 
 ### 14C — Engineer / Administrator Authorization
 

@@ -1,5 +1,5 @@
 import { NavLink, Outlet } from "react-router-dom";
-
+import { useMsal } from "@azure/msal-react";
 import "./AppLayout.css";
 
 /**
@@ -23,6 +23,31 @@ const navigation = [
  * React Router renders the currently selected child route inside <Outlet />.
  */
 export default function AppLayout() {
+    //#region Authentication and User Info
+    const { instance, accounts } = useMsal();
+
+    const account = accounts[0];
+
+    const displayName =
+        account?.name ??
+        account?.username ??
+        "Signed-in user";
+
+    const initials = displayName
+        .split(" ")
+        .map(part => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase();
+
+    const handleLogout = async () => {
+        await instance.logoutRedirect({
+            account,
+            postLogoutRedirectUri: window.location.origin,
+        });
+    };
+    //#endregion
+
     return (
         <div className="app-shell">
             <aside className="app-sidebar">
@@ -100,12 +125,22 @@ export default function AppLayout() {
                     </div>
 
                     <div className="app-topbar__profile">
-                        <div className="app-topbar__avatar">DU</div>
+                        <div className="app-topbar__avatar">
+                            {initials}
+                        </div>
 
                         <div className="app-topbar__profile-text">
-                            <strong>Development User</strong>
-                            <span>Engineer</span>
+                            <strong>{displayName}</strong>
+                            <span>{account?.username}</span>
                         </div>
+
+                        <button
+                            type="button"
+                            className="button button--secondary"
+                            onClick={handleLogout}
+                        >
+                            Sign out
+                        </button>
                     </div>
                 </header>
 

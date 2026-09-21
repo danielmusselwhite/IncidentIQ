@@ -188,8 +188,6 @@ app.UseAuthorization();
 //
 // 1. an authenticated Microsoft Entra user;
 // 2. an access token containing the delegated access_as_user scope.
-//
-// More granular Engineer / Administrator authorization is added in Stage 14C.
 app.MapControllers()
     .RequireAuthorization()
     .RequireScope("access_as_user");
