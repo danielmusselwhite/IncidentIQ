@@ -564,9 +564,9 @@ existing Managed Identity model used for service-to-service Azure access.
 
 ### 14A — Protect the API with Microsoft Entra
 
-* [ ] Create/configure a Microsoft Entra application registration for the IncidentIQ API.
-* [ ] Expose a delegated API scope such as `access_as_user`.
-* [ ] Add Microsoft Entra JWT bearer authentication to the ASP.NET Core API.
+* [x] Create/configure a Microsoft Entra application registration for the IncidentIQ API.
+* [x] Expose a delegated API scope such as `access_as_user`.
+* [x] Add Microsoft Entra JWT bearer authentication to the ASP.NET Core API.
 * [ ] Validate issuer, audience and access tokens through the Microsoft identity platform integration.
 * [ ] Add authentication middleware before authorization middleware.
 * [ ] Protect application API controllers with authenticated-user authorization.

@@ -1,5 +1,4 @@
 ﻿using IncidentIQ.Api.Contracts.Runbooks;
-using IncidentIQ.Api.Tests.Fakes;
 using IncidentIQ.Api.Tests.Infrastructure;
 using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using System.Net;
@@ -10,7 +9,7 @@ public sealed class RunbooksApiTests(
     IncidentIqApiFactory factory)
     : IClassFixture<IncidentIqApiFactory>
 {
-    private readonly HttpClient _client = factory.CreateClient();
+    private readonly HttpClient _client = factory.CreateAuthenticatedClient();
 
     [Fact]
     public async Task Create_WithValidRequest_ShouldReturnCreated()

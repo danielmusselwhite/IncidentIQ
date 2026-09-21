@@ -4,50 +4,89 @@ using IncidentIQ.Application;
 using IncidentIQ.Infrastructure;
 using IncidentIQ.Infrastructure.AzureAI;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.Identity.Web;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-builder.Services.AddControllers()
+// -----------------------------------------------------------------------------
+// API
+// -----------------------------------------------------------------------------
+
+builder.Services
+    .AddControllers()
     .AddJsonOptions(options =>
-        options.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
+        options.JsonSerializerOptions.Converters.Add(
+            new JsonStringEnumConverter()));
 
 builder.Services.AddOpenApi();
 builder.Services.AddHealthChecks();
 
-// Application Insights telemetry.
-var applicationInsightsConnectionString =
-    builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+// -----------------------------------------------------------------------------
+// Authentication & authorization
+// -----------------------------------------------------------------------------
 
-if (!string.IsNullOrWhiteSpace(applicationInsightsConnectionString))
+// IncidentIQ is a protected Microsoft Entra web API.
+//
+// Microsoft.Identity.Web validates incoming bearer tokens including their
+// signature, issuer, audience and lifetime against the configured Entra tenant.
+builder.Services
+    .AddAuthentication(
+        JwtBearerDefaults.AuthenticationScheme)
+    .AddMicrosoftIdentityWebApi(
+        builder.Configuration.GetSection("AzureAd"));
+
+builder.Services.AddAuthorization();
+
+// -----------------------------------------------------------------------------
+// Application Insights telemetry
+// -----------------------------------------------------------------------------
+
+var applicationInsightsConnectionString =
+    builder.Configuration[
+        "APPLICATIONINSIGHTS_CONNECTION_STRING"];
+
+if (!string.IsNullOrWhiteSpace(
+        applicationInsightsConnectionString))
 {
     builder.Services
         .AddOpenTelemetry()
         .UseAzureMonitor(options =>
         {
-            options.ConnectionString = applicationInsightsConnectionString;
+            options.ConnectionString =
+                applicationInsightsConnectionString;
         });
 }
 
-// Swagger.
+// -----------------------------------------------------------------------------
+// Swagger
+// -----------------------------------------------------------------------------
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// Exception handling middleware.
+// -----------------------------------------------------------------------------
+// Exception handling
+// -----------------------------------------------------------------------------
+
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 
-// Register Infrastructure and Application dependencies.
-builder.Services.AddInfrastructureDependencies(builder.Configuration);
+// -----------------------------------------------------------------------------
+// Application / Infrastructure
+// -----------------------------------------------------------------------------
+
+builder.Services.AddInfrastructureDependencies(
+    builder.Configuration);
+
 builder.Services.AddApplicationDependencies();
 
 // The API uses embeddings for semantic retrieval and the Operational Assistant
 // for grounded conversational questions.
 //
 // Development and Testing use deterministic AI implementations so local and
-// automated tests do not require Azure OpenAI. Other environments use the
-// real Azure AI implementations.
+// automated tests do not require Azure OpenAI.
 if (builder.Environment.IsDevelopment() ||
     builder.Environment.IsEnvironment("Testing"))
 {
@@ -55,36 +94,47 @@ if (builder.Environment.IsDevelopment() ||
 }
 else
 {
-    builder.Services.AddAzureAIDependencies(builder.Configuration);
+    builder.Services.AddAzureAIDependencies(
+        builder.Configuration);
 }
 
-// CORS.
-var frontendOrigin = builder.Configuration["Frontend:Origin"];
+// -----------------------------------------------------------------------------
+// CORS
+// -----------------------------------------------------------------------------
+
+var frontendOrigin =
+    builder.Configuration["Frontend:Origin"];
 
 builder.Services.AddCors(options =>
 {
-    options.AddPolicy("DevelopmentCors", policy =>
-    {
-        policy
-            .WithOrigins("http://localhost:5173")
-            .AllowAnyHeader()
-            .AllowAnyMethod();
-    });
+    options.AddPolicy(
+        "DevelopmentCors",
+        policy =>
+        {
+            policy
+                .WithOrigins("http://localhost:5173")
+                .AllowAnyHeader()
+                .AllowAnyMethod();
+        });
 
     if (!builder.Environment.IsDevelopment() &&
         !builder.Environment.IsEnvironment("Testing"))
     {
         if (string.IsNullOrWhiteSpace(frontendOrigin))
+        {
             throw new InvalidOperationException(
                 "Frontend:Origin must be configured in production.");
+        }
 
-        options.AddPolicy("ProductionCors", policy =>
-        {
-            policy
-                .WithOrigins(frontendOrigin)
-                .AllowAnyHeader()
-                .AllowAnyMethod();
-        });
+        options.AddPolicy(
+            "ProductionCors",
+            policy =>
+            {
+                policy
+                    .WithOrigins(frontendOrigin)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod();
+            });
     }
 });
 
@@ -92,7 +142,10 @@ var app = builder.Build();
 
 app.UseExceptionHandler();
 
-// Configure the HTTP request pipeline.
+// -----------------------------------------------------------------------------
+// HTTP pipeline
+// -----------------------------------------------------------------------------
+
 if (app.Environment.IsDevelopment())
 {
     app.MapOpenApi();
@@ -116,17 +169,33 @@ else
 // Production infrastructure is provisioned through Bicep.
 if (app.Environment.IsDevelopment())
 {
-    using var scope = app.Services.CreateScope();
+    using var scope =
+        app.Services.CreateScope();
 
-    var initializer = scope.ServiceProvider
-        .GetRequiredService<CosmosInitializer>();
+    var initializer =
+        scope.ServiceProvider
+            .GetRequiredService<CosmosInitializer>();
 
     await initializer.InitializeAsync();
 }
 
+// Authentication must run before authorization so ASP.NET can construct the
+// ClaimsPrincipal used by authorization policies and endpoint requirements.
+app.UseAuthentication();
 app.UseAuthorization();
 
-app.MapControllers();
+// All controller endpoints require:
+//
+// 1. an authenticated Microsoft Entra user;
+// 2. an access token containing the delegated access_as_user scope.
+//
+// More granular Engineer / Administrator authorization is added in Stage 14C.
+app.MapControllers()
+    .RequireAuthorization()
+    .RequireScope("access_as_user");
+
+// Health checks deliberately remain anonymous so Azure Container Apps and
+// external health probes do not need to acquire an Entra access token.
 app.MapHealthChecks("/api/health");
 
 app.Run();
