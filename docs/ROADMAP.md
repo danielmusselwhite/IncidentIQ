@@ -537,48 +537,101 @@ through ad-hoc testing.
   * [x] recommended-action relevance.
   * [x] appropriate uncertainty.
   * [x] grounding in supplied evidence.
+* [x] Preserve the actual generated AI response for review.
+* [x] Generate a Markdown human-review report for evaluation runs.
 * [x] Keep subjective generated-answer quality separate from deterministic retrieval and citation metrics.
-* [x] Document the limitations of automated evaluation for these properties.
+* [x] Review representative evidence-backed, ambiguous and no-evidence scenarios.
+* [x] Record the no-evidence generic-guidance behaviour as a known grounding limitation.
+* [x] Document the limitations of automated evaluation for subjective response quality.
 
 ### 13E — Evaluation Documentation
 
 * [x] Record retrieval and citation-validity baselines.
 * [x] Document dataset size and methodology.
 * [x] Document evaluation limitations and known imperfect retrieval behaviour.
+* [x] Document generated evaluation outputs:
+  * [x] machine-readable JSON report.
+  * [x] human-review Markdown report.
 * [x] Add dedicated AI evaluation documentation.
-* [ ] Add a concise evaluation summary to the root README.
+* [x] Record representative human-review findings.
 
 ---
 
 ## Stage 14 — Security & Configuration
 
-Complete the most valuable production-style security work without introducing
-infrastructure purely for technology breadth.
+Add production-style user authentication and authorization while preserving the
+existing Managed Identity model used for service-to-service Azure access.
 
-### 14A — Authentication
+### 14A — Protect the API with Microsoft Entra
 
-* [ ] Configure Microsoft Entra authentication for the API.
-* [ ] Authenticate the React application.
-* [ ] Validate access tokens in the API.
-* [ ] Protect authenticated API endpoints.
-* [ ] Verify the authentication flow locally and in Azure.
+* [x] Create/configure a Microsoft Entra application registration for the IncidentIQ API.
+* [x] Expose a delegated API scope such as `access_as_user`.
+* [x] Add Microsoft Entra JWT bearer authentication to the ASP.NET Core API.
+* [x] Validate issuer, audience and access tokens through the Microsoft identity platform integration.
+* [x] Add authentication middleware before authorization middleware.
+* [x] Protect application API controllers with authenticated-user authorization.
+* [x] Keep `/api/health` anonymous for platform/container health checks.
+* [x] Add API tests verifying:
+  * [x] unauthenticated requests return `401 Unauthorized`.
+  * [x] authenticated requests can reach protected endpoints.
+* [x] Verify protected API behaviour locally.
 
-### 14B — Authorization
+### 14B — Authenticate the React Application
 
-* [ ] Define Engineer and Administrator application roles.
-* [ ] Add role-based authorization policies.
-* [ ] Protect administrative functionality with Administrator authorization.
-* [ ] Keep normal Incident/Runbook functionality available to Engineers.
+* [x] Create/configure a separate Microsoft Entra SPA application registration.
+* [x] Configure local and Azure Static Web Apps redirect URIs.
+* [x] Grant the SPA delegated access to the IncidentIQ API scope.
+* [x] Add MSAL authentication to the React application.
+* [x] Add a shared authentication configuration.
+* [x] Add a shared authenticated API client.
+* [x] Acquire API access tokens silently where possible.
+* [x] Send bearer access tokens with IncidentIQ API requests.
+* [x] Show a sign-in experience for unauthenticated users.
+* [x] Replace the hard-coded Development User profile with authenticated user information.
+* [x] Add sign-out functionality.
+* [x] Verify authentication locally through the complete React → API flow.
 
-### 14C — Secrets & Configuration
+### 14C — Engineer / Administrator Authorization
 
-* [ ] Create Azure Key Vault through Bicep.
-* [ ] Grant application Managed Identities least-privilege Key Vault access.
-* [ ] Move genuine secrets into Key Vault where required.
-* [ ] Keep non-secret configuration in normal Container App configuration /
-      environment settings.
-* [ ] Review existing Managed Identity and RBAC assignments for least privilege.
-* [ ] Document the final authentication, authorization and configuration model.
+* [x] Define Microsoft Entra application roles:
+  * [x] `Engineer`.
+  * [x] `Administrator`.
+* [x] Configure role claims in API access tokens.
+* [x] Define ASP.NET Core authorization policies:
+  * [x] Engineer access (default)
+  * [x] Administrator-only access (atm just for retry endpoint)
+* [x] Allow Administrators to satisfy normal Engineer-level application access.
+* [x] Protect normal Incident functionality with Engineer-level access.
+* [x] Protect normal Runbook functionality with Engineer-level access.
+* [x] Protect Operational Assistant functionality with Engineer-level access.
+* [x] Protect `POST /api/incidents/{id}/retry` with Administrator authorization.
+* [x] Add authorization tests covering Engineer and Administrator boundaries.
+* [x] Verify expected `403 Forbidden` behaviour for authenticated users without the required role.
+
+### 14D — Azure Deployment & Configuration Review
+
+* [x] Pass API Entra configuration to the API Container App.
+* [x] Pass SPA Entra configuration into the Vite production build.
+* [x] Deploy the authentication and authorization changes to Azure.
+* [x] Verify Azure sign-in through the hosted React application.
+* [x] Verify authenticated React → API calls in Azure.
+* [x] Verify Engineer functionality in Azure.
+* [x] Verify Administrator-only functionality in Azure.
+* [x] Verify unauthenticated API access is rejected.
+
+#### Secrets & Configuration Review
+
+* [ ] Review application configuration and classify values as secrets or non-secret configuration.
+* [ ] Keep Microsoft Entra tenant IDs, client IDs and scope identifiers as normal configuration.
+* [ ] Confirm browser-delivered SPA configuration contains no client secret.
+* [ ] Continue using Managed Identity for production access to:
+  * [ ] Cosmos DB.
+  * [ ] Service Bus.
+  * [ ] Azure OpenAI.
+  * [ ] Azure Container Registry.
+* [ ] Keep local/emulator credentials outside source control through user-secrets or local configuration.
+* [ ] Review existing Managed Identity and Azure RBAC assignments for least privilege.
+* [ ] Document the final authentication, authorization and workload-identity model.
 
 ---
 
@@ -595,33 +648,31 @@ Demonstrate that the distributed workflow can be traced, measured and scaled.
 ### 15B — Distributed Tracing
 
 * [ ] Propagate trace/correlation context through:
-  * API request.
-  * Service Bus command.
-  * Worker processing.
-  * retrieval.
-  * Azure AI generation.
-  * Cosmos persistence.
-* [ ] Verify a complete Incident-analysis workflow can be followed through
-      Application Insights.
+  * [ ] API request.
+  * [ ] Service Bus command.
+  * [ ] Worker processing.
+  * [ ] retrieval.
+  * [ ] Azure AI generation.
+  * [ ] Cosmos persistence.
+* [ ] Verify a complete Incident-analysis workflow can be followed through Application Insights.
 
 ### 15C — Operational Metrics
 
 * [ ] Record useful application metrics including:
-  * queue wait duration.
-  * analysis duration.
-  * AI generation latency.
-  * analysis failures.
+  * [ ] queue wait duration.
+  * [ ] analysis duration.
+  * [ ] AI generation latency.
+  * [ ] analysis failures.
 * [ ] Add a small set of useful KQL queries for:
-  * processing failures.
-  * average/P95 processing duration.
-  * queue wait time.
-  * AI latency/failures.
+  * [ ] processing failures.
+  * [ ] average/P95 processing duration.
+  * [ ] queue wait time.
+  * [ ] AI latency/failures.
 * [ ] Document representative telemetry/screenshots.
 
 ### 15D — Worker Scaling
 
-* [ ] Configure Azure Container Apps KEDA scaling for the Worker based on
-      Service Bus queue depth.
+* [ ] Configure Azure Container Apps KEDA scaling for the Worker based on Service Bus queue depth.
 * [ ] Define sensible minimum/maximum replica limits.
 * [ ] Verify scale-out behaviour with a small controlled workload.
 * [ ] Document the scaling strategy.
@@ -638,13 +689,14 @@ work can be inspected and recovered without building a full administration produ
 * [ ] Complete the existing Operations frontend page.
 * [ ] Display failed Incident analyses.
 * [ ] Show useful failure metadata:
-  * Incident.
-  * failure reason.
-  * attempt count.
-  * timestamps.
-  * correlation ID.
+  * [ ] Incident.
+  * [ ] failure reason.
+  * [ ] attempt count.
+  * [ ] timestamps.
+  * [ ] correlation ID.
 * [ ] Connect the UI to the existing retry/requeue functionality from Stage 8.
 * [ ] Restrict retry/requeue operations to Administrators.
+* [ ] Hide or disable Administrator-only navigation/actions for normal Engineers where useful.
 
 ### 16B — Operational Links
 
@@ -652,8 +704,8 @@ work can be inspected and recovered without building a full administration produ
 * [ ] Provide clear links/navigation from failed operations back to the Incident.
 * [ ] Document how operators use Application Insights for deeper diagnostics.
 
-Do not duplicate Azure Monitor/Application Insights by building custom dashboards
-for telemetry already available through Azure tooling.
+> Do not duplicate Azure Monitor/Application Insights by building custom
+> dashboards for telemetry already provided by Azure tooling.
 
 ---
 
@@ -664,17 +716,17 @@ Turn the implemented system into a finished portfolio piece.
 ### 17A — End-to-End Verification
 
 * [ ] Run the complete deployed workflow:
-  * authenticate.
-  * submit Incident.
-  * enqueue analysis.
-  * retrieve grounding evidence.
-  * generate grounded analysis.
-  * persist result.
-  * display result.
+  * [ ] authenticate.
+  * [ ] submit Incident.
+  * [ ] enqueue analysis.
+  * [ ] retrieve grounding evidence.
+  * [ ] generate grounded analysis.
+  * [ ] persist result.
+  * [ ] display result.
 * [ ] Verify failure and retry behaviour.
 * [ ] Verify authorization boundaries.
 * [ ] Verify distributed tracing.
-* [ ] Verify Worker scaling.
+* [ ] Verify Worker scaling if implemented.
 * [ ] Run the AI evaluation suite and record the final baseline.
 
 ### 17B — Demo Data & UX
@@ -682,20 +734,23 @@ Turn the implemented system into a finished portfolio piece.
 * [ ] Seed a small realistic demonstration dataset.
 * [ ] Perform final frontend styling and UX cleanup.
 * [ ] Ensure loading, empty, processing, failure and completed states are polished.
+* [ ] Ensure authentication/sign-out states are polished.
 * [ ] Ensure the Operational Assistant is demo-ready.
 
 ### 17C — Portfolio Documentation
 
 * [ ] Update architecture diagrams to match the final implementation.
 * [ ] Update the root README.
+* [ ] Add the concise AI evaluation summary deferred from Stage 13.
 * [ ] Document:
-  * system architecture.
-  * asynchronous processing.
-  * RAG/grounding architecture.
-  * reliability/outbox design.
-  * security model.
-  * observability/scaling.
-  * AI evaluation.
+  * [ ] system architecture.
+  * [ ] asynchronous processing.
+  * [ ] RAG/grounding architecture.
+  * [ ] reliability/outbox design.
+  * [ ] authentication and authorization.
+  * [ ] Managed Identity and Azure RBAC.
+  * [ ] observability/scaling.
+  * [ ] AI evaluation.
 * [ ] Include representative screenshots.
 * [ ] Create a short architecture/demo video.
 * [ ] Perform final repository cleanup.
@@ -720,13 +775,22 @@ They may be revisited if IncidentIQ is developed beyond its portfolio scope.
 * [ ] Route public API traffic through APIM.
 * [ ] Add APIM policies such as rate limiting where useful.
 * [ ] Add Azure App Configuration.
-* [ ] Centralise application configuration.
+* [ ] Centralise application configuration where this provides genuine operational value.
 
 These are valuable production technologies, but the portfolio already demonstrates
 Azure infrastructure, authentication, Managed Identity, RBAC and configuration.
 They are not required to demonstrate the core IncidentIQ architecture.
 
-## Extension B — Event-Driven Integrations
+## Extension B — External Secrets / Key Vault
+
+* [ ] Add Azure Key Vault when the application has a genuine runtime secret requiring secure storage.
+* [ ] Grant application Managed Identities least-privilege Key Vault access.
+* [ ] Reference secrets from Container Apps without embedding secret values in application configuration.
+
+Do not introduce Key Vault solely to store non-secret values such as tenant IDs,
+client IDs, resource endpoints or scope names.
+
+## Extension C — Event-Driven Integrations
 
 * [ ] Create Event Grid infrastructure.
 * [ ] Publish `AnalysisCompleted` / `AnalysisFailed` integration events.
@@ -737,7 +801,7 @@ The core asynchronous architecture is already demonstrated through Service Bus a
 the transactional outbox. Event Grid should be added only when a genuine integration
 requires fan-out rather than purely to demonstrate another Azure service.
 
-## Extension C — Engineer Feedback
+## Extension D — Engineer Feedback
 
 * [ ] Add useful / not useful feedback for Incident analysis.
 * [ ] Add optional engineer comments.
@@ -745,7 +809,7 @@ requires fan-out rather than purely to demonstrate another Azure service.
 * [ ] Add frontend feedback controls.
 * [ ] Use feedback as a future evaluation/product-improvement signal.
 
-## Extension D — Advanced Operations
+## Extension E — Advanced Operations
 
 * [ ] Custom operational dashboard.
 * [ ] Queue-depth visualisation.
@@ -756,7 +820,7 @@ requires fan-out rather than purely to demonstrate another Azure service.
 Prefer Application Insights and Azure Monitor for these concerns unless a dedicated
 IncidentIQ operations experience becomes a product requirement.
 
-## Extension E — Assistant Conversations
+## Extension F — Assistant Conversations
 
 * [ ] Persist Assistant conversations per authenticated user.
 * [ ] Add conversation history.
@@ -764,37 +828,32 @@ IncidentIQ operations experience becomes a product requirement.
 * [ ] Delete conversations.
 * [ ] Add conversation ownership rules.
 
-## Extension F — Advanced Retrieval
+## Extension G — Advanced Retrieval
 
 * [ ] Investigate Redis caching for frequently retrieved similar Incidents.
 * [ ] Evaluate retrieval thresholds/reranking.
-* [ ] Evaluate production Cosmos vector-engine parity against the controlled
-      evaluation corpus.
+* [ ] Evaluate production Cosmos vector-engine parity against the controlled evaluation corpus.
 * [ ] Expand the evaluation dataset using additional realistic scenarios.
 
-## Extension G — Change Intelligence
+## Extension H — Change Intelligence
 
 * [ ] Integrate with source-control providers such as GitHub.
 * [ ] Retrieve recent deployments/commits for affected services.
 * [ ] Correlate operational failures with recent changes.
 * [ ] Include relevant changes as another grounded evidence source.
 
-## Extension H — Agentic Operations
+## Extension I — Agentic Operations
 
 * [ ] Investigate agentic workflows for repetitive Incident-management tasks.
 * [ ] Require explicit approval before performing operational actions.
-* [ ] Add appropriate audit and authorization boundaries before allowing
-      automated remediation.
+* [ ] Add appropriate audit and authorization boundaries before allowing automated remediation.
 
-## Extension I — Additional Reliability Hardening
+## Extension J — Additional Reliability Hardening
 
-* [ ] Evaluate stronger idempotency using request tokens / optimistic concurrency
-      if required.
+* [ ] Evaluate stronger idempotency using request tokens / optimistic concurrency if required.
 * [ ] Revisit circuit breakers if production telemetry demonstrates a need.
-* [ ] Add additional deployment/smoke-test automation if IncidentIQ becomes
-      continuously operated rather than primarily demonstrated.
+* [ ] Add additional deployment/smoke-test automation if IncidentIQ becomes continuously operated rather than primarily demonstrated.
 
-## Extension J - Improved Evaluation
-
+## Extension K - Improved Evaluation
 
 * [ ] Add some form of automated evaluation for the AI analysis, as atm we only automatically evaluate the retrieval and ranking of similar Incidents. With the AI analysis done manually.

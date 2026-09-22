@@ -14,7 +14,7 @@ builder.Services.AddInfrastructureDependencies(builder.Configuration);
 
 // Register AI services.
 // Development uses deterministic implementations while deployed environments
-// use Azure OpenAI for incident analysis and embedding generation.#
+// use Azure OpenAI for incident analysis and embedding generation.
 var useLiveAzureAi =
     builder.Configuration.GetValue<bool>(
         "Development:UseLiveAzureAI"); // flag so optionally use live Azure AI in development for testing purposes

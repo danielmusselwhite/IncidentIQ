@@ -51,6 +51,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     environment: development
+    env:
+      ENTRA_TENANT_ID: ${{ secrets.Entra_TENANT_ID }}
+      ENTRA_API_CLIENT_ID: ${{ secrets.Entra_API_CLIENT_ID }}
 
     steps:
       - name: Checkout repository
@@ -108,6 +111,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: what-if
     environment: development
+    env:
+      ENTRA_TENANT_ID: ${{ secrets.Entra_TENANT_ID }}
+      ENTRA_API_CLIENT_ID: ${{ secrets.Entra_API_CLIENT_ID }}
 
     steps:
       - name: Checkout repository
@@ -198,7 +204,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          
+
           IMAGE="${{ steps.base-infra.outputs.acr_login_server }}/${API_IMAGE_REPOSITORY}:${{steps.versions.outputs.api_version}}-${{ steps.versions.outputs.short_sha }}"
 
           docker build \
@@ -281,6 +287,9 @@ jobs:
         working-directory: src/IncidentIQ.Web
         env:
           VITE_API_BASE_URL: ${{ steps.app-deployment.outputs.api_url }}
+          VITE_ENTRA_TENANT_ID: ${{ secrets.Entra_TENANT_ID }}
+          VITE_ENTRA_CLIENT_ID: ${{ secrets.Entra_WEB_CLIENT_ID }}
+          VITE_API_SCOPE: api://${{ secrets.Entra_API_CLIENT_ID }}/access_as_user
         run: npm run build
 
       - name: Get Static Web Apps deployment token

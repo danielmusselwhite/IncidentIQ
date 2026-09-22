@@ -1,13 +1,16 @@
-﻿using IncidentIQ.Api.Contracts.Assistant;
+﻿using IncidentIQ.Api.Authorization;
+using IncidentIQ.Api.Contracts.Assistant;
 using IncidentIQ.Application.Assistant.Ask;
 using IncidentIQ.Application.Assistant.Conversation;
 using IncidentIQ.Application.Common.Grounding;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IncidentIQ.Api.Assistant;
 
 [ApiController]
 [Route("api/assistant")]
+[Authorize(Policy = IncidentIqPolicies.EngineerAccess)]
 public sealed class AssistantController(
     AskOperationalQuestionHandler handler)
     : ControllerBase

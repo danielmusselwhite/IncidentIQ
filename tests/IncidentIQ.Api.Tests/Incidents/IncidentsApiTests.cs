@@ -1,4 +1,5 @@
-﻿using IncidentIQ.Api.Contracts.Incidents;
+﻿using IncidentIQ.Api.Authorization;
+using IncidentIQ.Api.Contracts.Incidents;
 using IncidentIQ.Api.Tests.Infrastructure;
 using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Application.Incidents.Analyse.Grounding;
@@ -417,6 +418,43 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     #endregion
 
     #region Retry Tests
+    [Fact]
+    public async Task Retry_WhenEngineer_ReturnsForbiddenAndDoesNotRetryIncident()
+    {
+        // Arrange
+        var incident =
+            CreateFailedIncident();
+
+        await _factory.IncidentRepository.CreateAsync(
+            incident);
+
+        // _client represents an Engineer by default.
+        // Act
+        var response =
+            await _client.PostAsync(
+                $"/api/incidents/{incident.Id}/retry",
+                null);
+
+        // Assert
+        Assert.Equal(
+            HttpStatusCode.Forbidden,
+            response.StatusCode);
+
+        var persistedIncident =
+            await _factory.IncidentRepository
+                .GetByIdAsync(
+                    incident.Id);
+
+        Assert.NotNull(
+            persistedIncident);
+
+        Assert.Equal(
+            IncidentStatus.Failed,
+            persistedIncident.Status);
+
+        Assert.Empty(
+            _factory.IncidentSubmissionStore.Commands);
+    }
 
     [Fact]
     public async Task Retry_WhenIncidentIsFailed_ReturnsAcceptedAndPersistsNewAnalysisRequest()
@@ -427,8 +465,12 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         await _factory.IncidentRepository.CreateAsync(
             incident);
 
+        using var adminClient =
+            _factory.CreateHttpsClient(
+                IncidentIqRoles.Administrator);
+
         // Act
-        var response = await _client.PostAsync(
+        var response = await adminClient.PostAsync(
             $"/api/incidents/{incident.Id}/retry",
             null);
 
@@ -502,8 +544,12 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
     [Fact]
     public async Task Retry_WhenIncidentDoesNotExist_ReturnsNotFoundAndDoesNotPersistAnalysisRequest()
     {
+        using var adminClient =
+            _factory.CreateHttpsClient(
+                IncidentIqRoles.Administrator);
+
         // Act
-        var response = await _client.PostAsync(
+        var response = await adminClient.PostAsync(
             "/api/incidents/missing-id/retry",
             null);
 
@@ -534,8 +580,12 @@ public sealed class IncidentsApiTests : IClassFixture<IncidentIqApiFactory>
         await _factory.IncidentRepository.CreateAsync(
             incident);
 
+        using var adminClient =
+        _factory.CreateHttpsClient(
+            IncidentIqRoles.Administrator);
+
         // Act
-        var response = await _client.PostAsync(
+        var response = await adminClient.PostAsync(
             $"/api/incidents/{incident.Id}/retry",
             null);
 

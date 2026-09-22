@@ -51,6 +51,9 @@ jobs:
     # The OIDC federated credential and Azure secrets are scoped to this
     # GitHub environment, so Azure-authenticated jobs must target it.
     environment: development
+    env:
+      ENTRA_TENANT_ID: ${{ secrets.Entra_TENANT_ID }}
+      ENTRA_API_CLIENT_ID: ${{ secrets.Entra_API_CLIENT_ID }}
 
     steps:
       - name: Checkout repository

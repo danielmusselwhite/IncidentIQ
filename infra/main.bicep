@@ -51,6 +51,13 @@ param azureAiEmbeddingDeploymentCapacity int = 10
 param azureAiEmbeddingDimensions int = 1536
 
 // -----------------------------------------------------------------------------
+// Microsoft Entra
+// -----------------------------------------------------------------------------
+
+param entraTenantId string
+param entraApiClientId string
+
+// -----------------------------------------------------------------------------
 // Workload identities
 // -----------------------------------------------------------------------------
 
@@ -138,7 +145,7 @@ module cosmos './modules/cosmos.bicep' = {
     apiPrincipalId: apiIdentity.outputs.principalId
     workerPrincipalId: workerIdentity.outputs.principalId
 
-    embeddingDimensions : azureAiEmbeddingDimensions
+    embeddingDimensions: azureAiEmbeddingDimensions
   }
 }
 
@@ -249,6 +256,10 @@ module apiContainerApp './modules/api-container-app.bicep' = {
 
     acrLoginServer: acr.outputs.acrLoginServer
     image: apiImage
+
+    // Microsoft Entra
+    entraTenantId: entraTenantId
+    entraApiClientId: entraApiClientId
 
     // Cosmos
     cosmosEndpoint: cosmos.outputs.endpoint

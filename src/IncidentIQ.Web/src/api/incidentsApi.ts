@@ -3,9 +3,7 @@ import type {
     Incident,
 } from "../types/incident";
 import type { IncidentAnalysis } from "../types/incidentAnalysis";
-import { ApiError, type ApiProblemDetails } from "./apiError";
-
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "https://localhost:7156"; // if the environment variable is not set, default to the local development URL
+import { apiFetch, throwApiError } from "./apiClient";
 
 /** Creates a new incident by sending a POST request to the API.
  * @param request The data required to create a new incident.
@@ -15,7 +13,7 @@ const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? "https://localhost:7156"
 export async function createIncident(
     request: CreateIncidentRequest,
 ): Promise<Incident> {
-    const response = await fetch(`${apiBaseUrl}/api/incidents`, {
+    const response = await apiFetch(`/api/incidents`, {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
@@ -35,7 +33,7 @@ export async function createIncident(
  * @throws An error if the request fails.
  */
 export async function getIncidents(): Promise<Incident[]> {
-    const response = await fetch(`${apiBaseUrl}/api/incidents`);
+    const response = await apiFetch(`/api/incidents`);
 
     if (!response.ok) {
         await throwApiError(response);
@@ -50,7 +48,7 @@ export async function getIncidents(): Promise<Incident[]> {
  * @throws An error if the request fails.
  */
 export async function getIncident(id: string): Promise<Incident> {
-    const response = await fetch(`${apiBaseUrl}/api/incidents/${id}`);
+    const response = await apiFetch(`/api/incidents/${id}`);
 
     if (!response.ok) {
         await throwApiError(response);
@@ -67,24 +65,11 @@ export async function getIncident(id: string): Promise<Incident> {
  * @throws An error if the request fails.
  */
 export async function getIncidentAnalysis(id: string): Promise<IncidentAnalysis> {
-    const response = await fetch(`${apiBaseUrl}/api/incidents/${id}/analysis`);
+    const response = await apiFetch(`/api/incidents/${id}/analysis`);
 
     if (!response.ok) {
         await throwApiError(response);
     }
 
     return response.json();
-}
-
-
-async function throwApiError(response: Response): Promise<never> {
-    const problem = await response
-        .json()
-        .catch(() => null) as ApiProblemDetails | null;
-
-    throw new ApiError(
-        problem?.detail ?? problem?.title ?? "An unexpected error occurred.",
-        response.status,
-        problem?.errors,
-    );
 }
