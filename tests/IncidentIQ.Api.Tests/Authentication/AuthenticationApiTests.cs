@@ -1,4 +1,5 @@
 ﻿using IncidentIQ.Api.Authorization;
+using IncidentIQ.Api.Contracts.Authentication;
 using IncidentIQ.Api.Tests.Infrastructure;
 using System.Net;
 
@@ -113,5 +114,34 @@ public sealed class AuthenticationApiTests(
         Assert.Equal(
             HttpStatusCode.OK,
             response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CurrentUser_WhenAdministrator_ReturnsAdministratorRole()
+    {
+        using var client =
+            factory.CreateAuthenticatedClient(
+                IncidentIqRoles.Administrator);
+
+        var response =
+            await client.GetAsync("/api/me");
+
+        Assert.Equal(
+            HttpStatusCode.OK,
+            response.StatusCode);
+
+        var user =
+            await response.Content
+                .ReadFromJsonAsync<CurrentUserResponse>();
+
+        Assert.NotNull(user);
+
+        Assert.Equal(
+            "IncidentIQ Test User",
+            user.Name);
+
+        Assert.Contains(
+            IncidentIqRoles.Administrator,
+            user.Roles);
     }
 }
