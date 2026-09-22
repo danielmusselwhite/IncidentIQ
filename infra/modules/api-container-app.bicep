@@ -38,6 +38,10 @@ param applicationInsightsConnectionString string
 // Origin URL of the frontend application, used for production CORS.
 param frontendOrigin string
 
+// Microsoft Entra user authentication
+param entraTenantId string
+param entraApiClientId string
+
 var containerAppName = 'ca-${projectName}-api-${environmentName}'
 
 resource apiContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
@@ -165,6 +169,16 @@ resource apiContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
             {
               name: 'Frontend__Origin'
               value: frontendOrigin
+            }
+
+            // Microsoft Entra user authentication
+            {
+              name: 'AzureAd__TenantId'
+              value: entraTenantId
+            }
+            {
+              name: 'AzureAd__ClientId'
+              value: entraApiClientId
             }
           ]
 

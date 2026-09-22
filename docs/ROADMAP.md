@@ -610,14 +610,14 @@ existing Managed Identity model used for service-to-service Azure access.
 
 ### 14D — Azure Deployment & Configuration Review
 
-* [ ] Pass API Entra configuration to the API Container App.
-* [ ] Pass SPA Entra configuration into the Vite production build.
-* [ ] Deploy the authentication and authorization changes to Azure.
-* [ ] Verify Azure sign-in through the hosted React application.
-* [ ] Verify authenticated React → API calls in Azure.
-* [ ] Verify Engineer functionality in Azure.
-* [ ] Verify Administrator-only functionality in Azure.
-* [ ] Verify unauthenticated API access is rejected.
+* [x] Pass API Entra configuration to the API Container App.
+* [x] Pass SPA Entra configuration into the Vite production build.
+* [x] Deploy the authentication and authorization changes to Azure.
+* [x] Verify Azure sign-in through the hosted React application.
+* [x] Verify authenticated React → API calls in Azure.
+* [x] Verify Engineer functionality in Azure.
+* [x] Verify Administrator-only functionality in Azure.
+* [x] Verify unauthenticated API access is rejected.
 
 #### Secrets & Configuration Review
 

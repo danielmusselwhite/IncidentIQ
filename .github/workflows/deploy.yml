@@ -101,7 +101,9 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --parameters infra/environments/dev.bicepparam \
             apiImage="$API_IMAGE" \
-            workerImage="$WORKER_IMAGE"
+            workerImage="$WORKER_IMAGE" \
+            entraTenantId="${{ secrets.Entra_TENANT_ID }}" \
+            entraApiClientId="${{ secrets.Entra_API_CLIENT_ID }}"
 
   deploy:
     name: Deploy Application
@@ -160,7 +162,9 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --parameters infra/environments/dev.bicepparam \
             apiImage="${{ steps.current-images.outputs.api_image }}" \
-            workerImage="${{ steps.current-images.outputs.worker_image }}"
+            workerImage="${{ steps.current-images.outputs.worker_image }}" \
+            entraTenantId="${{ secrets.Entra_TENANT_ID }}" \
+            entraApiClientId="${{ secrets.Entra_API_CLIENT_ID }}"
 
           ACR_NAME="$(az deployment group show \
             --name "$DEPLOYMENT_NAME" \
@@ -198,7 +202,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          
+
           IMAGE="${{ steps.base-infra.outputs.acr_login_server }}/${API_IMAGE_REPOSITORY}:${{steps.versions.outputs.api_version}}-${{ steps.versions.outputs.short_sha }}"
 
           docker build \
@@ -242,7 +246,9 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --parameters infra/environments/dev.bicepparam \
             apiImage="$API_IMAGE" \
-            workerImage="$WORKER_IMAGE"
+            workerImage="$WORKER_IMAGE" \
+            entraTenantId="${{ secrets.Entra_TENANT_ID }}" \
+            entraApiClientId="${{ secrets.Entra_API_CLIENT_ID }}"
 
           API_URL="$(az deployment group show \
             --name "$DEPLOYMENT_NAME" \
@@ -281,6 +287,9 @@ jobs:
         working-directory: src/IncidentIQ.Web
         env:
           VITE_API_BASE_URL: ${{ steps.app-deployment.outputs.api_url }}
+          VITE_ENTRA_TENANT_ID: ${{ secrets.Entra_TENANT_ID }}
+          VITE_ENTRA_CLIENT_ID: ${{ secrets.Entra_WEB_CLIENT_ID }}
+          VITE_API_SCOPE: api://${{ secrets.Entra_API_CLIENT_ID }}/access_as_user
         run: npm run build
 
       - name: Get Static Web Apps deployment token
