@@ -160,32 +160,4 @@ public sealed class IncidentIqApiFactory
                 role);
         }
     }
-
-    /// <summary>
-    /// Creates an authenticated HTTPS client for tests that depend on an HTTPS
-    /// base address, such as CreatedAtAction/Location header assertions.
-    /// </summary>
-    public HttpClient CreateHttpsClient()
-    {
-        var client =
-            CreateClient(
-                new WebApplicationFactoryClientOptions
-                {
-                    BaseAddress =
-                        new Uri("https://localhost")
-                });
-
-        AddTestAuthentication(
-            client);
-
-        return client;
-    }
-
-    private static void AddTestAuthentication(
-        HttpClient client)
-    {
-        client.DefaultRequestHeaders.Add(
-            TestAuthenticationHandler.AuthenticatedHeaderName,
-            "true");
-    }
 }
