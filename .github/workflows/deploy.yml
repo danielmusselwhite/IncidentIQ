@@ -51,6 +51,9 @@ jobs:
     runs-on: ubuntu-latest
     needs: test
     environment: development
+    env:
+      ENTRA_TENANT_ID: ${{ secrets.Entra_TENANT_ID }}
+      ENTRA_API_CLIENT_ID: ${{ secrets.Entra_API_CLIENT_ID }}
 
     steps:
       - name: Checkout repository
@@ -60,6 +63,7 @@ jobs:
         run: |
           az bicep build --file infra/main.bicep --stdout > /dev/null
           az bicep build --file infra/bootstrap/main.bicep --stdout > /dev/null
+          az bicep build-params --file infra/environments/dev.bicepparam --stdout > /dev/null
 
       - name: Login to Azure with OIDC
         uses: azure/login@v3
@@ -100,15 +104,16 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --parameters infra/environments/dev.bicepparam \
             apiImage="$API_IMAGE" \
-            workerImage="$WORKER_IMAGE" \
-            entraTenantId="${{ secrets.Entra_TENANT_ID }}" \
-            entraApiClientId="${{ secrets.Entra_API_CLIENT_ID }}"
+            workerImage="$WORKER_IMAGE"
 
   deploy:
     name: Deploy Application
     runs-on: ubuntu-latest
     needs: what-if
     environment: development
+    env:
+      ENTRA_TENANT_ID: ${{ secrets.Entra_TENANT_ID }}
+      ENTRA_API_CLIENT_ID: ${{ secrets.Entra_API_CLIENT_ID }}
 
     steps:
       - name: Checkout repository
@@ -161,9 +166,7 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --parameters infra/environments/dev.bicepparam \
             apiImage="${{ steps.current-images.outputs.api_image }}" \
-            workerImage="${{ steps.current-images.outputs.worker_image }}" \
-            entraTenantId="${{ secrets.Entra_TENANT_ID }}" \
-            entraApiClientId="${{ secrets.Entra_API_CLIENT_ID }}"
+            workerImage="${{ steps.current-images.outputs.worker_image }}"
 
           ACR_NAME="$(az deployment group show \
             --name "$DEPLOYMENT_NAME" \
@@ -245,9 +248,7 @@ jobs:
             --resource-group "$RESOURCE_GROUP" \
             --parameters infra/environments/dev.bicepparam \
             apiImage="$API_IMAGE" \
-            workerImage="$WORKER_IMAGE" \
-            entraTenantId="${{ secrets.Entra_TENANT_ID }}" \
-            entraApiClientId="${{ secrets.Entra_API_CLIENT_ID }}"
+            workerImage="$WORKER_IMAGE"
 
           API_URL="$(az deployment group show \
             --name "$DEPLOYMENT_NAME" \

@@ -51,6 +51,9 @@ jobs:
     # The OIDC federated credential and Azure secrets are scoped to this
     # GitHub environment, so Azure-authenticated jobs must target it.
     environment: development
+    env:
+      ENTRA_TENANT_ID: ${{ secrets.Entra_TENANT_ID }}
+      ENTRA_API_CLIENT_ID: ${{ secrets.Entra_API_CLIENT_ID }}
 
     steps:
       - name: Checkout repository
@@ -60,6 +63,7 @@ jobs:
         run: |
           az bicep build --file infra/main.bicep --stdout > /dev/null
           az bicep build --file infra/bootstrap/main.bicep --stdout > /dev/null
+          az bicep build-params --file infra/environments/dev.bicepparam --stdout > /dev/null
 
       - name: Login to Azure with OIDC
         uses: azure/login@v3
