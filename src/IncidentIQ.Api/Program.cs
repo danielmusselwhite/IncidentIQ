@@ -1,4 +1,5 @@
 using Azure.Monitor.OpenTelemetry.AspNetCore;
+using IncidentIQ.Api.Authorization;
 using IncidentIQ.Api.ExceptionHandling;
 using IncidentIQ.Application;
 using IncidentIQ.Infrastructure;
@@ -37,7 +38,27 @@ builder.Services
     .AddMicrosoftIdentityWebApi(
         builder.Configuration.GetSection("AzureAd"));
 
-builder.Services.AddAuthorization();
+builder.Services.AddAuthorization(options =>
+{
+    // Policy 1 : general users, including engineers and administrators, can access the API.
+    options.AddPolicy(
+        IncidentIqPolicies.EngineerAccess,
+        policy =>
+        {
+            policy.RequireRole(
+                IncidentIqRoles.Engineer,
+                IncidentIqRoles.Administrator);
+        });
+
+    // Policy 2: only administrators can access certain endpoints.
+    options.AddPolicy(
+        IncidentIqPolicies.AdministratorAccess,
+        policy =>
+        {
+            policy.RequireRole(
+                IncidentIqRoles.Administrator);
+        });
+});
 
 // -----------------------------------------------------------------------------
 // Application Insights telemetry

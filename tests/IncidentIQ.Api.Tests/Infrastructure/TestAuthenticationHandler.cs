@@ -1,10 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
-using System;
-using System.Collections.Generic;
 using System.Security.Claims;
 using System.Text.Encodings.Web;
-using System.Threading.Tasks;
 
 namespace IncidentIQ.Api.Tests.Infrastructure;
 
@@ -25,6 +22,9 @@ internal sealed class TestAuthenticationHandler
 
     public const string ScopeHeaderName =
         "X-Test-Scope";
+
+    public const string RoleHeaderName =
+        "X-Test-Role";
 
     public TestAuthenticationHandler(
         IOptionsMonitor<AuthenticationSchemeOptions> options,
@@ -65,8 +65,8 @@ internal sealed class TestAuthenticationHandler
                     "IncidentIQ Test User")
             };
 
-        // Normal authenticated test clients receive the same delegated scope
-        // that the React SPA will request from Microsoft Entra.
+        // Normal authenticated requests require the same delegated scope
+        // requested by the React SPA.
         var scope =
             Request.Headers.TryGetValue(
                 ScopeHeaderName,
@@ -80,6 +80,24 @@ internal sealed class TestAuthenticationHandler
                 new Claim(
                     "scp",
                     scope));
+        }
+
+        // Roles are added only when explicitly supplied by the test client.
+        // This allows tests to represent authenticated users with no role.
+        if (Request.Headers.TryGetValue(
+                RoleHeaderName,
+                out var requestedRole))
+        {
+            var role =
+                requestedRole.ToString();
+
+            if (!string.IsNullOrWhiteSpace(role))
+            {
+                claims.Add(
+                    new Claim(
+                        ClaimTypes.Role,
+                        role));
+            }
         }
 
         var identity =

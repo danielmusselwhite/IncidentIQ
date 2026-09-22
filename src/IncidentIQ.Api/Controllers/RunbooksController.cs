@@ -1,16 +1,19 @@
-﻿using IncidentIQ.Api.Contracts.Runbooks;
+﻿using IncidentIQ.Api.Authorization;
+using IncidentIQ.Api.Contracts.Runbooks;
 using IncidentIQ.Application.Runbooks.Create;
 using IncidentIQ.Application.Runbooks.Delete;
 using IncidentIQ.Application.Runbooks.GetAll;
 using IncidentIQ.Application.Runbooks.GetById;
 using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using IncidentIQ.Application.Runbooks.Update;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IncidentIQ.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = IncidentIqPolicies.EngineerAccess)]
 public sealed class RunbooksController(
     CreateRunbookHandler createRunbookHandler,
     GetRunbookByIdHandler getRunbookByIdHandler,

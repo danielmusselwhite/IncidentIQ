@@ -593,20 +593,20 @@ existing Managed Identity model used for service-to-service Azure access.
 
 ### 14C — Engineer / Administrator Authorization
 
-* [ ] Define Microsoft Entra application roles:
-  * [ ] `Engineer`.
-  * [ ] `Administrator`.
-* [ ] Configure role claims in API access tokens.
-* [ ] Define ASP.NET Core authorization policies:
-  * [ ] Engineer access.
-  * [ ] Administrator-only access.
-* [ ] Allow Administrators to satisfy normal Engineer-level application access.
-* [ ] Protect normal Incident functionality with Engineer-level access.
-* [ ] Protect normal Runbook functionality with Engineer-level access.
-* [ ] Protect Operational Assistant functionality with Engineer-level access.
-* [ ] Protect `POST /api/incidents/{id}/retry` with Administrator authorization.
-* [ ] Add authorization tests covering Engineer and Administrator boundaries.
-* [ ] Verify expected `403 Forbidden` behaviour for authenticated users without the required role.
+* [x] Define Microsoft Entra application roles:
+  * [x] `Engineer`.
+  * [x] `Administrator`.
+* [x] Configure role claims in API access tokens.
+* [x] Define ASP.NET Core authorization policies:
+  * [x] Engineer access (default)
+  * [x] Administrator-only access (atm just for retry endpoint)
+* [x] Allow Administrators to satisfy normal Engineer-level application access.
+* [x] Protect normal Incident functionality with Engineer-level access.
+* [x] Protect normal Runbook functionality with Engineer-level access.
+* [x] Protect Operational Assistant functionality with Engineer-level access.
+* [x] Protect `POST /api/incidents/{id}/retry` with Administrator authorization.
+* [x] Add authorization tests covering Engineer and Administrator boundaries.
+* [x] Verify expected `403 Forbidden` behaviour for authenticated users without the required role.
 
 ### 14D — Azure Deployment & Configuration Review
 

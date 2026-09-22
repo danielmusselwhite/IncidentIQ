@@ -1,9 +1,11 @@
+using IncidentIQ.Api.Authorization;
 using IncidentIQ.Api.Contracts.Incidents;
 using IncidentIQ.Application.Incidents.Analyse.Retry;
 using IncidentIQ.Application.Incidents.Create;
 using IncidentIQ.Application.Incidents.GetAll;
 using IncidentIQ.Application.Incidents.GetAnalysisById;
 using IncidentIQ.Application.Incidents.GetById;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
 
@@ -11,6 +13,7 @@ namespace IncidentIQ.Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = IncidentIqPolicies.EngineerAccess)]
 public sealed class IncidentsController(
     CreateIncidentHandler createIncidentHandler,
     GetAllIncidentsHandler getAllIncidentsHandler,
@@ -112,6 +115,7 @@ public sealed class IncidentsController(
     [ProducesResponseType(StatusCodes.Status202Accepted)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status404NotFound)]
     [ProducesResponseType<ProblemDetails>(StatusCodes.Status409Conflict)]
+    [Authorize(Policy = IncidentIqPolicies.AdministratorAccess)] // only administrators can retry incidents
     public async Task<ActionResult<IncidentResponse>> Retry(string id, CancellationToken cancellationToken)
     {
         // generate correlationId for logging and tracing

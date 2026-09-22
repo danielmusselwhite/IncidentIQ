@@ -1,4 +1,5 @@
-﻿using IncidentIQ.Api.Tests.Fakes;
+﻿using IncidentIQ.Api.Authorization;
+using IncidentIQ.Api.Tests.Fakes;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Runbooks.RetrieveChunks;
 using Microsoft.AspNetCore.Authentication;
@@ -103,17 +104,61 @@ public sealed class IncidentIqApiFactory
     }
 
     /// <summary>
-    /// Creates an authenticated HTTP client for normal API integration tests.
+    /// Creates an authenticated HTTP client.
+    ///
+    /// Engineer is the default role because most integration tests represent
+    /// normal IncidentIQ application usage.
+    /// Pass null to create an authenticated user with no application role.
     /// </summary>
-    public HttpClient CreateAuthenticatedClient()
+    public HttpClient CreateAuthenticatedClient(
+        string? role = IncidentIqRoles.Engineer)
     {
         var client =
             CreateClient();
 
         AddTestAuthentication(
-            client);
+            client,
+            role);
 
         return client;
+    }
+
+    /// <summary>
+    /// Creates an authenticated HTTPS client for tests that depend on an HTTPS
+    /// base address, such as CreatedAtAction/Location header assertions.
+    /// </summary>
+    public HttpClient CreateHttpsClient(
+        string? role = IncidentIqRoles.Engineer)
+    {
+        var client =
+            CreateClient(
+                new WebApplicationFactoryClientOptions
+                {
+                    BaseAddress =
+                        new Uri("https://localhost")
+                });
+
+        AddTestAuthentication(
+            client,
+            role);
+
+        return client;
+    }
+
+    private static void AddTestAuthentication(
+        HttpClient client,
+        string? role)
+    {
+        client.DefaultRequestHeaders.Add(
+            TestAuthenticationHandler.AuthenticatedHeaderName,
+            "true");
+
+        if (!string.IsNullOrWhiteSpace(role))
+        {
+            client.DefaultRequestHeaders.Add(
+                TestAuthenticationHandler.RoleHeaderName,
+                role);
+        }
     }
 
     /// <summary>
