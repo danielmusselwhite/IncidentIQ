@@ -29,6 +29,12 @@ public sealed class IncidentAnalysisOutboxDocument
     [JsonPropertyName("createdAt")]
     public required DateTimeOffset CreatedAt { get; init; }
 
+    [JsonPropertyName("traceParent")]
+    public string? TraceParent { get; init; }
+
+    [JsonPropertyName("traceState")]
+    public string? TraceState { get; init; }
+
     public static IncidentAnalysisOutboxDocument FromCommand(AnalyseIncidentCommand command)
     {
         return new IncidentAnalysisOutboxDocument
@@ -38,7 +44,9 @@ public sealed class IncidentAnalysisOutboxDocument
             CommandId = command.CommandId,
             CorrelationId = command.CorrelationId,
             QueuedAtUtc = command.QueuedAtUtc,
-            CreatedAt = DateTimeOffset.UtcNow
+            CreatedAt = DateTimeOffset.UtcNow,
+            TraceParent = command.TraceParent,
+            TraceState = command.TraceState
         };
     }
 
@@ -47,6 +55,6 @@ public sealed class IncidentAnalysisOutboxDocument
     /// </summary>
     public AnalyseIncidentCommand ToCommand()
     {
-        return new AnalyseIncidentCommand(CommandId, IncidentId, CorrelationId, QueuedAtUtc);
+        return new AnalyseIncidentCommand(CommandId, IncidentId, CorrelationId, QueuedAtUtc, TraceParent, TraceState);
     }
 }

@@ -1,4 +1,6 @@
+using Azure.Monitor.OpenTelemetry.Exporter;
 using IncidentIQ.Application;
+using IncidentIQ.Application.Common.Telemetry;
 using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Application.Incidents.HistoricalSearch.Index;
 using IncidentIQ.Application.Runbooks.Index;
@@ -7,7 +9,40 @@ using IncidentIQ.Infrastructure.AzureAI;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
 using IncidentIQ.Worker;
 
+AppContext.SetSwitch(
+    "Azure.Experimental.EnableActivitySource", // Enable the experimental ActivitySource for Azure SDK telemetry so we can correlate traces across Azure services.
+    true);
+
 var builder = Host.CreateApplicationBuilder(args);
+
+// -----------------------------------------------------------------------------
+// OpenTelemetry / Application Insights
+// -----------------------------------------------------------------------------
+
+var applicationInsightsConnectionString =
+    builder.Configuration[
+        "APPLICATIONINSIGHTS_CONNECTION_STRING"];
+
+if (!string.IsNullOrWhiteSpace(
+        applicationInsightsConnectionString))
+{
+    builder.Services
+        .AddOpenTelemetry()
+        .WithTracing(tracing =>
+        {
+            tracing
+                .AddSource(
+                    IncidentIqTelemetry.ActivitySourceName)
+                .AddSource("Azure.*")
+                .AddAzureMonitorTraceExporter(
+                    options =>
+                    {
+                        options.ConnectionString =
+                            applicationInsightsConnectionString;
+                    });
+        });
+}
+
 
 // Register infrastructure services.
 builder.Services.AddInfrastructureDependencies(builder.Configuration);

@@ -1,4 +1,5 @@
-﻿using FluentValidation;
+﻿using System.Diagnostics;
+using FluentValidation;
 using IncidentIQ.Application.Common.Abstractions;
 using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Domain.Incidents;
@@ -53,12 +54,16 @@ public sealed class CreateIncidentHandler(
             command.Severity,
             command.Symptoms);
 
+        var currentActivity = Activity.Current;
+
         // create the analyse incident command
         var analyseIncidentCommand = new AnalyseIncidentCommand(
             CommandId: Guid.NewGuid(),
             IncidentId: incident.Id,
             CorrelationId: correlationId,
-            QueuedAtUtc: incident.CreatedAt);
+            QueuedAtUtc: incident.CreatedAt,
+            TraceParent: currentActivity?.Id,
+            TraceState: currentActivity?.TraceStateString);
 
         // create the incident + outbox message in the submission store
         // (this outbox will be relayed to the se)

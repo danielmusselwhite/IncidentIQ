@@ -1,8 +1,10 @@
 ﻿using IncidentIQ.Application.Common.Abstractions;
+using IncidentIQ.Application.Common.Telemetry;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
 using IncidentIQ.Infrastructure.Persistence.Cosmos.Documents;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace IncidentIQ.Worker;
@@ -111,6 +113,43 @@ public sealed class IncidentOutboxWorker : BackgroundService
 
             // convert to an AnalyseIncidentCommand and enqueue it (on azure service bus) for processing
             var command = outboxDocument.ToCommand();
+
+            #region Shared Activity and Telemetry
+            // Retrieve the Shared Activity Context from the Outbox document's stored trace information
+            ActivityContext parentContext = default;
+
+            if (!string.IsNullOrWhiteSpace(command.TraceParent))
+            {
+                ActivityContext.TryParse(
+                    command.TraceParent,
+                    command.TraceState,
+                    isRemote: true,
+                    out parentContext);
+            }
+
+            using var activity =
+                IncidentIqTelemetry.ActivitySource.StartActivity(
+                    "incident.outbox.relay",
+                    ActivityKind.Internal,
+                    parentContext);
+
+            activity?.SetTag(
+                "incident.id",
+                command.IncidentId);
+
+            activity?.SetTag(
+                "incident.command_id",
+                command.CommandId);
+
+            activity?.SetTag(
+                "incident.correlation_id",
+                command.CorrelationId);
+
+            await _incidentAnalysisQueue.EnqueueAsync(
+                command,
+                cancellationToken);
+            #endregion
+
             await _incidentAnalysisQueue.EnqueueAsync(command, cancellationToken);
 
             _logger.LogInformation(

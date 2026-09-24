@@ -672,9 +672,9 @@ Build a useful Administrator experience for inspecting and recovering failed ana
 
 ### 15D — Verification
 
-* [ ] Test Administrator and Engineer behaviour.
-* [ ] Add API tests for new operational endpoints.
-* [ ] Verify the Operations workflow locally and in Azure.
+* [x] Test Administrator and Engineer behaviour.
+* [x] Add API tests for new operational endpoints.
+* [x] Verify the Operations workflow locally and in Azure.
 
 ---
 
@@ -684,17 +684,17 @@ Add production-style tracing, metrics and scaling, then expose a small amount of
 
 ### 16A — OpenTelemetry & Distributed Tracing
 
-* [ ] Complete OpenTelemetry instrumentation for API and Worker.
-* [ ] Export telemetry to Application Insights.
-* [ ] Trace the full workflow through:
-  * [ ] API.
-  * [ ] Cosmos/outbox.
-  * [ ] Service Bus.
-  * [ ] Worker.
-  * [ ] retrieval.
-  * [ ] Azure AI.
-  * [ ] persistence.
-* [ ] Ensure correlation IDs can be used to locate workflows.
+* [x] Complete OpenTelemetry instrumentation for API and Worker.
+* [x] Export telemetry to Application Insights.
+* [x] Trace the full workflow through:
+  * [x] API.
+  * [x] Cosmos/outbox.
+  * [x] Service Bus.
+  * [x] Worker.
+  * [x] retrieval.
+  * [x] Azure AI.
+  * [x] persistence.
+* [x] Ensure correlation IDs can be used to locate workflows.
 
 ### 16B — Operational Metrics & KQL
 
