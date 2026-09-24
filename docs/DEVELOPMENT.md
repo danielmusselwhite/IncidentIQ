@@ -21,8 +21,6 @@ Start:
 docker compose up --build
 ```
 
-URLs:
-
 ```text
 Web:                  http://localhost:5173
 API Swagger:          https://localhost:7156/swagger
@@ -33,25 +31,24 @@ Cosmos Data Explorer: http://localhost:1234
 
 ## Microsoft Entra Setup
 
-Create two **single-tenant** app registrations.
+Create two single-tenant app registrations.
 
 ### IncidentIQ API
 
-- Name: `IncidentIQ API`
 - Application ID URI: `api://<API_CLIENT_ID>`
-- Delegated scope: `access_as_user`
-- No redirect URI or client secret required.
+- delegated scope: `access_as_user`
+- app roles: `Engineer`, `Administrator`
+- no redirect URI or client secret required
+
+Assign test users an API app role. Administrators also satisfy Engineer-level policies.
 
 ### IncidentIQ Web
 
-- Name: `IncidentIQ Web`
-- Platform: SPA
-- Redirect URIs:
-  - `http://localhost:5173`
-  - Azure Static Web Apps URL
-- Delegated permission: `IncidentIQ API / access_as_user`
-- No client secret required.
-- Leave implicit grant/public-client flows disabled.
+- platform: SPA
+- redirect URIs: `http://localhost:5173` and the Azure Static Web Apps URL
+- delegated permission: `IncidentIQ API / access_as_user`
+- no client secret required
+- leave implicit grant/public-client flows disabled
 
 ### API user-secrets
 
@@ -62,8 +59,6 @@ dotnet user-secrets set "Kestrel:Certificates:Development:Password" "<DEV_CERT_P
 ```
 
 ### Frontend `.env.local`
-
-Create `src/IncidentIQ.Web/.env.local`:
 
 ```env
 VITE_ENTRA_TENANT_ID=<TENANT_ID>
@@ -76,11 +71,11 @@ Authentication flow:
 ```text
 React/MSAL → Entra login → access token
 → Authorization: Bearer <token>
-→ API validates JWT + access_as_user
+→ API validates JWT + access_as_user + role policy
 ```
 
-- Missing/invalid token → `401`.
-- Authenticated without required permission → `403`.
+- missing/invalid token → `401`,
+- authenticated but missing scope/required role → `403`,
 - `/api/health` remains anonymous.
 
 ## Local Configuration
@@ -93,55 +88,26 @@ dotnet user-secrets list --project src\IncidentIQ.Worker
 dotnet user-secrets list --project tools\IncidentIQ.Evaluation
 ```
 
-Committed `appsettings.json` files contain empty placeholders/defaults. Machine-specific values should come from user-secrets, Docker environment variables, or deployed Container App configuration.
+Committed `appsettings.json` files contain placeholders/defaults. Machine-specific values should come from user-secrets, Docker environment variables or deployed Container App configuration.
 
-## Switching Between Deterministic and Live Azure AI
+## Deterministic vs Live Azure AI
 
-`Development` uses deterministic AI by default:
-
-```text
-Development:UseLiveAzureAI = false
-→ deterministic embeddings
-→ deterministic Incident analysis
-→ deterministic Operational Assistant
-```
-
-For targeted testing against the real Azure OpenAI resource while remaining in the `Development` environment, enable the flag through user-secrets:
+Development uses deterministic AI by default. For targeted Azure OpenAI testing:
 
 ```powershell
-dotnet user-secrets set "Development:UseLiveAzureAI" "true" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "Development:UseLiveAzureAI" "true" `
-    --project src\IncidentIQ.Worker
+dotnet user-secrets set "Development:UseLiveAzureAI" "true" --project src\IncidentIQ.Api
+dotnet user-secrets set "Development:UseLiveAzureAI" "true" --project src\IncidentIQ.Worker
 ```
 
-Enable it only for the host you are testing. For example, the API can use live Azure AI while the Worker remains deterministic.
+Enable it only for the host being tested. Live AI also requires the `AzureAI:*` configuration and Azure authentication/RBAC.
 
-Set it back to `false` when finished:
-
-```powershell
-dotnet user-secrets set "Development:UseLiveAzureAI" "false" `
-    --project src\IncidentIQ.Api
-
-dotnet user-secrets set "Development:UseLiveAzureAI" "false" `
-    --project src\IncidentIQ.Worker
-```
-
-Live Azure AI also requires the relevant `AzureAI:*` configuration and Azure authentication/RBAC.
+Set it back to `false` when finished.
 
 The `Testing` environment always uses deterministic AI so automated tests do not depend on Azure OpenAI.
 
 ## Targeted Azure-Connected Debugging
 
-Use only when you need real Azure behavior such as:
-- Azure OpenAI,
-- Cosmos vector search,
-- Service Bus,
-- Managed Identity/RBAC,
-- Application Insights.
-
-Authenticate:
+Use only when testing real Azure behaviour such as Azure OpenAI, Cosmos vector search, Service Bus, Managed Identity/RBAC or Application Insights.
 
 ```powershell
 az login
@@ -150,7 +116,7 @@ $env:AZURE_TOKEN_CREDENTIALS = "dev"
 
 A local developer calling Azure OpenAI normally needs `Cognitive Services OpenAI User`.
 
-### Common live Azure AI values
+Common Azure AI values:
 
 ```powershell
 dotnet user-secrets set "AzureAI:Endpoint" "<AZURE_AI_ENDPOINT>" --project src\IncidentIQ.Api
@@ -163,29 +129,20 @@ dotnet user-secrets set "AzureAI:Embedding:Dimensions" "1536" --project src\Inci
 
 Use the same Azure AI keys for the Worker when testing live analysis/indexing.
 
-With the required Azure AI configuration in place, enable the real implementations without changing the host environment:
+## Observability
 
-```powershell
-dotnet user-secrets set "Development:UseLiveAzureAI" "true" `
-    --project src\IncidentIQ.Api
-```
+Deployed API and Worker export OpenTelemetry to Application Insights when `APPLICATIONINSIGHTS_CONNECTION_STRING` is configured.
 
-Then run normally in `Development`.
+- API role name: `IncidentIQ.Api`
+- Worker role name: `IncidentIQ.Worker`
+- custom `ActivitySource`: `IncidentIQ`
+- custom `Meter`: `IncidentIQ`
 
-For a local frontend calling an API in a non-Development environment, configure:
-
-```powershell
-dotnet user-secrets set "Frontend:Origin" "http://localhost:5173" `
-    --project src\IncidentIQ.Api
-```
+Detailed trace/metric verification and KQL: [Observability & Scaling](OBSERVABILITY.md).
 
 ## Worker Warning
 
-A local Worker pointed at shared Azure resources can:
-- consume messages intended for the deployed Worker,
-- share Change Feed leases,
-- write real dev data,
-- dead-letter work.
+A local Worker pointed at shared Azure resources can consume messages intended for the deployed Worker, share Change Feed leases, write real dev data and dead-letter work.
 
 Stop the deployed Worker or use isolated queues/database/leases before targeted Worker debugging. Never point local Worker testing at production.
 

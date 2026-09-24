@@ -13,19 +13,19 @@ IncidentIQ.Worker.Tests
 **Application**
 - validation/state transitions,
 - transactional outbox orchestration,
-- retry/idempotency behavior,
-- indexing/retrieval,
-- RAG context construction,
-- evidence validation,
-- Assistant orchestration.
+- retry/idempotency behaviour,
+- indexing/retrieval and RAG context construction,
+- evidence validation and Assistant orchestration.
 
 **API**
 - routing/contracts/Problem Details,
-- Incident/Runbook/Assistant endpoints,
-- authentication: `401`, valid scope, invalid scope,
+- Incident/Runbook/Assistant/Operations endpoints,
+- authentication and delegated-scope enforcement,
+- Engineer vs Administrator authorization,
+- retry and failed-Incident operational boundaries,
 - anonymous health check.
 
-API tests use a deterministic test authentication handler rather than real Entra tokens.
+API tests use deterministic test authentication rather than real Entra tokens.
 
 **Worker**
 - message settlement/redelivery,
@@ -44,4 +44,4 @@ npm run build
 npm run lint
 ```
 
-Real Azure behavior is verified separately for embeddings, Cosmos vector search, Entra, RBAC and Service Bus.
+Real Azure behaviour is verified separately for Entra/RBAC, Azure OpenAI, Cosmos vector search, Service Bus, OpenTelemetry export and KEDA scaling.

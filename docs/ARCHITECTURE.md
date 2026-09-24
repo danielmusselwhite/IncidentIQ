@@ -75,21 +75,38 @@ flowchart TB
 - **Domain:** business entities and state rules.
 - **Application:** use cases, orchestration and provider-independent interfaces.
 - **Infrastructure:** Cosmos, Service Bus and Azure OpenAI implementations.
-- **API:** HTTP/authentication boundary.
-- **Worker:** Change Feed and Service Bus execution boundary.
-- **Web:** authenticated engineer UI.
+- **API:** HTTP, authentication/authorization and DTO boundary.
+- **Worker:** Change Feed relays and Service Bus consumers.
+- **Web:** authenticated engineer/admin UI.
 
-## Identity
+## Identity & Authorization
 
 ```text
 User → Entra → React/MSAL → Bearer token → API
 API / Worker → Managed Identity → Azure resources
 ```
 
-- Controller endpoints require authentication and `access_as_user`.
+- All controller endpoints require an authenticated token with `access_as_user`.
+- Normal Incident, Runbook and Assistant functionality requires `Engineer` or `Administrator`.
+- Operations and Incident retry require `Administrator`.
+- `/api/me` exposes the authenticated user's roles to the UI; backend policies remain the security boundary.
 - `/api/health` remains anonymous.
-- User tokens are not forwarded to Cosmos, Service Bus or Azure OpenAI.
-- Engineer/Administrator role policies are Stage 14C.
+- User tokens are never forwarded to Cosmos, Service Bus or Azure OpenAI.
+
+## Asynchronous Analysis
+
+```text
+POST /api/incidents
+→ Incident + outbox in one Cosmos transactional batch
+→ Cosmos Change Feed
+→ Service Bus analyse-incident
+→ AnalyseIncidentWorker
+→ retrieve historical Incidents + Runbook chunks
+→ Azure OpenAI
+→ completed Incident + analysis/evidence
+```
+
+The W3C trace context is persisted with the outbox command so API and Worker activity can participate in the same distributed trace.
 
 ## Data
 
@@ -103,4 +120,13 @@ API / Worker → Managed Identity → Azure resources
 
 Source records and rebuildable vector indexes remain separate.
 
-See [Runtime Flows](flows/README.md) for request-by-request diagrams.
+## Observability & Scaling
+
+- API and Worker emit OpenTelemetry to one Application Insights resource with role names `IncidentIQ.Api` and `IncidentIQ.Worker`.
+- Custom spans cover outbox relay, analysis, retrieval, AI generation and persistence.
+- Custom metrics cover queue wait, processing duration, AI duration, terminal failures and administrator retries.
+- The Worker Container App uses KEDA against the `analyse-incident` Service Bus queue.
+- Scaling is configured for **1–3 replicas**, with a target of **2 queued analysis messages per replica** and a 15-second polling interval.
+- Minimum replicas remains 1 because the same Worker host also owns Cosmos Change Feed relays.
+
+See [Observability & Scaling](OBSERVABILITY.md) and [Runtime Flows](flows/README.md).
