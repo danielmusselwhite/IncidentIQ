@@ -187,12 +187,28 @@
 
 /* Failure reason */
 
-.operations-table td:last-child {
+.operations-table__failure {
     max-width: 330px;
 
     color: var(--text-secondary);
 
     line-height: 1.45;
+}
+
+/* Success message */
+
+.operations-success {
+    margin-bottom: 22px;
+    padding: 14px 16px;
+
+    border: 1px solid #bbf7d0;
+    border-radius: 8px;
+
+    background: #f0fdf4;
+    color: #15803d;
+
+    font-size: 0.85rem;
+    font-weight: 600;
 }
 
 /* Loading / empty / error states */

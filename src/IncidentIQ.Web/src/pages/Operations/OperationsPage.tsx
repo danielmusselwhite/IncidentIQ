@@ -38,6 +38,9 @@ export default function OperationsPage() {
     const [error, setError] =
         useState<string | null>(null);
 
+    const [successMessage, setSuccessMessage] =
+        useState<string | null>(null);
+
     async function loadFailedIncidents() {
         try {
             setError(null);
@@ -71,18 +74,20 @@ export default function OperationsPage() {
         }
 
         try {
-            setRetryingIncidentId(
-                incident.id,
-            );
-
+            setRetryingIncidentId(incident.id);
             setError(null);
+            setSuccessMessage(null);
 
-            await retryIncident(
-                incident.id,
+            await retryIncident(incident.id);
+
+            setSuccessMessage(
+                `"${incident.title}" was queued for analysis.`,
             );
 
             await loadFailedIncidents();
         } catch (retryError) {
+            setSuccessMessage(null);
+
             setError(
                 retryError instanceof ApiError
                     ? retryError.message
@@ -141,6 +146,15 @@ export default function OperationsPage() {
                 <span>Failed analyses</span>
                 <strong>{incidents.length}</strong>
             </section>
+
+            {successMessage && (
+                <div
+                    className="operations-success"
+                    role="status"
+                >
+                    {successMessage}
+                </div>
+            )}
 
             <section className="operations-card">
                 <div className="operations-card__header">
@@ -224,7 +238,7 @@ export default function OperationsPage() {
                                                     )}
                                                 </td>
 
-                                                <td>
+                                                <td className="operations-table__failure">
                                                     {incident.failureReason ??
                                                         "Unknown failure"}
                                                 </td>
@@ -232,10 +246,7 @@ export default function OperationsPage() {
                                                     <button
                                                         type="button"
                                                         className="button button--secondary"
-                                                        disabled={
-                                                            retryingIncidentId ===
-                                                            incident.id
-                                                        }
+                                                        disabled={retryingIncidentId !== null}
                                                         onClick={() =>
                                                             void handleRetry(incident)
                                                         }
