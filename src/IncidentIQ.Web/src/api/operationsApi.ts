@@ -1,5 +1,6 @@
 import type { FailedIncidentOperation } from
     "../types/failedIncidentOperation";
+import type { OperationsSummary } from "../types/operationsSummary";
 
 import {
     apiFetch,
@@ -33,4 +34,14 @@ export async function retryIncident(
     if (!response.ok) {
         await throwApiError(response);
     }
+}
+
+export async function getOperationsSummary(): Promise<OperationsSummary> {
+    const response = await apiFetch("/api/operations/summary");
+
+    if (!response.ok) {
+        await throwApiError(response);
+    }
+
+    return response.json();
 }

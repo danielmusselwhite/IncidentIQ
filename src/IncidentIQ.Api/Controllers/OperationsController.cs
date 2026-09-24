@@ -10,7 +10,8 @@ namespace IncidentIQ.Api.Controllers;
 [Route("api/operations")]
 [Authorize(Policy = IncidentIqPolicies.AdministratorAccess)]
 public sealed class OperationsController(
-    GetFailedIncidentsHandler getFailedIncidentsHandler)
+    GetFailedIncidentsHandler getFailedIncidentsHandler,
+    GetOperationsSummaryHandler getOperationsSummaryHandler)
     : ControllerBase
 {
 
@@ -29,5 +30,19 @@ public sealed class OperationsController(
                 .ToArray();
 
         return Ok(response);
+    }
+
+    [HttpGet("summary")]
+    [ProducesResponseType<OperationsSummaryResponse>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<OperationsSummaryResponse>> GetSummary(CancellationToken cancellationToken)
+    {
+        var summary = await getOperationsSummaryHandler.HandleAsync(cancellationToken);
+
+        return Ok(new OperationsSummaryResponse(
+            summary.Queued,
+            summary.Processing,
+            summary.Completed,
+            summary.Failed,
+            summary.Total));
     }
 }

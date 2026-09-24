@@ -49,6 +49,7 @@ public static class DependencyInjection
         services.AddScoped<AskOperationalQuestionHandler>();
 
         services.AddScoped<GetFailedIncidentsHandler>();
+        services.AddScoped<GetOperationsSummaryHandler>();
 
         return services;
     }
