@@ -698,36 +698,36 @@ Add production-style tracing, metrics and scaling, then expose a small amount of
 
 ### 16B — Operational Metrics & KQL
 
-* [ ] Record:
-  * [ ] queue wait duration.
-  * [ ] processing duration.
-  * [ ] AI latency.
-  * [ ] failures.
-  * [ ] retries.
-* [ ] Add useful KQL queries for:
-  * [ ] failures.
-  * [ ] average/P95 processing time.
-  * [ ] queue wait.
-  * [ ] AI latency/failures.
-  * [ ] correlation ID lookup.
+* [x] Record:
+  * [x] queue wait duration.
+  * [x] processing duration.
+  * [x] AI latency.
+  * [x] failures.
+  * [x] retries.
+* [x] Add useful KQL queries for:
+  * [x] failures.
+  * [x] average/P95 processing time.
+  * [x] queue wait.
+  * [x] AI latency/failures.
+  * [x] correlation ID lookup.
 
 ### 16C — Operations Dashboard
 
-* [ ] Add a small operational summary to `/operations`.
-* [ ] Consider:
-  * [ ] failed/queued/processing counts.
-  * [ ] recent successes/failures.
-  * [ ] processing duration.
-  * [ ] AI latency.
-  * [ ] DLQ/queue health.
-* [ ] Keep detailed diagnostics in Application Insights rather than recreating Azure Monitor.
+* [x] Add a small operational summary to `/operations`.
+* [x] Consider:
+  * [x] failed/queued/processing counts.
+  * [x] recent successes/failures.
+  * [x] processing duration.
+  * [x] AI latency.
+  * [x] DLQ/queue health.
+* [x] Keep detailed diagnostics in Application Insights rather than recreating Azure Monitor.
 
 ### 16D — Worker Scaling
 
-* [ ] Configure Container Apps/KEDA scaling from Service Bus queue depth.
-* [ ] Define sensible min/max replicas.
-* [ ] Verify safe multi-replica processing.
-* [ ] Verify scale-out and scale-in using a controlled workload.
+* [x] Configure Container Apps/KEDA scaling from Service Bus queue depth.
+* [x] Define sensible min/max replicas.
+* [x] Verify safe multi-replica processing.
+* [x] Verify scale-out and scale-in using a controlled workload.
 
 ### 16E — Verification
 

@@ -195,6 +195,23 @@ resource workerIndexHistoricalIncidentReceiverRole 'Microsoft.Authorization/role
   }
 }
 
+// KEDA requires management access to inspect queue runtime properties.
+var serviceBusDataOwnerRoleDefinitionId = subscriptionResourceId(
+  'Microsoft.Authorization/roleDefinitions',
+  '090c5cfd-751d-490a-894a-3ce6f1109419'
+)
+resource workerAnalyseIncidentScalerRole 'Microsoft.Authorization/roleAssignments@2022-04-01' = {
+  name: guid(analyseIncidentQueue.id, workerPrincipalId, serviceBusDataOwnerRoleDefinitionId)
+
+  scope: analyseIncidentQueue
+
+  properties: {
+    principalId: workerPrincipalId
+    principalType: 'ServicePrincipal'
+    roleDefinitionId: serviceBusDataOwnerRoleDefinitionId
+  }
+}
+
 output namespaceName string = serviceBusNamespace.name
 output fullyQualifiedNamespace string = '${serviceBusNamespace.name}.servicebus.windows.net'
 output analyseIncidentQueueName string = analyseIncidentQueue.name

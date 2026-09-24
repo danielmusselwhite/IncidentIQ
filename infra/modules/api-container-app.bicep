@@ -192,7 +192,7 @@ resource apiContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
       // The stateless HTTP API can scale to zero when the dev environment is idle.
       scale: {
         minReplicas: 0
-        maxReplicas: 2
+        maxReplicas: 1
       }
     }
   }

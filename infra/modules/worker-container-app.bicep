@@ -181,11 +181,27 @@ resource workerContainerApp 'Microsoft.App/containerApps@2026-01-01' = {
         }
       ]
 
-      // Keep exactly one Worker running for now because the Change Feed Processor
-      // must continuously monitor Cosmos. KEDA scaling remains a later stage.
+      // Aggressive on purpose just to demonstrate KEDA scaling in the portfolio project
+      // Simple demonstration of KEDA scaling based on Service Bus queue depth, can scale up to a max of 3, booting up a new instance for every 2 messages in the queue.
       scale: {
         minReplicas: 1
-        maxReplicas: 1
+        maxReplicas: 3
+        pollingInterval: 15
+
+        rules: [
+          {
+            name: 'analyse-incident-queue'
+            custom: {
+              type: 'azure-servicebus'
+              metadata: {
+                queueName: analyseIncidentQueueName
+                namespace: replace(serviceBusFullyQualifiedNamespace, '.servicebus.windows.net', '')
+                messageCount: '2'
+              }
+              identity: workerIdentityResourceId
+            }
+          }
+        ]
       }
     }
   }
