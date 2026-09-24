@@ -649,26 +649,26 @@ Build a useful Administrator experience for inspecting and recovering failed ana
 
 ### 15B — Failed Incident Operations
 
-* [ ] Display failed Incidents on the Operations page.
-* [ ] Add a dedicated operational API query if the existing Incident endpoints are insufficient.
-* [ ] Show:
-  * [ ] Incident/title.
-  * [ ] service/environment.
-  * [ ] failure reason.
-  * [ ] attempt count.
-  * [ ] timestamps.
-  * [ ] correlation ID.
-* [ ] Link failures back to the Incident detail page.
+* [x] Display failed Incidents on the Operations page.
+* [x] Add a dedicated operational API query if the existing Incident endpoints are insufficient.
+* [x] Show:
+  * [x] Incident/title.
+  * [x] service/environment.
+  * [x] failure reason.
+  * [x] attempt count.
+  * [x] timestamps.
+  * [x] correlation ID.
+* [x] Link failures back to the Incident detail page.
 
 ### 15C — Retry & Recovery
 
-* [ ] Connect the UI to `POST /api/incidents/{id}/retry`.
-* [ ] Restrict retry controls to Administrators.
-* [ ] Add confirmation and success/error feedback.
-* [ ] Refresh state after retry.
-* [ ] Verify the full:
-  * [ ] Failed → Queued → Processing → Completed/Failed flow.
-* [ ] Verify Engineers cannot retry through direct API calls.
+* [x] Connect the UI to `POST /api/incidents/{id}/retry`.
+* [x] Restrict retry controls to Administrators.
+* [x] Add confirmation and success/error feedback.
+* [x] Refresh state after retry.
+* [x] Verify the full:
+  * [x] Failed → Queued → Processing → Completed/Failed flow.
+* [x] Verify Engineers cannot retry through direct API calls.
 
 ### 15D — Verification
 

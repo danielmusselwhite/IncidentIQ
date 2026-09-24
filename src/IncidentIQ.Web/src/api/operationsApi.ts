@@ -19,3 +19,18 @@ export async function getFailedIncidents():
 
     return response.json();
 }
+
+export async function retryIncident(
+    incidentId: string,
+): Promise<void> {
+    const response = await apiFetch(
+        `/api/incidents/${incidentId}/retry`,
+        {
+            method: "POST",
+        },
+    );
+
+    if (!response.ok) {
+        await throwApiError(response);
+    }
+}

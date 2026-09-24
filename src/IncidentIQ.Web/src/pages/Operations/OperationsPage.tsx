@@ -9,7 +9,10 @@ import {
 } from "react-router-dom";
 
 import { ApiError } from "../../api/apiError";
-import { getFailedIncidents } from "../../api/operationsApi";
+import {
+    getFailedIncidents,
+    retryIncident,
+} from "../../api/operationsApi";
 import { useCurrentUser } from "../../auth/CurrentUserContext";
 import type { FailedIncidentOperation } from
     "../../types/failedIncidentOperation";
@@ -23,6 +26,9 @@ export default function OperationsPage() {
         error: userError,
     } = useCurrentUser();
 
+    const [retryingIncidentId, setRetryingIncidentId] =
+        useState<string | null>(null);
+
     const [incidents, setIncidents] =
         useState<FailedIncidentOperation[]>([]);
 
@@ -32,27 +38,65 @@ export default function OperationsPage() {
     const [error, setError] =
         useState<string | null>(null);
 
+    async function loadFailedIncidents() {
+        try {
+            setError(null);
+
+            const result =
+                await getFailedIncidents();
+
+            setIncidents(result);
+        } catch (loadError) {
+            setError(
+                loadError instanceof ApiError
+                    ? loadError.message
+                    : "Unable to load failed incidents.",
+            );
+        } finally {
+            setIsLoading(false);
+        }
+    }
+
+
+
+    async function handleRetry(
+        incident: FailedIncidentOperation,
+    ) {
+        const confirmed = window.confirm(
+            `Retry analysis for "${incident.title}"?`,
+        );
+
+        if (!confirmed) {
+            return;
+        }
+
+        try {
+            setRetryingIncidentId(
+                incident.id,
+            );
+
+            setError(null);
+
+            await retryIncident(
+                incident.id,
+            );
+
+            await loadFailedIncidents();
+        } catch (retryError) {
+            setError(
+                retryError instanceof ApiError
+                    ? retryError.message
+                    : "Unable to retry incident.",
+            );
+        } finally {
+            setRetryingIncidentId(null);
+        }
+    }
+
     useEffect(() => {
         if (!isAdministrator) {
             setIsLoading(false);
             return;
-        }
-
-        async function loadFailedIncidents() {
-            try {
-                const result =
-                    await getFailedIncidents();
-
-                setIncidents(result);
-            } catch (loadError) {
-                setError(
-                    loadError instanceof ApiError
-                        ? loadError.message
-                        : "Unable to load failed incidents.",
-                );
-            } finally {
-                setIsLoading(false);
-            }
         }
 
         void loadFailedIncidents();
@@ -143,6 +187,7 @@ export default function OperationsPage() {
                                         <th>Attempts</th>
                                         <th>Failed</th>
                                         <th>Failure reason</th>
+                                        <th>Action</th>
                                     </tr>
                                 </thead>
 
@@ -182,6 +227,24 @@ export default function OperationsPage() {
                                                 <td>
                                                     {incident.failureReason ??
                                                         "Unknown failure"}
+                                                </td>
+                                                <td>
+                                                    <button
+                                                        type="button"
+                                                        className="button button--secondary"
+                                                        disabled={
+                                                            retryingIncidentId ===
+                                                            incident.id
+                                                        }
+                                                        onClick={() =>
+                                                            void handleRetry(incident)
+                                                        }
+                                                    >
+                                                        {retryingIncidentId ===
+                                                            incident.id
+                                                            ? "Retrying..."
+                                                            : "Retry"}
+                                                    </button>
                                                 </td>
                                             </tr>
                                         ),
