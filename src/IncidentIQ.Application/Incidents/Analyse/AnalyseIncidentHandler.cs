@@ -93,7 +93,7 @@ public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepositor
             finally
             {
                 aiStopWatch.Stop();
-                IncidentIqTelemetry.ProcessingDuration.Record(aiStopWatch.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("outcome", aiOutcome));
+                IncidentIqTelemetry.AiDuration.Record(aiStopWatch.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("outcome", aiOutcome));
             }
 
         }
