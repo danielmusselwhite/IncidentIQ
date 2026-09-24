@@ -8,8 +8,13 @@ using IncidentIQ.Infrastructure.AzureAI;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
+using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Text.Json.Serialization;
+
+AppContext.SetSwitch(
+    "Azure.Experimental.EnableActivitySource", // Enable the experimental ActivitySource for Azure SDK telemetry so we can correlate traces across Azure services.
+    true);
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -84,6 +89,9 @@ if (!string.IsNullOrWhiteSpace(
 
     builder.Services
         .AddOpenTelemetry()
+        .ConfigureResource(resource =>
+            resource.AddService(
+                serviceName: "IncidentIQ.Api"))
         .UseAzureMonitor(options =>
         {
             options.ConnectionString =

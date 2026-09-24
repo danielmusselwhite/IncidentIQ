@@ -8,6 +8,7 @@ using IncidentIQ.Infrastructure;
 using IncidentIQ.Infrastructure.AzureAI;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
 using IncidentIQ.Worker;
+using OpenTelemetry.Resources;
 
 AppContext.SetSwitch(
     "Azure.Experimental.EnableActivitySource", // Enable the experimental ActivitySource for Azure SDK telemetry so we can correlate traces across Azure services.
@@ -28,6 +29,9 @@ if (!string.IsNullOrWhiteSpace(
 {
     builder.Services
         .AddOpenTelemetry()
+        .ConfigureResource(resource =>
+            resource.AddService(
+                serviceName: "IncidentIQ.Worker"))
         .WithTracing(tracing =>
         {
             tracing

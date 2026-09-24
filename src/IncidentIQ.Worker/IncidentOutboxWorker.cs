@@ -114,7 +114,6 @@ public sealed class IncidentOutboxWorker : BackgroundService
             // convert to an AnalyseIncidentCommand and enqueue it (on azure service bus) for processing
             var command = outboxDocument.ToCommand();
 
-            #region Shared Activity and Telemetry
             // Retrieve the Shared Activity Context from the Outbox document's stored trace information
             ActivityContext parentContext = default;
 
@@ -127,28 +126,13 @@ public sealed class IncidentOutboxWorker : BackgroundService
                     out parentContext);
             }
 
-            using var activity =
-                IncidentIqTelemetry.ActivitySource.StartActivity(
-                    "incident.outbox.relay",
-                    ActivityKind.Internal,
-                    parentContext);
+            using var activity = IncidentIqTelemetry.ActivitySource.StartActivity("incident.outbox.relay", ActivityKind.Internal, parentContext);
 
-            activity?.SetTag(
-                "incident.id",
-                command.IncidentId);
+            activity?.SetTag("incident.id", command.IncidentId);
 
-            activity?.SetTag(
-                "incident.command_id",
-                command.CommandId);
+            activity?.SetTag("incident.command_id", command.CommandId);
 
-            activity?.SetTag(
-                "incident.correlation_id",
-                command.CorrelationId);
-
-            await _incidentAnalysisQueue.EnqueueAsync(
-                command,
-                cancellationToken);
-            #endregion
+            activity?.SetTag("incident.correlation_id", command.CorrelationId);
 
             await _incidentAnalysisQueue.EnqueueAsync(command, cancellationToken);
 
