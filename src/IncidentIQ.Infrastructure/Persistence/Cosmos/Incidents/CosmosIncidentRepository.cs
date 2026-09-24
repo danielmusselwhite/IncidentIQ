@@ -86,4 +86,42 @@ internal sealed class CosmosIncidentRepository : IIncidentRepository
 
         return response.Resource.ToDomain();
     }
+
+    public async Task<IReadOnlyCollection<Incident>> GetByStatusAsync(
+    IncidentStatus status,
+    CancellationToken cancellationToken = default)
+    {
+        var queryDefinition =
+            new QueryDefinition(
+                """
+                SELECT *
+                FROM c
+                WHERE c.documentType = 'Incident'
+                AND c.status = @status
+                ORDER BY c.failedAt DESC
+                """)
+            .WithParameter(
+                "@status",
+                status.ToString());
+
+        var query =
+            _container.GetItemQueryIterator<IncidentDocument>(
+                queryDefinition);
+
+        var incidents =
+            new List<Incident>();
+
+        while (query.HasMoreResults)
+        {
+            var response =
+                await query.ReadNextAsync(
+                    cancellationToken);
+
+            incidents.AddRange(
+                response.Select(
+                    document => document.ToDomain()));
+        }
+
+        return incidents;
+    }
 }

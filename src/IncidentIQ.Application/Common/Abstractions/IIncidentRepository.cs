@@ -37,4 +37,12 @@ public interface IIncidentRepository
     /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
     /// <returns>The updated <see cref="Incident"/>.</returns>
     Task<Incident> UpdateAsync(Incident incident, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Retrieves incidents by their status from the repository.
+    /// </summary>
+    /// <param name="status">The status of the incidents to retrieve.</param>
+    /// <param name="cancellationToken">A <see cref="CancellationToken"/> to observe while waiting for the task to complete.</param>
+    /// <returns>A read-only collection of <see cref="Incident"/> with the specified status.</returns>
+    Task<IReadOnlyCollection<Incident>> GetByStatusAsync(IncidentStatus status, CancellationToken cancellationToken = default);
 }

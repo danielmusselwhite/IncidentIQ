@@ -8,6 +8,7 @@ using IncidentIQ.Application.Incidents.GetAll;
 using IncidentIQ.Application.Incidents.GetAnalysisById;
 using IncidentIQ.Application.Incidents.GetById;
 using IncidentIQ.Application.Incidents.HistoricalSearch.Retrieve;
+using IncidentIQ.Application.Incidents.Operations;
 using IncidentIQ.Application.Runbooks.Create;
 using IncidentIQ.Application.Runbooks.Delete;
 using IncidentIQ.Application.Runbooks.GetAll;
@@ -46,6 +47,8 @@ public static class DependencyInjection
 
         services.AddScoped<OperationalQuestionContextBuilder>();
         services.AddScoped<AskOperationalQuestionHandler>();
+
+        services.AddScoped<GetFailedIncidentsHandler>();
 
         return services;
     }
