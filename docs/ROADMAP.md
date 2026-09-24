@@ -621,91 +621,121 @@ existing Managed Identity model used for service-to-service Azure access.
 
 #### Secrets & Configuration Review
 
-* [ ] Review application configuration and classify values as secrets or non-secret configuration.
-* [ ] Keep Microsoft Entra tenant IDs, client IDs and scope identifiers as normal configuration.
-* [ ] Confirm browser-delivered SPA configuration contains no client secret.
-* [ ] Continue using Managed Identity for production access to:
-  * [ ] Cosmos DB.
-  * [ ] Service Bus.
-  * [ ] Azure OpenAI.
-  * [ ] Azure Container Registry.
-* [ ] Keep local/emulator credentials outside source control through user-secrets or local configuration.
-* [ ] Review existing Managed Identity and Azure RBAC assignments for least privilege.
-* [ ] Document the final authentication, authorization and workload-identity model.
+* [x] Review application configuration and classify values as secrets or non-secret configuration.
+* [x] Keep Microsoft Entra tenant IDs, client IDs and scope identifiers as normal configuration.
+* [x] Confirm browser-delivered SPA configuration contains no client secret.
+* [x] Continue using Managed Identity for production access to:
+  * [x] Cosmos DB.
+  * [x] Service Bus.
+  * [x] Azure OpenAI.
+  * [x] Azure Container Registry.
+* [x] Keep local/emulator credentials outside source control through user-secrets or local configuration.
+* [x] Review existing Managed Identity and Azure RBAC assignments for least privilege.
+* [x] Document the final authentication, authorization and workload-identity model.
 
 ---
 
-## Stage 15 — Observability & Scaling
+## Stage 15 — Operations & Administration
 
-Demonstrate that the distributed workflow can be traced, measured and scaled.
+Build a useful Administrator experience for inspecting and recovering failed analysis work.
 
-### 15A — OpenTelemetry
+### 15A — Role-Aware Operations UI
 
-* [ ] Add OpenTelemetry instrumentation to the API and Worker.
+* [x] Add `GET /api/me` to expose the authenticated user's roles.
+* [x] Make roles available to the React application.
+* [x] Show Administrator-only navigation/actions where appropriate.
+* [x] Keep API authorization as the real security boundary.
+* [x] Complete the `/operations` page with loading, error and empty states.
+
+### 15B — Failed Incident Operations
+
+* [x] Display failed Incidents on the Operations page.
+* [x] Add a dedicated operational API query if the existing Incident endpoints are insufficient.
+* [x] Show:
+  * [x] Incident/title.
+  * [x] service/environment.
+  * [x] failure reason.
+  * [x] attempt count.
+  * [x] timestamps.
+  * [x] correlation ID.
+* [x] Link failures back to the Incident detail page.
+
+### 15C — Retry & Recovery
+
+* [x] Connect the UI to `POST /api/incidents/{id}/retry`.
+* [x] Restrict retry controls to Administrators.
+* [x] Add confirmation and success/error feedback.
+* [x] Refresh state after retry.
+* [x] Verify the full:
+  * [x] Failed → Queued → Processing → Completed/Failed flow.
+* [x] Verify Engineers cannot retry through direct API calls.
+
+### 15D — Verification
+
+* [ ] Test Administrator and Engineer behaviour.
+* [ ] Add API tests for new operational endpoints.
+* [ ] Verify the Operations workflow locally and in Azure.
+
+---
+
+## Stage 16 — Observability & Scaling
+
+Add production-style tracing, metrics and scaling, then expose a small amount of useful operational data in `/operations`.
+
+### 16A — OpenTelemetry & Distributed Tracing
+
+* [ ] Complete OpenTelemetry instrumentation for API and Worker.
 * [ ] Export telemetry to Application Insights.
-* [ ] Instrument important HTTP, Cosmos, Service Bus and Azure AI dependencies.
-
-### 15B — Distributed Tracing
-
-* [ ] Propagate trace/correlation context through:
-  * [ ] API request.
-  * [ ] Service Bus command.
-  * [ ] Worker processing.
+* [ ] Trace the full workflow through:
+  * [ ] API.
+  * [ ] Cosmos/outbox.
+  * [ ] Service Bus.
+  * [ ] Worker.
   * [ ] retrieval.
-  * [ ] Azure AI generation.
-  * [ ] Cosmos persistence.
-* [ ] Verify a complete Incident-analysis workflow can be followed through Application Insights.
+  * [ ] Azure AI.
+  * [ ] persistence.
+* [ ] Ensure correlation IDs can be used to locate workflows.
 
-### 15C — Operational Metrics
+### 16B — Operational Metrics & KQL
 
-* [ ] Record useful application metrics including:
+* [ ] Record:
   * [ ] queue wait duration.
-  * [ ] analysis duration.
-  * [ ] AI generation latency.
-  * [ ] analysis failures.
-* [ ] Add a small set of useful KQL queries for:
-  * [ ] processing failures.
-  * [ ] average/P95 processing duration.
-  * [ ] queue wait time.
+  * [ ] processing duration.
+  * [ ] AI latency.
+  * [ ] failures.
+  * [ ] retries.
+* [ ] Add useful KQL queries for:
+  * [ ] failures.
+  * [ ] average/P95 processing time.
+  * [ ] queue wait.
   * [ ] AI latency/failures.
-* [ ] Document representative telemetry/screenshots.
+  * [ ] correlation ID lookup.
 
-### 15D — Worker Scaling
+### 16C — Operations Dashboard
 
-* [ ] Configure Azure Container Apps KEDA scaling for the Worker based on Service Bus queue depth.
-* [ ] Define sensible minimum/maximum replica limits.
-* [ ] Verify scale-out behaviour with a small controlled workload.
-* [ ] Document the scaling strategy.
+* [ ] Add a small operational summary to `/operations`.
+* [ ] Consider:
+  * [ ] failed/queued/processing counts.
+  * [ ] recent successes/failures.
+  * [ ] processing duration.
+  * [ ] AI latency.
+  * [ ] DLQ/queue health.
+* [ ] Keep detailed diagnostics in Application Insights rather than recreating Azure Monitor.
 
----
+### 16D — Worker Scaling
 
-## Stage 16 — Minimal Operations & Administration
+* [ ] Configure Container Apps/KEDA scaling from Service Bus queue depth.
+* [ ] Define sensible min/max replicas.
+* [ ] Verify safe multi-replica processing.
+* [ ] Verify scale-out and scale-in using a controlled workload.
 
-Provide enough operational functionality to demonstrate that failed asynchronous
-work can be inspected and recovered without building a full administration product.
+### 16E — Verification
 
-### 16A — Failed Analysis Operations
-
-* [ ] Complete the existing Operations frontend page.
-* [ ] Display failed Incident analyses.
-* [ ] Show useful failure metadata:
-  * [ ] Incident.
-  * [ ] failure reason.
-  * [ ] attempt count.
-  * [ ] timestamps.
-  * [ ] correlation ID.
-* [ ] Connect the UI to the existing retry/requeue functionality from Stage 8.
-* [ ] Restrict retry/requeue operations to Administrators.
-* [ ] Hide or disable Administrator-only navigation/actions for normal Engineers where useful.
-
-### 16B — Operational Links
-
-* [ ] Surface correlation IDs where useful.
-* [ ] Provide clear links/navigation from failed operations back to the Incident.
-* [ ] Document how operators use Application Insights for deeper diagnostics.
-
-> Do not duplicate Azure Monitor/Application Insights by building custom
-> dashboards for telemetry already provided by Azure tooling.
+* [ ] Trace successful, failed and retried analyses end-to-end.
+* [ ] Verify metrics and KQL queries against real telemetry.
+* [ ] Verify Operations-page metrics.
+* [ ] Verify Worker scaling in Azure.
+* [ ] Update observability documentation.
 
 ---
 

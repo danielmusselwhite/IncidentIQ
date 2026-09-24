@@ -29,6 +29,16 @@ public sealed class InMemoryIncidentRepository : IIncidentRepository
         return Task.FromResult(incident);
     }
 
+    public Task<IReadOnlyCollection<Incident>> GetByStatusAsync(IncidentStatus status, CancellationToken cancellationToken = default)
+    {
+        IReadOnlyCollection<Incident> incidents = _incidents.Values
+            .Where(incident => incident.Status == status)
+            .OrderByDescending(incident => incident.CreatedAt)
+            .ToArray();
+
+        return Task.FromResult(incidents);
+    }
+
     public Task<IReadOnlyCollection<Incident>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {

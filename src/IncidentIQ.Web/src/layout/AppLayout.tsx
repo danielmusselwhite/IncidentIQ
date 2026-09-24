@@ -1,6 +1,7 @@
 import { NavLink, Outlet } from "react-router-dom";
 import { useMsal } from "@azure/msal-react";
 import "./AppLayout.css";
+import { useCurrentUser } from "../auth/CurrentUserContext";
 
 /**
  * Defines the navigation items shown in the application sidebar.
@@ -13,7 +14,7 @@ const navigation = [
     { label: "Submit Incident", path: "/incidents/new" },
     { label: "Runbooks", path: "/runbooks" },
     { label: "Assistant", path: "/assistant" },
-    { label: "Operations", path: "/operations" },
+    { label: "Operations", path: "/operations", administratorOnly: true },
 ];
 
 /**
@@ -25,6 +26,8 @@ const navigation = [
 export default function AppLayout() {
     //#region Authentication and User Info
     const { instance, accounts } = useMsal();
+
+    const { isAdministrator } = useCurrentUser();
 
     const account = accounts[0];
 
@@ -67,43 +70,39 @@ export default function AppLayout() {
                         Workspace
                     </p>
 
-                    {/*
-                     * map() converts each navigation object into a NavLink.
-                     *
-                     * key gives React a stable identifier for each item when
-                     * rendering the list.
-                     */}
-                    {navigation.map((item) => (
-                        <NavLink
-                            key={item.path}
-                            to={item.path}
+                    {navigation
+                        .filter(item => !item.administratorOnly || isAdministrator) // Only include items that are not admin-only or the user is an admin
+                        .map((item) => ( // Convert each navigation item into a NavLink
+                            <NavLink
+                                key={item.path}
+                                to={item.path}
 
-                            /*
-                             * Without "end", "/incidents" would also be considered
-                             * active for routes such as "/incidents/new".
-                             *
-                             * We therefore require an exact match specifically
-                             * for the Dashboard route.
-                             */
-                            end={item.path === "/incidents"}
+                                /*
+                                 * Without "end", "/incidents" would also be considered
+                                 * active for routes such as "/incidents/new".
+                                 *
+                                 * We therefore require an exact match specifically
+                                 * for the Dashboard route.
+                                 */
+                                end={item.path === "/incidents"}
 
-                            /*
-                             * NavLink provides isActive automatically based on
-                             * whether its route matches the current URL.
-                             *
-                             * An additional CSS class is added when active so
-                             * the selected navigation item can be highlighted.
-                             */
-                            className={({ isActive }) =>
-                                `app-sidebar__link${isActive
-                                    ? " app-sidebar__link--active"
-                                    : ""
-                                }`
-                            }
-                        >
-                            <span>{item.label}</span>
-                        </NavLink>
-                    ))}
+                                /*
+                                 * NavLink provides isActive automatically based on
+                                 * whether its route matches the current URL.
+                                 *
+                                 * An additional CSS class is added when active so
+                                 * the selected navigation item can be highlighted.
+                                 */
+                                className={({ isActive }) =>
+                                    `app-sidebar__link${isActive
+                                        ? " app-sidebar__link--active"
+                                        : ""
+                                    }`
+                                }
+                            >
+                                <span>{item.label}</span>
+                            </NavLink>
+                        ))}
                 </nav>
 
                 <div className="app-sidebar__footer">
