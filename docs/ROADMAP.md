@@ -731,11 +731,11 @@ Add production-style tracing, metrics and scaling, then expose a small amount of
 
 ### 16E — Verification
 
-* [ ] Trace successful, failed and retried analyses end-to-end.
-* [ ] Verify metrics and KQL queries against real telemetry.
-* [ ] Verify Operations-page metrics.
+* [x] Trace successful, failed and retried analyses end-to-end.
+* [x] Verify metrics and KQL queries against real telemetry.
+* [x] Verify Operations-page metrics.
 * [ ] Verify Worker scaling in Azure.
-* [ ] Update observability documentation.
+* [x] Update observability documentation.
 
 ---
 
@@ -745,52 +745,52 @@ Turn the implemented system into a finished portfolio piece.
 
 ### 17A — End-to-End Verification
 
-* [ ] Run the complete deployed workflow:
-  * [ ] authenticate.
-  * [ ] submit Incident.
-  * [ ] enqueue analysis.
-  * [ ] retrieve grounding evidence.
-  * [ ] generate grounded analysis.
-  * [ ] persist result.
-  * [ ] display result.
-* [ ] Verify failure and retry behaviour.
-* [ ] Verify authorization boundaries.
-* [ ] Verify distributed tracing.
-* [ ] Verify Worker scaling if implemented.
-* [ ] Run the AI evaluation suite and record the final baseline.
+* [x] Run the complete deployed workflow:
+  * [x] authenticate.
+  * [x] submit Incident.
+  * [x] enqueue analysis.
+  * [x] retrieve grounding evidence.
+  * [x] generate grounded analysis.
+  * [x] persist result.
+  * [x] display result.
+* [x] Verify failure and retry behaviour.
+* [x] Verify authorization boundaries.
+* [x] Verify distributed tracing.
+* [x] Verify Worker scaling if implemented.
+* [x] Run the AI evaluation suite and record the final baseline.
 
 ### 17B — Demo Data & UX
 
-* [ ] Seed a small realistic demonstration dataset.
-* [ ] Perform final frontend styling and UX cleanup.
-* [ ] Ensure loading, empty, processing, failure and completed states are polished.
-* [ ] Ensure authentication/sign-out states are polished.
-* [ ] Ensure the Operational Assistant is demo-ready.
+* [x] Seed a small realistic demonstration dataset.
+* [x] Perform final frontend styling and UX cleanup.
+* [x] Ensure loading, empty, processing, failure and completed states are polished.
+* [x] Ensure authentication/sign-out states are polished.
+* [x] Ensure the Operational Assistant is demo-ready.
 
 ### 17C — Portfolio Documentation
 
-* [ ] Update architecture diagrams to match the final implementation.
-* [ ] Update the root README.
-* [ ] Add the concise AI evaluation summary deferred from Stage 13.
-* [ ] Document:
-  * [ ] system architecture.
-  * [ ] asynchronous processing.
-  * [ ] RAG/grounding architecture.
-  * [ ] reliability/outbox design.
-  * [ ] authentication and authorization.
-  * [ ] Managed Identity and Azure RBAC.
-  * [ ] observability/scaling.
-  * [ ] AI evaluation.
-* [ ] Include representative screenshots.
-* [ ] Create a short architecture/demo video.
-* [ ] Perform final repository cleanup.
+* [x] Update architecture diagrams to match the final implementation.
+* [x] Update the root README.
+* [x] Add the concise AI evaluation summary deferred from Stage 13.
+* [x] Document:
+  * [x] system architecture.
+  * [x] asynchronous processing.
+  * [x] RAG/grounding architecture.
+  * [x] reliability/outbox design.
+  * [x] authentication and authorization.
+  * [x] Managed Identity and Azure RBAC.
+  * [x] observability/scaling.
+  * [x] AI evaluation.
+* [x] Include representative screenshots.
+* [x] Create a short architecture/demo video.
+* [x] Perform final repository cleanup.
 
 ### 17D — Final Release
 
-* [ ] Deploy the final portfolio version.
-* [ ] Perform final smoke testing.
-* [ ] Tag a portfolio/demo release.
-* [ ] Mark IncidentIQ feature-complete.
+* [x] Deploy the final portfolio version.
+* [x] Perform final smoke testing.
+* [x] Tag a portfolio/demo release.
+* [x] Mark IncidentIQ feature-complete.
 
 ---
 

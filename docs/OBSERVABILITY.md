@@ -33,6 +33,24 @@ POST /api/incidents
 
 The application correlation ID is also retained for logging/search, but the W3C context is what preserves parent/child trace relationships.
 
+### OpenTelemetry Trace Example
+
+The trace below shows a real IncidentIQ request correlated across the API, Cosmos outbox relay, Azure Service Bus, and the analysis Worker.
+
+![OpenTelemetry end-to-end trace example](./images/openTelemetryExample.png)
+
+### Incident Analysis Stages
+
+Custom spans make the major analysis stages visible independently, including context retrieval, AI generation, and persistence.
+
+![OpenTelemetry incident analysis stages](./images/openTelemetryIncidentAnalysisStages.png)
+
+### End-to-End Analysis Timing
+
+The latency view makes it easier to see where time is spent across the asynchronous flow, from the API and outbox through Service Bus and the analysis Worker.
+
+![OpenTelemetry incident analysis timing](./images/openTelemetryIncidentAnalysisTimed.png)
+
 ## Custom Metrics
 
 | Metric | Type | Purpose |
@@ -131,5 +149,3 @@ The Worker identity has Service Bus send/receive access and queue-scoped Data Ow
 5. Retry a failed Incident as Administrator and confirm the retry counter and new trace.
 6. Create a controlled analysis backlog large enough to move the Worker above one replica.
 7. Confirm processing remains correct across multiple replicas and the app scales back to one after the queue drains.
-
-Do not mark Stage 16 complete until the Azure checks above have been observed against real telemetry.
