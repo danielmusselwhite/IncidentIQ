@@ -8,6 +8,7 @@ using IncidentIQ.Infrastructure.AzureAI;
 using IncidentIQ.Infrastructure.Persistence.Cosmos;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Identity.Web;
+using OpenTelemetry.Metrics;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using System.Text.Json.Serialization;
@@ -75,27 +76,26 @@ var applicationInsightsConnectionString =
     builder.Configuration[
         "APPLICATIONINSIGHTS_CONNECTION_STRING"];
 
-if (!string.IsNullOrWhiteSpace(
-        applicationInsightsConnectionString))
+if (!string.IsNullOrWhiteSpace(applicationInsightsConnectionString))
 {
     builder.Services.ConfigureOpenTelemetryTracerProvider(
-    (_, tracing) =>
-    {
-        tracing
-            .AddSource(
-                IncidentIqTelemetry.ActivitySourceName)
-            .AddSource("Azure.*");
-    });
+        (_, tracing) =>
+        {
+            tracing
+                .AddSource(IncidentIqTelemetry.ActivitySourceName)
+                .AddSource("Azure.*");
+        });
+
+    builder.Services.ConfigureOpenTelemetryMeterProvider(
+        (_, metrics) => metrics.AddMeter(IncidentIqTelemetry.MeterName));
 
     builder.Services
         .AddOpenTelemetry()
         .ConfigureResource(resource =>
-            resource.AddService(
-                serviceName: "IncidentIQ.Api"))
+            resource.AddService(serviceName: "IncidentIQ.Api"))
         .UseAzureMonitor(options =>
         {
-            options.ConnectionString =
-                applicationInsightsConnectionString;
+            options.ConnectionString = applicationInsightsConnectionString;
         });
 }
 
