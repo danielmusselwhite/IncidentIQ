@@ -1,8 +1,10 @@
 ﻿using Azure.Messaging.ServiceBus;
+using IncidentIQ.Application.Common.Telemetry;
 using IncidentIQ.Application.Incidents.Analyse;
 using IncidentIQ.Infrastructure.Messaging;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using System.Diagnostics;
 using System.Text.Json;
 
 namespace IncidentIQ.Worker;
@@ -140,11 +142,18 @@ public sealed class AnalyseIncidentWorker : BackgroundService
 
         _logger.LogInformation("Received AnalyseIncident command for incident {IncidentId}.", command.IncidentId);
 
+        var queueWaitMilliseconds =
+        Math.Max(0, (DateTimeOffset.UtcNow - command.QueuedAtUtc).TotalMilliseconds);
+
+        IncidentIqTelemetry.QueueWaitDuration.Record(queueWaitMilliseconds);
+
         // BackgroundService is a singleton, while the analysis workflow uses scoped dependencies. 
         // Creating one scope per message gives each message its own handler, repositories and analyzer.
         await using var serviceScope = _scopeFactory.CreateAsyncScope();
         var analyseIncidentHandler = serviceScope.ServiceProvider.GetRequiredService<AnalyseIncidentHandler>();
 
+        var processingStopwatch = Stopwatch.StartNew();
+        var processingOutcome = "success";
         try
         {
             // Delegate the business workflow to the Application layer.
@@ -152,10 +161,13 @@ public sealed class AnalyseIncidentWorker : BackgroundService
         }
         catch (OperationCanceledException) when (args.CancellationToken.IsCancellationRequested)
         {
+            processingOutcome = "cancelled";
             throw;
         }
         catch (Exception exception)
         {
+            processingOutcome = "failed";
+
             // Final delivery failures are persisted and dead-lettered; earlier failures are left for Service Bus to retry.
             if (args.Message.DeliveryCount >= _maxDeliveryCount)
             {
@@ -170,6 +182,11 @@ public sealed class AnalyseIncidentWorker : BackgroundService
                 command.IncidentId);
 
             throw;
+        }
+        finally
+        {
+            processingStopwatch.Stop();
+            IncidentIqTelemetry.ProcessingDuration.Record(processingStopwatch.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("outcome", processingOutcome));
         }
 
         // Only settle the Service Bus message after processing succeeds.
@@ -218,6 +235,7 @@ public sealed class AnalyseIncidentWorker : BackgroundService
 
         // Persist the terminal application state before settling the Service Bus message.
         await analyseIncidentHandler.MarkFailedAsync(command, exception.Message, args.CancellationToken);
+        IncidentIqTelemetry.AnalysisFailures.Add(1);
 
         // Keep the failed command in the DLQ for later inspection and administrative requeue.
         await args.DeadLetterMessageAsync(

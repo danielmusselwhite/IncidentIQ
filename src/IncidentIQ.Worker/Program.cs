@@ -28,23 +28,35 @@ if (!string.IsNullOrWhiteSpace(
         applicationInsightsConnectionString))
 {
     builder.Services
-        .AddOpenTelemetry()
-        .ConfigureResource(resource =>
-            resource.AddService(
-                serviceName: "IncidentIQ.Worker"))
-        .WithTracing(tracing =>
-        {
-            tracing
-                .AddSource(
-                    IncidentIqTelemetry.ActivitySourceName)
-                .AddSource("Azure.*")
-                .AddAzureMonitorTraceExporter(
-                    options =>
-                    {
-                        options.ConnectionString =
-                            applicationInsightsConnectionString;
-                    });
-        });
+    .AddOpenTelemetry()
+    .ConfigureResource(resource =>
+        resource.AddService(
+            serviceName: "IncidentIQ.Worker"))
+    .WithTracing(tracing =>
+    {
+        tracing
+            .AddSource(
+                IncidentIqTelemetry.ActivitySourceName)
+            .AddSource("Azure.*")
+            .AddAzureMonitorTraceExporter(
+                options =>
+                {
+                    options.ConnectionString =
+                        applicationInsightsConnectionString;
+                });
+    })
+    .WithMetrics(metrics =>
+    {
+        metrics
+            .AddMeter(
+                IncidentIqTelemetry.MeterName)
+            .AddAzureMonitorMetricExporter(
+                options =>
+                {
+                    options.ConnectionString =
+                        applicationInsightsConnectionString;
+                });
+    });
 }
 
 

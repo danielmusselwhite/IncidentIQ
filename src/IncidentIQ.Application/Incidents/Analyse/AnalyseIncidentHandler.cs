@@ -66,15 +66,36 @@ public sealed class AnalyseIncidentHandler(IIncidentRepository incidentRepositor
             retrievalActivity?.SetTag("incident.runbook_matches", analysisContext.RunbookChunks.Count);
         }
 
+
         IncidentAnalysisResult analysisResult;
+        var aiStopWatch = Stopwatch.StartNew();
+        var aiOutcome = "success";
 
         using (var aiActivity = IncidentIqTelemetry.ActivitySource.StartActivity("incident.analysis.generate", ActivityKind.Client))
         {
-            analysisResult = await incidentAnalyzer.AnalyzeIncidentAsync(
-                    analysisContext,
-                    cancellationToken);
+            try
+            {
+                analysisResult = await incidentAnalyzer.AnalyzeIncidentAsync(
+                        analysisContext,
+                        cancellationToken);
+                aiActivity?.SetTag("gen_ai.response.model", analysisResult.Model);
+            }
+            catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+            {
+                aiOutcome = "cancelled";
+                throw;
+            }
+            catch (Exception)
+            {
+                aiOutcome = "failed";
+                throw;
+            }
+            finally
+            {
+                aiStopWatch.Stop();
+                IncidentIqTelemetry.ProcessingDuration.Record(aiStopWatch.Elapsed.TotalMilliseconds, new KeyValuePair<string, object?>("outcome", aiOutcome));
+            }
 
-            aiActivity?.SetTag("gen_ai.response.model", analysisResult.Model);
         }
 
         // Build the durable snapshot from the exact evidence supplied to this analysis. This ensures that the evidence is persisted in the same state as it was when the analysis was performed, even if the underlying data changes later.

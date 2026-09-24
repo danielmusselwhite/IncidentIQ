@@ -2,6 +2,7 @@
 using IncidentIQ.Domain.Incidents;
 using IncidentIQ.Application.Common.Exceptions;
 using System.Diagnostics;
+using IncidentIQ.Application.Common.Telemetry;
 
 namespace IncidentIQ.Application.Incidents.Analyse.Retry;
 
@@ -30,6 +31,8 @@ public sealed class RetryAnalyseIncidentHandler(IIncidentRepository incidentRepo
             TraceState: currentActivity?.TraceStateString);
 
         // now go to the submissionStore to UPDATE the incident AND generate a NEW Outbox in order for the retry to be processed by the system
-        return await incidentSubmissionStore.RetryAsync(incident, analyseIncidentCommand, cancellationToken);
+        var retriedIncident = await incidentSubmissionStore.RetryAsync(incident, analyseIncidentCommand, cancellationToken);
+        IncidentIqTelemetry.AnalysisRetries.Add(1);
+        return retriedIncident;
     }
 }
