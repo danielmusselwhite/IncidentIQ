@@ -12,7 +12,16 @@ export async function apiFetch(
     path: string,
     init?: RequestInit,
 ): Promise<Response> {
-    const account = msalInstance.getActiveAccount();
+    let account = msalInstance.getActiveAccount();
+
+    if (!account) {
+        const accounts = msalInstance.getAllAccounts();
+
+        if (accounts.length > 0) {
+            account = accounts[0];
+            msalInstance.setActiveAccount(account);
+        }
+    }
 
     if (!account) {
         throw new Error("No authenticated user is available.");

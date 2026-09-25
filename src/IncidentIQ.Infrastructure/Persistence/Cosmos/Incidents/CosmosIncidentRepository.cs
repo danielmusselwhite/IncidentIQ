@@ -61,7 +61,7 @@ internal sealed class CosmosIncidentRepository : IIncidentRepository
     {
         var query = _container.GetItemQueryIterator<IncidentDocument>(
             new QueryDefinition(
-                "SELECT * FROM c WHERE c.documentType = 'Incident' ORDER BY c.CreatedAt DESC")); // only get incidents, not outbox documents (used to store outbox events that ensure eventual consistency)
+                "SELECT * FROM c WHERE c.documentType = 'Incident' ORDER BY c.createdAt DESC")); // only get incidents, not outbox documents (used to store outbox events that ensure eventual consistency)
 
         var incidents = new List<Incident>();
 

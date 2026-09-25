@@ -1,21 +1,15 @@
-import {
-    useEffect,
-    useState,
-} from "react";
-
-import {
-    Link,
-    Navigate,
-} from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link, Navigate } from "react-router-dom";
 
 import { ApiError } from "../../api/apiError";
 import {
     getFailedIncidents,
+    getOperationsSummary,
     retryIncident,
 } from "../../api/operationsApi";
 import { useCurrentUser } from "../../auth/CurrentUserContext";
-import type { FailedIncidentOperation } from
-    "../../types/failedIncidentOperation";
+import type { FailedIncidentOperation } from "../../types/failedIncidentOperation";
+import type { OperationsSummary } from "../../types/operationsSummary";
 
 import "./OperationsPage.css";
 
@@ -26,45 +20,36 @@ export default function OperationsPage() {
         error: userError,
     } = useCurrentUser();
 
-    const [retryingIncidentId, setRetryingIncidentId] =
-        useState<string | null>(null);
+    const [retryingIncidentId, setRetryingIncidentId] = useState<string | null>(null);
+    const [incidents, setIncidents] = useState<FailedIncidentOperation[]>([]);
+    const [summary, setSummary] = useState<OperationsSummary | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-    const [incidents, setIncidents] =
-        useState<FailedIncidentOperation[]>([]);
-
-    const [isLoading, setIsLoading] =
-        useState(true);
-
-    const [error, setError] =
-        useState<string | null>(null);
-
-    const [successMessage, setSuccessMessage] =
-        useState<string | null>(null);
-
-    async function loadFailedIncidents() {
+    async function loadOperations() {
         try {
             setError(null);
 
-            const result =
-                await getFailedIncidents();
+            const [failedIncidents, operationsSummary] = await Promise.all([
+                getFailedIncidents(),
+                getOperationsSummary(),
+            ]);
 
-            setIncidents(result);
+            setIncidents(failedIncidents);
+            setSummary(operationsSummary);
         } catch (loadError) {
             setError(
                 loadError instanceof ApiError
                     ? loadError.message
-                    : "Unable to load failed incidents.",
+                    : "Unable to load operational data.",
             );
         } finally {
             setIsLoading(false);
         }
     }
 
-
-
-    async function handleRetry(
-        incident: FailedIncidentOperation,
-    ) {
+    async function handleRetry(incident: FailedIncidentOperation) {
         const confirmed = window.confirm(
             `Retry analysis for "${incident.title}"?`,
         );
@@ -84,7 +69,7 @@ export default function OperationsPage() {
                 `"${incident.title}" was queued for analysis.`,
             );
 
-            await loadFailedIncidents();
+            await loadOperations();
         } catch (retryError) {
             setSuccessMessage(null);
 
@@ -104,7 +89,7 @@ export default function OperationsPage() {
             return;
         }
 
-        void loadFailedIncidents();
+        void loadOperations();
     }, [isAdministrator]);
 
     if (isUserLoading) {
@@ -116,12 +101,7 @@ export default function OperationsPage() {
     }
 
     if (!isAdministrator) {
-        return (
-            <Navigate
-                to="/incidents"
-                replace
-            />
-        );
+        return <Navigate to="/incidents" replace />;
     }
 
     return (
@@ -135,16 +115,38 @@ export default function OperationsPage() {
                     <h1>Operations</h1>
 
                     <p>
-                        Inspect failed Incident analysis
-                        operations and recover them when
-                        required.
+                        Monitor Incident analysis state, inspect failures and
+                        recover failed operations when required.
                     </p>
                 </div>
             </header>
 
-            <section className="operations-summary">
-                <span>Failed analyses</span>
-                <strong>{incidents.length}</strong>
+            <section className="operations-stats">
+                <OperationStat
+                    label="Total"
+                    value={summary?.total ?? 0}
+                />
+
+                <OperationStat
+                    label="Queued"
+                    value={summary?.queued ?? 0}
+                />
+
+                <OperationStat
+                    label="Processing"
+                    value={summary?.processing ?? 0}
+                />
+
+                <OperationStat
+                    label="Completed"
+                    value={summary?.completed ?? 0}
+                />
+
+                <OperationStat
+                    label="Failed"
+                    value={summary?.failed ?? 0}
+                    danger
+                />
             </section>
 
             {successMessage && (
@@ -160,16 +162,17 @@ export default function OperationsPage() {
                 <div className="operations-card__header">
                     <div>
                         <h2>Failed Incidents</h2>
+
                         <p>
-                            Incidents whose analysis exhausted
-                            its processing attempts.
+                            Incidents whose analysis exhausted its processing
+                            attempts.
                         </p>
                     </div>
                 </div>
 
                 {isLoading && (
                     <div className="operations-state">
-                        Loading failed incidents...
+                        Loading operational data...
                     </div>
                 )}
 
@@ -206,60 +209,62 @@ export default function OperationsPage() {
                                 </thead>
 
                                 <tbody>
-                                    {incidents.map(
-                                        incident => (
-                                            <tr key={incident.id}>
-                                                <td>
-                                                    <Link
-                                                        to={`/incidents/${incident.id}`}
-                                                    >
-                                                        {incident.title}
-                                                    </Link>
-                                                </td>
+                                    {incidents.map(incident => (
+                                        <tr key={incident.id}>
+                                            <td>
+                                                <Link
+                                                    to={`/incidents/${incident.id}`}
+                                                >
+                                                    {incident.title}
+                                                </Link>
+                                            </td>
 
-                                                <td>{incident.service}</td>
-                                                <td>{incident.environment}</td>
+                                            <td>{incident.service}</td>
+                                            <td>{incident.environment}</td>
 
-                                                <td>
-                                                    <span
-                                                        className={`badge badge--${incident.severity.toLowerCase()}`}
-                                                    >
-                                                        {incident.severity}
-                                                    </span>
-                                                </td>
+                                            <td>
+                                                <span
+                                                    className={`badge badge--${incident.severity.toLowerCase()}`}
+                                                >
+                                                    {incident.severity}
+                                                </span>
+                                            </td>
 
-                                                <td>
-                                                    {incident.attemptCount}
-                                                </td>
+                                            <td>{incident.attemptCount}</td>
 
-                                                <td>
-                                                    {formatDate(
-                                                        incident.failedAt,
-                                                    )}
-                                                </td>
+                                            <td>
+                                                {formatDate(
+                                                    incident.failedAt,
+                                                )}
+                                            </td>
 
-                                                <td className="operations-table__failure">
-                                                    {incident.failureReason ??
-                                                        "Unknown failure"}
-                                                </td>
-                                                <td>
-                                                    <button
-                                                        type="button"
-                                                        className="button button--secondary"
-                                                        disabled={retryingIncidentId !== null}
-                                                        onClick={() =>
-                                                            void handleRetry(incident)
-                                                        }
-                                                    >
-                                                        {retryingIncidentId ===
-                                                            incident.id
-                                                            ? "Retrying..."
-                                                            : "Retry"}
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        ),
-                                    )}
+                                            <td className="operations-table__failure">
+                                                {incident.failureReason ??
+                                                    "Unknown failure"}
+                                            </td>
+
+                                            <td>
+                                                <button
+                                                    type="button"
+                                                    className="button button--secondary"
+                                                    disabled={
+                                                        retryingIncidentId !==
+                                                        null
+                                                    }
+                                                    onClick={() =>
+                                                        void handleRetry(
+                                                            incident,
+                                                        )
+                                                    }
+                                                >
+                                                    {retryingIncidentId ===
+                                                        incident.id
+                                                        ? "Retrying..."
+                                                        : "Retry"}
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </div>
@@ -269,18 +274,39 @@ export default function OperationsPage() {
     );
 }
 
-function formatDate(
-    value: string | null,
-) {
+function OperationStat({
+    label,
+    value,
+    danger = false,
+}: {
+    label: string;
+    value: number;
+    danger?: boolean;
+}) {
+    return (
+        <div className="operations-stat">
+            <span>{label}</span>
+
+            <strong
+                className={
+                    danger
+                        ? "operations-stat__value--danger"
+                        : undefined
+                }
+            >
+                {value}
+            </strong>
+        </div>
+    );
+}
+
+function formatDate(value: string | null) {
     if (!value) {
         return "—";
     }
 
-    return new Intl.DateTimeFormat(
-        "en-GB",
-        {
-            dateStyle: "medium",
-            timeStyle: "short",
-        },
-    ).format(new Date(value));
+    return new Intl.DateTimeFormat("en-GB", {
+        dateStyle: "medium",
+        timeStyle: "short",
+    }).format(new Date(value));
 }

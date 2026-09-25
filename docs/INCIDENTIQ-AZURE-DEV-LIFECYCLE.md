@@ -2,19 +2,9 @@
 
 ## Cost-Saving Teardown
 
-Delete:
+Delete `rg-incidentiq-dev`; keep `rg-incidentiq-bootstrap`.
 
-```text
-rg-incidentiq-dev
-```
-
-Keep:
-
-```text
-rg-incidentiq-bootstrap
-```
-
-The bootstrap group contains the GitHub deployment identity/OIDC configuration; the dev group is disposable.
+The bootstrap group contains the GitHub deployment identity/OIDC configuration, while the dev group is disposable.
 
 ## Recreate
 
@@ -52,9 +42,12 @@ GitHub `development` environment values:
 AZURE_CLIENT_ID
 AZURE_TENANT_ID
 AZURE_SUBSCRIPTION_ID
+ENTRA_TENANT_ID
+ENTRA_API_CLIENT_ID
+ENTRA_WEB_CLIENT_ID
 ```
 
-GitHub authenticates through OIDC; no client secret is required.
+GitHub authenticates to Azure through OIDC; no deployment client secret is required.
 
 ## Cosmos Vector Search
 
@@ -99,78 +92,57 @@ Cosmos:Key
 AzureAI:Endpoint
 APPLICATIONINSIGHTS_CONNECTION_STRING
 ServiceBus:FullyQualifiedNamespace
-ServiceBus:ConnectionString (SAS only)
+ServiceBus:ConnectionString (SAS/local use only)
 ```
 
-Deployed API/Worker resources receive configuration through Bicep and use Managed Identity. These values mainly matter for local Azure-connected debugging.
+Deployed API/Worker configuration is supplied through Bicep and uses Managed Identity. These values mainly matter for local Azure-connected debugging.
 
 ## Useful Lookup Commands
 
 Cosmos endpoint:
 
 ```powershell
-$accountName = az cosmosdb list `
-  --resource-group "rg-incidentiq-dev" `
-  --query "[0].name" `
-  --output tsv
-
-az cosmosdb show `
-  --name $accountName `
-  --resource-group "rg-incidentiq-dev" `
-  --query documentEndpoint `
-  --output tsv
+az cosmosdb show --name $accountName --resource-group "rg-incidentiq-dev" --query documentEndpoint --output tsv
 ```
 
 Cosmos key:
 
 ```powershell
-az cosmosdb keys list `
-  --name $accountName `
-  --resource-group "rg-incidentiq-dev" `
-  --type keys `
-  --query primaryMasterKey `
-  --output tsv
+az cosmosdb keys list --name $accountName --resource-group "rg-incidentiq-dev" --type keys --query primaryMasterKey --output tsv
 ```
 
 Azure OpenAI endpoint:
 
 ```powershell
-az cognitiveservices account list `
-  --resource-group "rg-incidentiq-dev" `
-  --query "[?kind=='OpenAI'].properties.endpoint | [0]" `
-  --output tsv
+az cognitiveservices account list --resource-group "rg-incidentiq-dev" --query "[?kind=='OpenAI'].properties.endpoint | [0]" --output tsv
 ```
 
 Application Insights:
 
 ```powershell
-az monitor app-insights component show `
-  --app "appi-incidentiq-dev" `
-  --resource-group "rg-incidentiq-dev" `
-  --query connectionString `
-  --output tsv
+az monitor app-insights component show --app "appi-incidentiq-dev" --resource-group "rg-incidentiq-dev" --query connectionString --output tsv
 ```
 
 Service Bus namespace:
 
 ```powershell
-az servicebus namespace list `
-  --resource-group "rg-incidentiq-dev" `
-  --query "[0].name" `
-  --output tsv
+az servicebus namespace list --resource-group "rg-incidentiq-dev" --query "[0].name" --output tsv
 ```
 
 ## Deployment Verification
 
 After deployment verify:
 
-- React sign-in through Microsoft Entra.
-- Authenticated React → API calls.
+- Entra sign-in and Engineer/Administrator authorization.
 - Incident `Queued → Processing → Completed`.
-- Runbook indexing and semantic search.
-- Historical Incident indexing/retrieval.
-- Grounded analysis with valid `HI-*` / `RB-*`.
+- Runbook and historical-Incident indexing/retrieval.
+- Grounded analysis with valid `HI-*` / `RB-*` references.
 - Operational Assistant.
-- Application Insights telemetry.
+- Administrator Operations summary, failed work and retry flow.
+- API/Worker traces and custom metrics in Application Insights.
+- one successful, failed and retried analysis can be located by trace/correlation ID.
+- KEDA scales the Worker above one replica under a controlled `analyse-incident` backlog and returns to one afterwards.
 
-For local configuration, see [Development](DEVELOPMENT.md).
+KEDA currently uses the `analyse-incident` queue with **1–3 Worker replicas**, target **2 queued messages per replica**, polling every **15 seconds**. It intentionally does not scale to zero because the same Worker host runs Cosmos Change Feed relays.
+
+See [Observability & Scaling](OBSERVABILITY.md) for KQL and the Stage 16 verification checklist.

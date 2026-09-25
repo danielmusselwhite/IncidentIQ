@@ -20,7 +20,7 @@ rg-incidentiq-dev
 ├── Container Registry
 ├── Container Apps Environment
 │   ├── API
-│   └── Worker
+│   └── Worker (KEDA 1–3 replicas)
 ├── Static Web Apps
 ├── Cosmos DB
 ├── Service Bus
@@ -49,7 +49,9 @@ index-runbook
 index-historical-incident
 ```
 
-Queues use retries, DLQs and duplicate detection.
+Queues use bounded delivery attempts, DLQs and duplicate detection.
+
+The Worker uses queue-scoped sender/receiver RBAC. The `analyse-incident` queue also grants the Worker identity Data Owner access so KEDA can read queue runtime state.
 
 ### Azure OpenAI
 
@@ -57,6 +59,22 @@ Queues use retries, DLQs and duplicate detection.
 incident-analysis → gpt-5-mini
 runbook-embedding → text-embedding-3-small (1536)
 ```
+
+### Observability & Scaling
+
+API and Worker export OpenTelemetry to Application Insights/Log Analytics.
+
+Worker KEDA configuration:
+
+```text
+trigger:          analyse-incident Service Bus queue
+min replicas:     1
+max replicas:     3
+target:           2 queued messages / replica
+polling interval: 15 seconds
+```
+
+Minimum 1 is intentional because the Worker also owns Cosmos Change Feed relays.
 
 ## Identity
 
@@ -67,7 +85,7 @@ runbook-embedding → text-embedding-3-small (1536)
 ## RBAC
 
 - API: Cosmos, Azure OpenAI, ACR pull.
-- Worker: Cosmos, Service Bus send/receive, Azure OpenAI, ACR pull.
+- Worker: Cosmos, Service Bus send/receive, queue-scoped scaler access, Azure OpenAI, ACR pull.
 
 ## Deployment
 

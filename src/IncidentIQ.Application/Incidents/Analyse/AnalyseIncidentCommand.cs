@@ -8,4 +8,6 @@ public sealed record AnalyseIncidentCommand(
     Guid CommandId,
     string IncidentId,
     string CorrelationId, // Used to correlate the analysis request throughout the system
-    DateTimeOffset QueuedAtUtc);
+    DateTimeOffset QueuedAtUtc,
+    string? TraceParent = null,
+    string? TraceState = null);

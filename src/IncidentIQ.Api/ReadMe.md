@@ -4,46 +4,41 @@ ASP.NET Core HTTP/authentication host. Business orchestration lives in Applicati
 
 ## Responsibilities
 
-- Microsoft Entra JWT validation.
-- `access_as_user` authorization.
-- Incident, Runbook and Assistant endpoints.
-- Request/response mapping, validation and Problem Details.
-- CORS, Swagger/OpenAPI, health checks and telemetry.
+- Microsoft Entra JWT validation and delegated-scope enforcement.
+- Engineer/Administrator authorization policies.
+- Incident, Runbook, Assistant, current-user and Operations endpoints.
+- Request/response mapping, Problem Details, CORS, Swagger/OpenAPI and health checks.
+- OpenTelemetry export to Application Insights.
 
-## Authentication
+## Authentication & Authorization
 
 ```text
 React/MSAL
 → Authorization: Bearer <token>
 → Microsoft.Identity.Web
-→ authenticated ClaimsPrincipal
 → require access_as_user
+→ role policy
 → controller
 ```
 
-```csharp
-app.MapControllers()
-    .RequireAuthorization()
-    .RequireScope("access_as_user");
-```
-
-Behavior:
 - no/invalid token → `401`,
-- valid token without required permission → `403`,
-- valid token with `access_as_user` → controller executes.
+- missing required scope/role → `403`,
+- `Engineer` or `Administrator` → normal product APIs,
+- `Administrator` → Operations and retry,
+- `/api/health` → anonymous.
 
-`GET /api/health` is intentionally anonymous.
-
-Integration tests replace Entra with a deterministic test authentication handler while preserving normal authorization behavior.
+Integration tests replace Entra with deterministic test authentication while preserving authorization behaviour.
 
 ## Main Endpoints
 
 ```text
+GET  /api/me
+
 POST /api/incidents
 GET  /api/incidents
 GET  /api/incidents/{id}
 GET  /api/incidents/{id}/analysis
-POST /api/incidents/{id}/retry
+POST /api/incidents/{id}/retry               # Administrator
 
 POST   /api/runbooks
 GET    /api/runbooks
@@ -54,7 +49,14 @@ DELETE /api/runbooks/{id}
 
 POST /api/assistant/questions
 
-GET /api/health
+GET /api/operations/summary                  # Administrator
+GET /api/operations/failed-incidents         # Administrator
+
+GET /api/health                              # anonymous
 ```
 
-Engineer/Administrator role policies are added in Stage 14C.
+## Observability
+
+The API exports telemetry with role name `IncidentIQ.Api`. Incident create/retry uses the current trace ID as the application correlation ID and persists W3C trace context into the asynchronous analysis command/outbox.
+
+See [Observability & Scaling](../../docs/OBSERVABILITY.md).
