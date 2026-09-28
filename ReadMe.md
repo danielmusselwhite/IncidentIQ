@@ -4,7 +4,7 @@
 
 IncidentIQ lets engineers submit Incidents, analyse them asynchronously, manage Runbooks, retrieve similar historical Incidents, and ask a grounded Operational Assistant questions about production issues.
 
-> **Current status:** the core implementation is feature-complete and has been verified end-to-end in Azure, including authentication/authorization, grounded RAG, administration, distributed tracing, custom metrics and KEDA scaling. Final portfolio capture (video/product screenshots) and release tagging remain before the disposable Azure development environment is torn down.
+> **Current status:** the core implementation is feature-complete and has been verified end-to-end in Azure, including authentication/authorization, grounded RAG, administration, distributed tracing, custom metrics and KEDA scaling.
 
 ## Features
 
@@ -38,8 +38,6 @@ IncidentIQ lets engineers submit Incidents, analyse them asynchronously, manage 
 
 
 ## Demo
-
-A final product walkthrough and UI screenshot set will be captured before the disposable Azure development environment is decommissioned.
 
 ### Video Walkthrough
 

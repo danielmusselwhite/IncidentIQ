@@ -734,7 +734,7 @@ Add production-style tracing, metrics and scaling, then expose a small amount of
 * [x] Trace successful, failed and retried analyses end-to-end.
 * [x] Verify metrics and KQL queries against real telemetry.
 * [x] Verify Operations-page metrics.
-* [ ] Verify Worker scaling in Azure.
+* [x] Verify Worker scaling in Azure.
 * [x] Update observability documentation.
 
 ---
