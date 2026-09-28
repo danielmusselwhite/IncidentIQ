@@ -133,10 +133,10 @@ Use the same Azure AI keys for the Worker when testing live analysis/indexing.
 
 Deployed API and Worker export OpenTelemetry to Application Insights when `APPLICATIONINSIGHTS_CONNECTION_STRING` is configured.
 
-- API role name: `IncidentIQ.Api`
-- Worker role name: `IncidentIQ.Worker`
-- custom `ActivitySource`: `IncidentIQ`
-- custom `Meter`: `IncidentIQ`
+- API service name is configured as `IncidentIQ.Api`; Container Apps resource-context views may surface the Container App role name.
+- Worker service/role name: `IncidentIQ.Worker`.
+- custom `ActivitySource`: `IncidentIQ`.
+- custom `Meter`: `IncidentIQ`.
 
 Detailed trace/metric verification and KQL: [Observability & Scaling](OBSERVABILITY.md).
 

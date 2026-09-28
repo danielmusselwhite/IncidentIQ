@@ -57,6 +57,6 @@ GET /api/health                              # anonymous
 
 ## Observability
 
-The API exports telemetry with role name `IncidentIQ.Api`. Incident create/retry uses the current trace ID as the application correlation ID and persists W3C trace context into the asynchronous analysis command/outbox.
+The API configures OpenTelemetry service name `IncidentIQ.Api`; Container Apps resource-context views may surface the Container App role name. Incident create/retry uses the current trace ID as the application correlation ID and persists W3C trace context into the asynchronous analysis command/outbox.
 
 See [Observability & Scaling](../../docs/OBSERVABILITY.md).
