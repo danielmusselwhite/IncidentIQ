@@ -4,7 +4,7 @@
 
 IncidentIQ lets engineers submit Incidents, analyse them asynchronously, manage Runbooks, retrieve similar historical Incidents, and ask a grounded Operational Assistant questions about production issues.
 
-> **Current status:** authentication, authorization, administration, tracing, custom metrics and KEDA scaling are implemented. Stage 16 Azure observability/scaling verification is the next step.
+> **Current status:** the core implementation is feature-complete and has been verified end-to-end in Azure, including authentication/authorization, grounded RAG, administration, distributed tracing, custom metrics and KEDA scaling. Final portfolio capture (video/product screenshots) and release tagging remain before the disposable Azure development environment is torn down.
 
 ## Features
 
@@ -35,6 +35,17 @@ IncidentIQ lets engineers submit Incidents, analyse them asynchronously, manage 
 | Observability | OpenTelemetry, Application Insights, Log Analytics |
 | Scaling | KEDA / Azure Container Apps queue-depth scaling |
 | Delivery | Bicep, GitHub Actions, OIDC |
+
+
+## Demo
+
+A final product walkthrough and UI screenshot set will be captured before the disposable Azure development environment is decommissioned.
+
+### Video Walkthrough
+
+[![Click to watch the demo](docs/demo/demoPreview.png)](https://youtu.be/4An0kOLyoSQ)
+- Click the image above to watch the demo on YouTube. Alternatively, click: https://youtu.be/4An0kOLyoSQ
+  - For more information on the Observability and OpenTelemetry setup that are not shown in the demo, see [Observability](docs/OBSERVABILITY.md) for screenshots.
 
 ## Architecture
 

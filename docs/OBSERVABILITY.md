@@ -1,12 +1,12 @@
 # Observability & Scaling
 
-IncidentIQ uses OpenTelemetry with Azure Monitor/Application Insights for distributed traces and custom metrics. The product Operations page intentionally exposes only application state; deep diagnostics stay in Azure Monitor.
+IncidentIQ uses OpenTelemetry with Azure Monitor/Application Insights for distributed traces and custom metrics. The product Operations page intentionally exposes application state only; deep diagnostics stay in Azure Monitor.
 
-## Telemetry Roles
+## Telemetry Identity
 
-| Process | Application Insights role |
+| Process | OpenTelemetry service / Application Insights role |
 | --- | --- |
-| ASP.NET Core API | `IncidentIQ.Api` |
+| ASP.NET Core API | configured as `IncidentIQ.Api`; Container Apps resource-context views may surface the Container App role name |
 | .NET Worker | `IncidentIQ.Worker` |
 
 Custom source names:
@@ -31,23 +31,23 @@ POST /api/incidents
    └── incident.analysis.persist
 ```
 
-The application correlation ID is also retained for logging/search, but the W3C context is what preserves parent/child trace relationships.
+The application correlation ID is retained for logging/search, while W3C context preserves the parent/child trace relationship across the asynchronous boundary.
 
 ### OpenTelemetry Trace Example
 
-The trace below shows a real IncidentIQ request correlated across the API, Cosmos outbox relay, Azure Service Bus, and the analysis Worker.
+The trace below is from a real Azure run and shows one operation correlated across the API, Cosmos outbox relay, Service Bus and analysis Worker.
 
 ![OpenTelemetry end-to-end trace example](./images/openTelemetryExample.png)
 
 ### Incident Analysis Stages
 
-Custom spans make the major analysis stages visible independently, including context retrieval, AI generation, and persistence.
+Custom spans make context retrieval, AI generation and persistence independently visible.
 
 ![OpenTelemetry incident analysis stages](./images/openTelemetryIncidentAnalysisStages.png)
 
 ### End-to-End Analysis Timing
 
-The latency view makes it easier to see where time is spent across the asynchronous flow, from the API and outbox through Service Bus and the analysis Worker.
+The latency view shows where time is spent across the API/outbox/queue/Worker flow.
 
 ![OpenTelemetry incident analysis timing](./images/openTelemetryIncidentAnalysisTimed.png)
 
@@ -55,64 +55,74 @@ The latency view makes it easier to see where time is spent across the asynchron
 
 | Metric | Type | Purpose |
 | --- | --- | --- |
-| `incident.analysis.queue_wait.duration` | Histogram (ms) | queued → Worker processing start |
-| `incident.analysis.processing.duration` | Histogram (ms) | Worker processing duration |
+| `incident.analysis.queue_wait.duration` | Histogram (ms) | command queued → Worker processing start |
+| `incident.analysis.processing.duration` | Histogram (ms) | total Worker processing duration |
 | `incident.analysis.ai.duration` | Histogram (ms) | AI generation duration |
 | `incident.analysis.failures` | Counter | terminal failures after delivery attempts are exhausted |
-| `incident.analysis.retries` | Counter | successful administrator-triggered retries |
+| `incident.analysis.retries` | Counter | administrator-triggered retries |
 
-High-cardinality values such as Incident IDs are kept on traces/logs rather than metric dimensions.
+High-cardinality values such as Incident IDs stay on traces/logs rather than metric dimensions.
+
+Azure Monitor aggregates histogram measurements, so use `valueSum / valueCount` for averages rather than treating one `customMetrics` row as one request.
 
 ## Useful KQL
+
+The queries below use the **Application Insights resource-context schema** verified during Azure testing (`requests`, `dependencies`, `traces`, `exceptions`, `customMetrics`). Workspace-context Logs may expose the equivalent `AppRequests`, `AppDependencies`, `AppTraces`, `AppExceptions` and `AppMetrics` tables instead.
 
 ### Find a complete workflow
 
 ```kusto
-let correlationId = "<TRACE-OR-CORRELATION-ID>";
-union withsource=TableName AppRequests, AppDependencies, AppTraces, AppExceptions
-| where TimeGenerated > ago(1h)
-| where OperationId == correlationId
-    or tostring(Properties["CorrelationId"]) == correlationId
-| project TimeGenerated, TableName, AppRoleName, Name, OperationId, ParentId, DurationMs, Success, Message, Properties
-| order by TimeGenerated asc
+union requests, dependencies, traces, exceptions
+| where timestamp > ago(1h)
+| where operation_Id == "<OPERATION-ID>"
+| project timestamp, itemType, cloud_RoleName, name, operation_Id, operation_ParentId, duration, success, message
+| order by timestamp asc
 ```
 
 ### Average queue wait
 
 ```kusto
-AppMetrics
-| where TimeGenerated > ago(24h)
-| where Name == "incident.analysis.queue_wait.duration"
-| summarize AverageQueueWaitMs = sum(Sum) / sum(ItemCount)
+customMetrics
+| where timestamp > ago(24h)
+| where name == "incident.analysis.queue_wait.duration"
+| summarize Samples = sum(valueCount), AverageQueueWaitMs = sum(valueSum) / sum(valueCount)
 ```
 
 ### Processing latency
 
 ```kusto
-AppDependencies
-| where TimeGenerated > ago(24h)
-| where AppRoleName == "IncidentIQ.Worker"
-| where Name == "incident.analysis"
-| summarize AverageMs = avg(DurationMs), P95Ms = percentile(DurationMs, 95)
+dependencies
+| where timestamp > ago(24h)
+| where name == "incident.analysis"
+| summarize AverageMs = avg(duration), P95Ms = percentile(duration, 95)
 ```
 
 ### AI latency
 
 ```kusto
-AppDependencies
-| where TimeGenerated > ago(24h)
-| where AppRoleName == "IncidentIQ.Worker"
-| where Name == "incident.analysis.generate"
-| summarize AverageMs = avg(DurationMs), P95Ms = percentile(DurationMs, 95)
+dependencies
+| where timestamp > ago(24h)
+| where name == "incident.analysis.generate"
+| summarize AverageMs = avg(duration), P95Ms = percentile(duration, 95)
+```
+
+### Custom metric health
+
+```kusto
+customMetrics
+| where timestamp > ago(24h)
+| where name startswith "incident.analysis"
+| summarize Measurements = sum(valueCount), Total = sum(valueSum), Average = sum(valueSum) / sum(valueCount) by name, cloud_RoleName
+| order by name asc
 ```
 
 ### Failures and administrator retries
 
 ```kusto
-AppMetrics
-| where TimeGenerated > ago(24h)
-| where Name in ("incident.analysis.failures", "incident.analysis.retries")
-| summarize Total = sum(Sum) by Name
+customMetrics
+| where timestamp > ago(24h)
+| where name in ("incident.analysis.failures", "incident.analysis.retries")
+| summarize Total = sum(valueSum) by name
 ```
 
 ## Operations Page
@@ -123,7 +133,7 @@ Administrator-only `/operations` provides:
 Total | Queued | Processing | Completed | Failed
 ```
 
-and a failed-Incident table with retry controls. It does not query Application Insights or expose KEDA internals; Azure Monitor remains the source for detailed telemetry.
+It also lists failed Incidents with retry controls. It does not query Application Insights or expose KEDA internals; Azure Monitor remains the source for detailed telemetry.
 
 ## KEDA Scaling
 
@@ -136,16 +146,17 @@ polling interval:   15 seconds
 target queue depth: 2 messages per replica
 ```
 
-The Worker identity has Service Bus send/receive access and queue-scoped Data Owner access for the KEDA scaler.
+The Worker identity has Service Bus sender/receiver access and queue-scoped Data Owner access required by the KEDA scaler.
 
 `minReplicas` stays at 1 because the same host also runs Cosmos Change Feed processors. Scale-to-zero would stop those relays, leaving no process available to create the Service Bus backlog that should wake the Worker.
 
-## Stage 16 Azure Verification
+## Azure Verification
 
-1. Deploy the observability/scaling branch.
-2. Submit a normal Incident and confirm API + Worker spans share one `OperationId`.
-3. Confirm queue-wait, processing and AI-duration telemetry appears.
-4. Exercise a terminal failure and confirm `incident.analysis.failures` increments.
-5. Retry a failed Incident as Administrator and confirm the retry counter and new trace.
-6. Create a controlled analysis backlog large enough to move the Worker above one replica.
-7. Confirm processing remains correct across multiple replicas and the app scales back to one after the queue drains.
+Stage 16 was verified against the deployed Azure environment:
+
+- API and Worker telemetry was correlated under one `operation_Id` across the Cosmos outbox and Service Bus boundary.
+- semantic analysis spans appeared for retrieval, AI generation and persistence.
+- queue-wait, processing and AI-duration metrics were exported successfully.
+- terminal failure and administrator retry counters were exercised.
+- a controlled backlog caused KEDA scale-out above one Worker replica.
+- the Worker returned to its minimum replica count after the queue drained.

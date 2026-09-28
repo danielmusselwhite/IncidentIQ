@@ -1,12 +1,33 @@
 # Azure Dev Environment Lifecycle
 
-## Cost-Saving Teardown
+IncidentIQ separates stable deployment bootstrap resources from the disposable application environment.
 
-Delete `rg-incidentiq-dev`; keep `rg-incidentiq-bootstrap`.
+```text
+rg-incidentiq-bootstrap
+└── GitHub deployment identity + OIDC federation
 
-The bootstrap group contains the GitHub deployment identity/OIDC configuration, while the dev group is disposable.
+rg-incidentiq-dev
+└── application/runtime resources
+```
+
+Microsoft Entra app registrations are tenant configuration and are **not** created by the application Bicep.
+
+## Final Portfolio Teardown
+
+Before deleting Azure resources:
+
+1. Record the final product/architecture demo.
+2. Capture any product and Azure telemetry screenshots required by the README/portfolio.
+3. Confirm the final code and documentation are on `master`.
+4. Tag the final portfolio release.
+5. Delete `rg-incidentiq-dev`.
+6. Keep `rg-incidentiq-bootstrap` and the Entra app registrations if easy redeployment is desirable.
+
+Deleting the development resource group removes the paid runtime environment while retaining source code, Bicep and GitHub deployment configuration.
 
 ## Recreate
+
+After `rg-incidentiq-dev` has been deleted, rerun the subscription-scope bootstrap deployment. It recreates the development resource group and its deployment role while reusing/updating the bootstrap resources.
 
 ```powershell
 az deployment sub create `
@@ -21,6 +42,8 @@ az deployment sub create `
 ```
 
 Then run the **Deploy Development** GitHub Actions workflow.
+
+The deployment workflow also runs automatically on pushes to `master` and can be started manually with `workflow_dispatch`.
 
 ## First-Time Subscription Setup
 
@@ -97,6 +120,8 @@ ServiceBus:ConnectionString (SAS/local use only)
 
 Deployed API/Worker configuration is supplied through Bicep and uses Managed Identity. These values mainly matter for local Azure-connected debugging.
 
+The Entra tenant/client IDs are stable only while the existing app registrations are retained.
+
 ## Useful Lookup Commands
 
 Cosmos endpoint:
@@ -131,18 +156,17 @@ az servicebus namespace list --resource-group "rg-incidentiq-dev" --query "[0].n
 
 ## Deployment Verification
 
-After deployment verify:
+After recreation verify:
 
 - Entra sign-in and Engineer/Administrator authorization.
 - Incident `Queued → Processing → Completed`.
 - Runbook and historical-Incident indexing/retrieval.
-- Grounded analysis with valid `HI-*` / `RB-*` references.
+- grounded analysis with valid `HI-*` / `RB-*` references.
 - Operational Assistant.
 - Administrator Operations summary, failed work and retry flow.
 - API/Worker traces and custom metrics in Application Insights.
-- one successful, failed and retried analysis can be located by trace/correlation ID.
-- KEDA scales the Worker above one replica under a controlled `analyse-incident` backlog and returns to one afterwards.
+- KEDA scale-out/scale-in under a controlled `analyse-incident` backlog.
 
-KEDA currently uses the `analyse-incident` queue with **1–3 Worker replicas**, target **2 queued messages per replica**, polling every **15 seconds**. It intentionally does not scale to zero because the same Worker host runs Cosmos Change Feed relays.
+KEDA uses **1–3 Worker replicas**, target **2 queued messages per replica**, polling every **15 seconds**. It intentionally does not scale to zero because the same Worker host runs Cosmos Change Feed relays.
 
-See [Observability & Scaling](OBSERVABILITY.md) for KQL and the Stage 16 verification checklist.
+See [Observability & Scaling](OBSERVABILITY.md) for verified KQL and telemetry examples.

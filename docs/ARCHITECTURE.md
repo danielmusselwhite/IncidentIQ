@@ -70,6 +70,38 @@ flowchart TB
     classDef ai fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
 ```
 
+## Azure Runtime View
+
+```mermaid
+%%{init: {"theme":"base","themeVariables":{"background":"#ffffff"}} }%%
+flowchart LR
+    User["Engineer"]:::user --> Web["Azure Static Web Apps<br/>React"]:::web
+    Web --> API["API Container App"]:::host
+
+    API --> Cosmos["Cosmos DB"]:::data
+    API --> OpenAI["Azure OpenAI"]:::ai
+
+    Cosmos ==>|Change Feed| Worker["Worker Container App<br/>1–3 replicas"]:::host
+    Worker --> Cosmos
+    Worker --> Bus["Service Bus"]:::msg
+    Bus ==>|Commands| Worker
+    Worker --> OpenAI
+
+    Bus -. "analyse-incident queue depth" .-> KEDA["KEDA scaler"]:::infra
+    KEDA -. "scale 1–3" .-> Worker
+
+    API -. "OpenTelemetry" .-> Insights["Application Insights"]:::infra
+    Worker -. "OpenTelemetry" .-> Insights
+
+    classDef user fill:#f8fafc,stroke:#64748b,color:#0f172a,stroke-width:2px;
+    classDef web fill:#e0f2fe,stroke:#0284c7,color:#0c4a6e,stroke-width:2px;
+    classDef host fill:#dbeafe,stroke:#2563eb,color:#1e3a8a,stroke-width:2px;
+    classDef infra fill:#f3e8ff,stroke:#9333ea,color:#581c87,stroke-width:2px;
+    classDef data fill:#ecfdf5,stroke:#059669,color:#064e3b,stroke-width:2px;
+    classDef msg fill:#fff7ed,stroke:#d97706,color:#7c2d12,stroke-width:2px;
+    classDef ai fill:#ede9fe,stroke:#7c3aed,color:#4c1d95,stroke-width:2px;
+```
+
 ## Boundaries
 
 - **Domain:** business entities and state rules.
@@ -92,6 +124,7 @@ API / Worker → Managed Identity → Azure resources
 - `/api/me` exposes the authenticated user's roles to the UI; backend policies remain the security boundary.
 - `/api/health` remains anonymous.
 - User tokens are never forwarded to Cosmos, Service Bus or Azure OpenAI.
+- Entra app registrations are tenant configuration and are not created by the application Bicep.
 
 ## Asynchronous Analysis
 
@@ -113,16 +146,17 @@ The W3C trace context is persisted with the outbox command so API and Worker act
 | Container | Partition key | Purpose |
 | --- | --- | --- |
 | `Incidents` | `/incidentId` | Incident, outbox, analysis/evidence |
-| `Runbooks` | `/id` | Editable Runbooks |
-| `RunbookChunks` | `/runbookId` | Derived Runbook vectors |
-| `HistoricalIncidentVectors` | `/incidentId` | Derived completed-Incident vectors |
+| `Runbooks` | `/id` | editable Runbooks |
+| `RunbookChunks` | `/runbookId` | derived Runbook vectors |
+| `HistoricalIncidentVectors` | `/incidentId` | derived completed-Incident vectors |
 | `ChangeFeedLeases` | `/id` | Change Feed checkpoints |
 
 Source records and rebuildable vector indexes remain separate.
 
 ## Observability & Scaling
 
-- API and Worker emit OpenTelemetry to one Application Insights resource with role names `IncidentIQ.Api` and `IncidentIQ.Worker`.
+- API and Worker export OpenTelemetry to the same Application Insights resource.
+- The API configures service name `IncidentIQ.Api`; Container Apps resource-context views may surface the Container App role name. The Worker reports `IncidentIQ.Worker`.
 - Custom spans cover outbox relay, analysis, retrieval, AI generation and persistence.
 - Custom metrics cover queue wait, processing duration, AI duration, terminal failures and administrator retries.
 - The Worker Container App uses KEDA against the `analyse-incident` Service Bus queue.

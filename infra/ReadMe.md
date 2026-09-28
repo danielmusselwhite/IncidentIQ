@@ -98,4 +98,6 @@ tests
 → build/deploy React
 ```
 
-Lifecycle commands: [Azure Dev Lifecycle](../docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
+`.github/workflows/deploy.yml` runs on pushes to `master` and supports manual `workflow_dispatch`. The development resource group is intentionally disposable; bootstrap identity/OIDC resources live separately.
+
+Teardown/recreation: [Azure Dev Lifecycle](../docs/INCIDENTIQ-AZURE-DEV-LIFECYCLE.md).
